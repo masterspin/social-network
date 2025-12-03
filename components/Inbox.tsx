@@ -6,6 +6,7 @@ import {
   updateConnectionStatus,
   deleteConnection,
   updateConnectionRequestDetails,
+  getFirstConnectionCount,
 } from "@/lib/supabase/queries";
 
 import type { Database } from "@/types/supabase";
@@ -176,6 +177,19 @@ export default function Inbox() {
   }
 
   async function acceptReceived(conn: ConnectionRow) {
+    // Check if user has reached the 100 first connection limit when accepting a first connection request
+    if (conn.connection_type === "first" && currentUserId) {
+      const { count, error: countError } = await getFirstConnectionCount(currentUserId);
+      if (countError) {
+        setMessage({ type: "error", text: "Failed to check connection limit. Please try again." });
+        return;
+      }
+      if (count >= 100) {
+        setMessage({ type: "error", text: "You cannot accept this first connection request. You have reached the limit of 100 first connections." });
+        return;
+      }
+    }
+    
     const { error } = await updateConnectionStatus(conn.id, "accepted");
     if (error) {
       setMessage({ type: "error", text: error.message });

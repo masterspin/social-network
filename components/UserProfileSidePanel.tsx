@@ -7,6 +7,7 @@ import {
   deleteConnection,
   updateConnectionRequestDetails,
   isUserBlocked,
+  getFirstConnectionCount,
 } from "@/lib/supabase/queries";
 import type { Database } from "@/types/supabase";
 import {
@@ -249,6 +250,23 @@ export default function UserProfileSidePanel({
       return;
     }
 
+    // Check if user has reached the 100 first connection limit when sending a first connection request
+    if (connectionType === "first") {
+      const { count, error: countError } = await getFirstConnectionCount(
+        currentUserId
+      );
+      if (countError) {
+        setError("Failed to check connection limit. Please try again.");
+        return;
+      }
+      if (count >= 100) {
+        setError(
+          "You cannot send more first connection requests. You have reached the limit of 100 first connections."
+        );
+        return;
+      }
+    }
+
     const { error: e } = await createConnectionRequest({
       requester_id: currentUserId,
       recipient_id: userId,
@@ -269,6 +287,24 @@ export default function UserProfileSidePanel({
 
   async function accept(id: string) {
     setError(null);
+
+    // Check if user has reached the 100 first connection limit when accepting a first connection request
+    if (connection?.connection_type === "first") {
+      const { count, error: countError } = await getFirstConnectionCount(
+        currentUserId
+      );
+      if (countError) {
+        setError("Failed to check connection limit. Please try again.");
+        return;
+      }
+      if (count >= 100) {
+        setError(
+          "You cannot accept this first connection request. You have reached the limit of 100 first connections."
+        );
+        return;
+      }
+    }
+
     const { error: e } = await updateConnectionStatus(id, "accepted");
     if (e) {
       setError(e.message);
@@ -474,11 +510,9 @@ export default function UserProfileSidePanel({
                               )
                             }
                           >
-                            <option value="first">
-                              1st Connection (Green)
-                            </option>
+                            <option value="first">1st Connection</option>
                             <option value="one_point_five">
-                              1.5 Connection (Purple)
+                              1.5 Connection
                             </option>
                           </select>
                           <p className="text-xs text-gray-500 mt-1">
