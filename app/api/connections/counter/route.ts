@@ -25,7 +25,8 @@ export async function POST(request: Request) {
   });
 
   try {
-    const { connectionId, currentUserId, how_met } = await request.json();
+    const { connectionId, currentUserId, how_met, connection_type } =
+      await request.json();
     if (!connectionId || !currentUserId || typeof how_met !== "string") {
       return NextResponse.json(
         { error: { message: "Missing connectionId/currentUserId/how_met" } },
@@ -36,7 +37,7 @@ export async function POST(request: Request) {
     // Load the original connection
     const { data: conn, error: e1 } = await admin
       .from("connections")
-      .select("id, requester_id, recipient_id, status")
+      .select("id, requester_id, recipient_id, status, connection_type")
       .eq("id", connectionId)
       .single();
     if (e1) return NextResponse.json({ error: e1 }, { status: 400 });
@@ -51,6 +52,7 @@ export async function POST(request: Request) {
     }
 
     const otherId = conn.requester_id;
+    const typeToUse = connection_type || conn.connection_type || "first";
 
     // Check if a reversed row already exists
     const { data: existingReverse, error: e2 } = await admin
@@ -65,7 +67,7 @@ export async function POST(request: Request) {
       // Update the existing reverse, remove the original
       const up = await admin
         .from("connections")
-        .update({ how_met, status: "pending" })
+        .update({ how_met, connection_type: typeToUse, status: "pending" })
         .eq("id", existingReverse.id)
         .select()
         .single();
@@ -86,6 +88,7 @@ export async function POST(request: Request) {
         requester_id: currentUserId,
         recipient_id: otherId,
         how_met,
+        connection_type: typeToUse,
         status: "pending",
       })
       .eq("id", conn.id)

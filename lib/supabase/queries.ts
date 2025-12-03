@@ -482,3 +482,15 @@ export async function isUserBlocked(blockerId: string, blockedId: string) {
     .single();
   return { isBlocked: !!data, error };
 }
+
+// Get count of first connections for a user
+export async function getFirstConnectionCount(userId: string) {
+  const { count, error } = await supabase
+    .from("connections")
+    .select("*", { count: "exact", head: true })
+    .or(`requester_id.eq.${userId},recipient_id.eq.${userId}`)
+    .eq("connection_type", "first")
+    .eq("status", "accepted");
+
+  return { count: count || 0, error };
+}

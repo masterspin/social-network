@@ -141,6 +141,9 @@ export async function GET(request: Request) {
       return {
         id: c.id as string,
         how_met: c.how_met as string,
+        connection_type:
+          (c as unknown as { connection_type?: string }).connection_type ||
+          "first",
         other_user: other || null,
         mutualCount: mutual,
       };

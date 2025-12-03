@@ -15,10 +15,16 @@ type NodeData = {
   preferred_name: string | null;
   profile_image_url: string | null;
   distance?: number;
+  connection_type?: string;
   x?: number;
   y?: number;
 };
-type LinkData = { source: string; target: string; how_met: string };
+type LinkData = {
+  source: string;
+  target: string;
+  how_met: string;
+  connection_type?: string;
+};
 type GraphData = { nodes: NodeData[]; links: LinkData[] };
 type OpenUser = (user: {
   id: string;
@@ -118,16 +124,20 @@ export default function NetworkGraph({
     // No need to manually capture refs
   }, []);
 
-  const getNodeColor = (n: NodeData) =>
-    n.id === currentUserId
-      ? "#3b82f6"
-      : n.distance === 1
-      ? "#10b981"
-      : n.distance === 2
-      ? "#f59e0b"
-      : n.distance === 3
-      ? "#ef4444"
-      : "#6b7280";
+  const getNodeColor = (n: NodeData) => {
+    if (n.id === currentUserId) return "#3b82f6"; // blue for current user
+
+    // Prioritize connection type over distance
+    if (n.connection_type === "first") return "#10b981"; // green for 1st connections
+    if (n.connection_type === "one_point_five") return "#a855f7"; // purple for 1.5 connections
+
+    // Fall back to distance-based colors for others
+    if (n.distance === 1) return "#10b981"; // green
+    if (n.distance === 2) return "#f59e0b"; // orange
+    if (n.distance === 3) return "#ef4444"; // red
+
+    return "#6b7280"; // gray for unknown
+  };
 
   // Debug logging
   useEffect(() => {
@@ -185,9 +195,7 @@ export default function NetworkGraph({
       expandedRef.current.add(nodeId);
       try {
         const res = await fetch(
-          `/api/connections/accepted?userId=${encodeURIComponent(
-            nodeId
-          )}`
+          `/api/connections/accepted?userId=${encodeURIComponent(nodeId)}`
         );
         if (!res.ok) {
           console.error(
@@ -202,6 +210,7 @@ export default function NetworkGraph({
         const rows = (j.data || []) as Array<{
           id: string;
           how_met: string;
+          connection_type?: string;
           other_user: {
             id: string;
             username: string;
@@ -250,6 +259,7 @@ export default function NetworkGraph({
                 preferred_name: other.preferred_name,
                 profile_image_url: other.profile_image_url,
                 distance: nextDepth,
+                connection_type: row.connection_type,
               });
             }
             const k1 = `${nodeId}__${other.id}`;
@@ -261,6 +271,7 @@ export default function NetworkGraph({
                 source: nodeId,
                 target: other.id,
                 how_met: row.how_met,
+                connection_type: row.connection_type,
               });
             }
           }

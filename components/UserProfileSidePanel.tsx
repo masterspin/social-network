@@ -150,6 +150,9 @@ export default function UserProfileSidePanel({
   // new request fields
   const [description, setDescription] = useState("");
   const [year, setYear] = useState("");
+  const [connectionType, setConnectionType] = useState<
+    "first" | "one_point_five"
+  >("first");
   const [amendMode, setAmendMode] = useState(false);
 
   // Encode optional year inside how_met as a suffix "(Year: YYYY)"
@@ -235,14 +238,22 @@ export default function UserProfileSidePanel({
 
   async function sendRequest() {
     setError(null);
+
+    if (!description.trim()) {
+      setError("Connection description is required.");
+      return;
+    }
+
     if (year && !/^\d{4}$/.test(year)) {
       setError("Year must be a 4-digit number.");
       return;
     }
+
     const { error: e } = await createConnectionRequest({
       requester_id: currentUserId,
       recipient_id: userId,
       how_met: formatHowMet(description, year),
+      connection_type: connectionType,
       status: "pending",
     });
     if (e) {
@@ -251,6 +262,7 @@ export default function UserProfileSidePanel({
     }
     setDescription("");
     setYear("");
+    setConnectionType("first");
     await refresh();
     onChanged?.();
   }
@@ -280,7 +292,9 @@ export default function UserProfileSidePanel({
   async function cancel(id: string) {
     setError(null);
     const { error: e } = await deleteConnection(id);
+    console.log("deleteConnection result (cancel):", { id, error });
     if (e) {
+      console.error("deleteConnection error", e);
       setError(e.message);
       return;
     }
@@ -449,6 +463,32 @@ export default function UserProfileSidePanel({
                       <div className="grid grid-cols-1 gap-3">
                         <div>
                           <label className="block text-xs text-gray-500 mb-1">
+                            Connection Type
+                          </label>
+                          <select
+                            className="w-full px-3 py-2 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700"
+                            value={connectionType}
+                            onChange={(e) =>
+                              setConnectionType(
+                                e.target.value as "first" | "one_point_five"
+                              )
+                            }
+                          >
+                            <option value="first">
+                              1st Connection (Green)
+                            </option>
+                            <option value="one_point_five">
+                              1.5 Connection (Purple)
+                            </option>
+                          </select>
+                          <p className="text-xs text-gray-500 mt-1">
+                            {connectionType === "first"
+                              ? "Limited to 100 per user. For your closest connections."
+                              : "For connections who are important but not in your inner circle."}
+                          </p>
+                        </div>
+                        <div>
+                          <label className="block text-xs text-gray-500 mb-1">
                             Connection Description
                           </label>
                           <input
@@ -483,9 +523,24 @@ export default function UserProfileSidePanel({
                     </div>
                   ) : connection.status === "accepted" ? (
                     <div className="space-y-1">
-                      <div className="inline-flex items-center gap-2 px-2 py-1 rounded bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300 text-sm font-medium">
-                        <span className="w-2 h-2 rounded-full bg-green-600"></span>
-                        Connected
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <div className="inline-flex items-center gap-2 px-2 py-1 rounded bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300 text-sm font-medium">
+                          <span className="w-2 h-2 rounded-full bg-green-600"></span>
+                          Connected
+                        </div>
+                        {connection.connection_type && (
+                          <div
+                            className={`inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-medium ${
+                              connection.connection_type === "first"
+                                ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300"
+                                : "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300"
+                            }`}
+                          >
+                            {connection.connection_type === "first"
+                              ? "1st"
+                              : "1.5"}
+                          </div>
+                        )}
                       </div>
                       <div className="text-sm text-gray-700 dark:text-gray-300">
                         {stripYearFromHowMet(connection.how_met)}

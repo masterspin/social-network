@@ -107,7 +107,7 @@ export default function ProfileSetup({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [currentStep, setCurrentStep] = useState(1);
-  const totalSteps = 4; // Changed from 3 to 4
+  const totalSteps = 3; // Changed from 3 to 4
 
   const [name, setName] = useState(existingProfile?.name || "");
   const [username, setUsername] = useState(existingProfile?.username || "");
@@ -308,8 +308,6 @@ export default function ProfileSetup({
     } else if (currentStep === 2) {
       nextStep();
     } else if (currentStep === 3) {
-      nextStep();
-    } else if (currentStep === 4) {
       handleFinalSubmit();
     }
   };
@@ -573,7 +571,7 @@ export default function ProfileSetup({
               )}
 
               {/* Privacy Settings Summary */}
-              <div className="md:col-span-2 bg-white dark:bg-gray-800 p-3 rounded-lg">
+              {/* <div className="md:col-span-2 bg-white dark:bg-gray-800 p-3 rounded-lg">
                 <div className="text-xs text-gray-500 dark:text-gray-400 mb-2">
                   Privacy Settings
                 </div>
@@ -603,7 +601,7 @@ export default function ProfileSetup({
                     </span>
                   )}
                 </div>
-              </div>
+              </div> */}
 
               {/* Social Links Summary */}
               {socialLinks.length > 0 && (
@@ -938,7 +936,7 @@ export default function ProfileSetup({
           {/* Progress indicator */}
           <div className="mb-8">
             <div className="flex items-center justify-between mb-2">
-              {[1, 2, 3, 4].map((step) => (
+              {[1, 2, 3].map((step) => (
                 <div key={step} className="flex items-center flex-1">
                   <div
                     className={`w-8 h-8 rounded-full flex items-center justify-center font-medium ${
@@ -951,9 +949,9 @@ export default function ProfileSetup({
                   >
                     {step < currentStep ? "✓" : step}
                   </div>
-                  {step < 4 && (
+                  {step < 3 && (
                     <div
-                      className={`flex-1 h-1 mx-2 ${
+                      className={`flex-1 h-1 mx-32 ${
                         step < currentStep
                           ? "bg-gray-700 dark:bg-gray-300"
                           : "bg-gray-300 dark:bg-gray-600"
@@ -967,7 +965,7 @@ export default function ProfileSetup({
               <span>Basic Info</span>
               <span>Details</span>
               <span>Social Links</span>
-              <span>Privacy</span>
+              {/* <span>Privacy</span> */}
             </div>
           </div>
 
@@ -1201,7 +1199,7 @@ export default function ProfileSetup({
             )}
 
             {/* Step 4: Privacy Settings */}
-            {currentStep === 4 && (
+            {/* {currentStep === 4 && (
               <div className="bg-white dark:bg-gray-900 p-8 rounded-2xl shadow-2xl border-0">
                 <h3 className="text-2xl font-bold mb-2">
                   Choose your privacy settings
@@ -1282,7 +1280,7 @@ export default function ProfileSetup({
                   </div>
                 </div>
               </div>
-            )}
+            )} */}
 
             {/* Navigation buttons */}
             <div className="flex gap-3">
