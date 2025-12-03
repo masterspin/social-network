@@ -8,6 +8,10 @@ import {
   updateConnectionRequestDetails,
   isUserBlocked,
   getFirstConnectionCount,
+  requestConnectionTypeUpgrade,
+  downgradeConnectionType,
+  acceptConnectionTypeUpgrade,
+  rejectConnectionTypeUpgrade,
 } from "@/lib/supabase/queries";
 import type { Database } from "@/types/supabase";
 import {
@@ -147,6 +151,7 @@ export default function UserProfileSidePanel({
   const [error, setError] = useState<string | null>(null);
   const [isBlocked, setIsBlocked] = useState(false);
   const [blockBusy, setBlockBusy] = useState(false);
+  const [changingType, setChangingType] = useState(false);
 
   // new request fields
   const [description, setDescription] = useState("");
@@ -404,6 +409,73 @@ export default function UserProfileSidePanel({
     }
   }
 
+  async function handleDowngradeType() {
+    if (!connection) return;
+    setChangingType(true);
+    setError(null);
+    try {
+      const { error: e } = await downgradeConnectionType(connection.id);
+      if (e) throw e;
+      await refresh();
+      onChanged?.();
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setChangingType(false);
+    }
+  }
+
+  async function handleRequestUpgrade() {
+    if (!connection) return;
+    setChangingType(true);
+    setError(null);
+    try {
+      const { error: e } = await requestConnectionTypeUpgrade(
+        connection.id,
+        currentUserId
+      );
+      if (e) throw e;
+      await refresh();
+      onChanged?.();
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setChangingType(false);
+    }
+  }
+
+  async function handleAcceptUpgrade() {
+    if (!connection) return;
+    setChangingType(true);
+    setError(null);
+    try {
+      const { error: e } = await acceptConnectionTypeUpgrade(connection.id);
+      if (e) throw e;
+      await refresh();
+      onChanged?.();
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setChangingType(false);
+    }
+  }
+
+  async function handleRejectUpgrade() {
+    if (!connection) return;
+    setChangingType(true);
+    setError(null);
+    try {
+      const { error: e } = await rejectConnectionTypeUpgrade(connection.id);
+      if (e) throw e;
+      await refresh();
+      onChanged?.();
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setChangingType(false);
+    }
+  }
+
   const isMe = currentUserId === userId;
   const requesterIsMe = connection && connection.requester_id === currentUserId;
 
@@ -576,6 +648,48 @@ export default function UserProfileSidePanel({
                           </div>
                         )}
                       </div>
+
+                      {/* Show upgrade request status if exists */}
+                      {connection.upgrade_requested_type && (
+                        <div className="mt-2 p-2 rounded bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800">
+                          {connection.upgrade_requested_by === currentUserId ? (
+                            <div className="text-xs text-yellow-800 dark:text-yellow-200">
+                              <div className="font-medium">
+                                Upgrade to 1st connection requested
+                              </div>
+                              <div className="mt-1">
+                                Waiting for approval...
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="text-xs text-yellow-800 dark:text-yellow-200">
+                              <div className="font-medium">
+                                Upgrade request received
+                              </div>
+                              <div className="mt-1">
+                                Wants to upgrade to 1st connection
+                              </div>
+                              <div className="mt-2 flex gap-2">
+                                <button
+                                  onClick={handleAcceptUpgrade}
+                                  disabled={changingType}
+                                  className="flex-1 px-2 py-1 rounded bg-green-600 text-white text-xs hover:bg-green-700 disabled:opacity-50"
+                                >
+                                  Accept
+                                </button>
+                                <button
+                                  onClick={handleRejectUpgrade}
+                                  disabled={changingType}
+                                  className="flex-1 px-2 py-1 rounded bg-red-600 text-white text-xs hover:bg-red-700 disabled:opacity-50"
+                                >
+                                  Decline
+                                </button>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
+
                       <div className="text-sm text-gray-700 dark:text-gray-300">
                         {stripYearFromHowMet(connection.how_met)}
                         {parseYearFromHowMet(connection.how_met) && (
@@ -591,6 +705,37 @@ export default function UserProfileSidePanel({
                           </>
                         ) : null}
                       </div>
+
+                      {/* Connection type management - only show if no pending upgrade */}
+                      {!connection.upgrade_requested_type && (
+                        <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
+                          <div className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2">
+                            Manage Connection Type
+                          </div>
+                          {connection.connection_type === "first" ? (
+                            <button
+                              onClick={handleDowngradeType}
+                              disabled={changingType}
+                              className="w-full px-3 py-2 rounded border border-gray-300 dark:border-gray-600 text-sm hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-50"
+                            >
+                              Downgrade to 1.5 Connection
+                            </button>
+                          ) : (
+                            <button
+                              onClick={handleRequestUpgrade}
+                              disabled={changingType}
+                              className="w-full px-3 py-2 rounded bg-blue-600 text-white text-sm hover:bg-blue-700 disabled:opacity-50"
+                            >
+                              Request Upgrade to 1st
+                            </button>
+                          )}
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                            {connection.connection_type === "first"
+                              ? "Downgrade does not require approval"
+                              : "Upgrade requires approval from the other person"}
+                          </p>
+                        </div>
+                      )}
                     </div>
                   ) : connection.status === "pending" ? (
                     <div className="space-y-2">

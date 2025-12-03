@@ -494,3 +494,88 @@ export async function getFirstConnectionCount(userId: string) {
 
   return { count: count || 0, error };
 }
+
+// Request to upgrade a connection type from 1.5 to 1st
+export async function requestConnectionTypeUpgrade(
+  connectionId: string,
+  requesterId: string
+) {
+  const { data, error } = await supabase
+    .from("connections")
+    .update({
+      upgrade_requested_type: "first",
+      upgrade_requested_by: requesterId,
+    })
+    .eq("id", connectionId)
+    .eq("status", "accepted")
+    .eq("connection_type", "one_point_five")
+    .select()
+    .single();
+  return { data, error };
+}
+
+// Downgrade a connection type from 1st to 1.5 (no approval needed)
+export async function downgradeConnectionType(connectionId: string) {
+  const { data, error } = await supabase
+    .from("connections")
+    .update({
+      connection_type: "one_point_five",
+      upgrade_requested_type: null,
+      upgrade_requested_by: null,
+    })
+    .eq("id", connectionId)
+    .eq("status", "accepted")
+    .select()
+    .single();
+  return { data, error };
+}
+
+// Accept a connection type upgrade request
+export async function acceptConnectionTypeUpgrade(connectionId: string) {
+  const { data, error } = await supabase
+    .from("connections")
+    .update({
+      connection_type: "first",
+      upgrade_requested_type: null,
+      upgrade_requested_by: null,
+    })
+    .eq("id", connectionId)
+    .eq("status", "accepted")
+    .select()
+    .single();
+  return { data, error };
+}
+
+// Reject a connection type upgrade request
+export async function rejectConnectionTypeUpgrade(connectionId: string) {
+  const { data, error } = await supabase
+    .from("connections")
+    .update({
+      upgrade_requested_type: null,
+      upgrade_requested_by: null,
+    })
+    .eq("id", connectionId)
+    .eq("status", "accepted")
+    .select()
+    .single();
+  return { data, error };
+}
+
+// Get pending connection type upgrade requests for a user
+export async function getConnectionTypeUpgradeRequests(userId: string) {
+  const { data, error } = await supabase
+    .from("connections")
+    .select(
+      `
+      *,
+      requester:users!connections_requester_id_fkey(id, username, name, preferred_name, profile_image_url),
+      recipient:users!connections_recipient_id_fkey(id, username, name, preferred_name, profile_image_url)
+    `
+    )
+    .or(`requester_id.eq.${userId},recipient_id.eq.${userId}`)
+    .eq("status", "accepted")
+    .not("upgrade_requested_type", "is", null)
+    .not("upgrade_requested_by", "eq", userId);
+  return { data, error };
+}
+

@@ -61,6 +61,8 @@ export type Database = {
           requester_id: string;
           status: string | null;
           updated_at: string | null;
+          upgrade_requested_type: string | null;
+          upgrade_requested_by: string | null;
         };
         Insert: {
           connection_type?: string | null;
@@ -72,6 +74,8 @@ export type Database = {
           requester_id: string;
           status?: string | null;
           updated_at?: string | null;
+          upgrade_requested_type?: string | null;
+          upgrade_requested_by?: string | null;
         };
         Update: {
           connection_type?: string | null;
@@ -83,6 +87,8 @@ export type Database = {
           requester_id?: string;
           status?: string | null;
           updated_at?: string | null;
+          upgrade_requested_type?: string | null;
+          upgrade_requested_by?: string | null;
         };
         Relationships: [
           {

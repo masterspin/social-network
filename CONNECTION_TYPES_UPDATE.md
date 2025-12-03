@@ -118,6 +118,12 @@ After applying the SQL migration, test the following:
 5. ✅ Try to create 101st first connection (should fail with error message)
 6. ✅ Verify 1.5 connections have no limit
 7. ✅ Check that existing connections default to "first" type after migration
+8. ✅ **NEW:** Test downgrading a 1st connection to 1.5 (should be instant)
+9. ✅ **NEW:** Request upgrade from 1.5 to 1st connection
+10. ✅ **NEW:** Receive and accept an upgrade request
+11. ✅ **NEW:** Receive and decline an upgrade request
+12. ✅ **NEW:** Verify upgrade request shows in profile sidebar with proper UI
+13. ✅ **NEW:** Try to request upgrade when at 100 first connections (should fail)
 
 ## Migration Notes
 
