@@ -180,7 +180,7 @@ export default function UserProfileSidePanel({
         const [profileRes, connectionRes] = await Promise.all([
           fetch(`/api/profile/${userId}`),
           fetch(
-            `/api/social-network/connection?a=${encodeURIComponent(
+            `/api/connection?a=${encodeURIComponent(
               currentUserId
             )}&b=${encodeURIComponent(userId)}`
           ),
@@ -223,7 +223,7 @@ export default function UserProfileSidePanel({
 
   async function refresh() {
     const res = await fetch(
-      `/api/social-network/connection?a=${encodeURIComponent(
+      `/api/connection?a=${encodeURIComponent(
         currentUserId
       )}&b=${encodeURIComponent(userId)}`
     );
@@ -311,7 +311,7 @@ export default function UserProfileSidePanel({
     setBlockBusy(true);
     setError(null);
     try {
-      const res = await fetch("/api/social-network/block", {
+      const res = await fetch("/api/block", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ blockerId: currentUserId, blockedId: userId }),
@@ -333,7 +333,7 @@ export default function UserProfileSidePanel({
     setBlockBusy(true);
     setError(null);
     try {
-      const res = await fetch("/api/social-network/block", {
+      const res = await fetch("/api/block", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
