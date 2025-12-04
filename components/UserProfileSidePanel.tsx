@@ -9,9 +9,11 @@ import {
   isUserBlocked,
   getFirstConnectionCount,
   requestConnectionTypeUpgrade,
+  cancelConnectionTypeUpgradeRequest,
   downgradeConnectionType,
   acceptConnectionTypeUpgrade,
   rejectConnectionTypeUpgrade,
+  removeConnection,
 } from "@/lib/supabase/queries";
 import type { Database } from "@/types/supabase";
 import {
@@ -349,8 +351,23 @@ export default function UserProfileSidePanel({
       setError("Year must be a 4-digit number.");
       return;
     }
+
+    // Check if upgrading to first connection and if user has reached limit
+    if (connection?.connection_type === "one_point_five" && connectionType === "first") {
+      const { count, error: countError } = await getFirstConnectionCount(currentUserId);
+      if (countError) {
+        setError("Failed to check connection limit. Please try again.");
+        return;
+      }
+      if (count >= 100) {
+        setError("You cannot change to 1st connection. You have reached the limit of 100 first connections.");
+        return;
+      }
+    }
+
     const { error: e } = await updateConnectionRequestDetails(id, {
       how_met: formatHowMet(description || "", year),
+      connection_type: connectionType,
     });
     if (e) {
       setError(e.message);
@@ -363,6 +380,7 @@ export default function UserProfileSidePanel({
 
   async function handleBlock() {
     if (isMe || blockBusy) return;
+    if (!confirm("Block this user? They won't be able to send you connection requests.")) return;
     setBlockBusy(true);
     setError(null);
     try {
@@ -466,6 +484,39 @@ export default function UserProfileSidePanel({
     setError(null);
     try {
       const { error: e } = await rejectConnectionTypeUpgrade(connection.id);
+      if (e) throw e;
+      await refresh();
+      onChanged?.();
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setChangingType(false);
+    }
+  }
+
+  async function handleCancelUpgradeRequest() {
+    if (!connection) return;
+    setChangingType(true);
+    setError(null);
+    try {
+      const { error: e } = await cancelConnectionTypeUpgradeRequest(connection.id);
+      if (e) throw e;
+      await refresh();
+      onChanged?.();
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setChangingType(false);
+    }
+  }
+
+  async function handleRemoveConnection() {
+    if (!connection) return;
+    if (!confirm("Remove this connection? This cannot be undone.")) return;
+    setChangingType(true);
+    setError(null);
+    try {
+      const { error: e } = await removeConnection(connection.id);
       if (e) throw e;
       await refresh();
       onChanged?.();
@@ -660,6 +711,13 @@ export default function UserProfileSidePanel({
                               <div className="mt-1">
                                 Waiting for approval...
                               </div>
+                              <button
+                                onClick={handleCancelUpgradeRequest}
+                                disabled={changingType}
+                                className="mt-2 w-full px-2 py-1 rounded border border-yellow-600 text-yellow-800 dark:text-yellow-200 text-xs hover:bg-yellow-100 dark:hover:bg-yellow-900/40 disabled:opacity-50"
+                              >
+                                Cancel Request
+                              </button>
                             </div>
                           ) : (
                             <div className="text-xs text-yellow-800 dark:text-yellow-200">
@@ -736,6 +794,20 @@ export default function UserProfileSidePanel({
                           </p>
                         </div>
                       )}
+
+                      {/* Remove Connection */}
+                      <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
+                        <button
+                          onClick={handleRemoveConnection}
+                          disabled={changingType}
+                          className="w-full px-3 py-2 rounded border border-red-300 dark:border-red-700 text-red-700 dark:text-red-300 text-sm hover:bg-red-50 dark:hover:bg-red-900/20 disabled:opacity-50"
+                        >
+                          Remove Connection
+                        </button>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                          Remove this connection completely
+                        </p>
+                      </div>
                     </div>
                   ) : connection.status === "pending" ? (
                     <div className="space-y-2">
@@ -779,6 +851,25 @@ export default function UserProfileSidePanel({
                           {/* Amend form toggle */}
                           {amendMode ? (
                             <div className="mt-2 space-y-3">
+                              <div>
+                                <label className="block text-xs text-gray-500 mb-1">
+                                  Connection Type
+                                </label>
+                                <select
+                                  className="w-full px-3 py-2 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700"
+                                  value={connectionType}
+                                  onChange={(e) =>
+                                    setConnectionType(
+                                      e.target.value as "first" | "one_point_five"
+                                    )
+                                  }
+                                >
+                                  <option value="first">1st Connection</option>
+                                  <option value="one_point_five">
+                                    1.5 Connection
+                                  </option>
+                                </select>
+                              </div>
                               <div>
                                 <label className="block text-xs text-gray-500 mb-1">
                                   Connection Description
@@ -846,6 +937,7 @@ export default function UserProfileSidePanel({
                                   setYear(
                                     parseYearFromHowMet(connection.how_met)
                                   );
+                                  setConnectionType((connection.connection_type || "first") as "first" | "one_point_five");
                                   setAmendMode(true);
                                 }}
                               >

@@ -38,7 +38,7 @@ export async function GET(request: Request) {
       met_through:users!connections_met_through_id_fkey(id, username, name, preferred_name)
     `;
 
-    const [rec, snt] = await Promise.all([
+    const [rec, snt, upgrades] = await Promise.all([
       admin
         .from("connections")
         .select(baseSelect)
@@ -49,15 +49,30 @@ export async function GET(request: Request) {
         .select(baseSelect)
         .eq("requester_id", userId)
         .eq("status", "pending"),
+      // Get all upgrade requests for connections involving this user
+      admin
+        .from("connections")
+        .select(baseSelect)
+        .or(`requester_id.eq.${userId},recipient_id.eq.${userId}`)
+        .eq("status", "accepted")
+        .not("upgrade_requested_type", "is", null),
     ]);
 
     if (rec.error)
       return NextResponse.json({ error: rec.error }, { status: 400 });
     if (snt.error)
       return NextResponse.json({ error: snt.error }, { status: 400 });
+    if (upgrades.error)
+      return NextResponse.json({ error: upgrades.error }, { status: 400 });
 
     return NextResponse.json(
-      { data: { received: rec.data || [], sent: snt.data || [] } },
+      { 
+        data: { 
+          received: rec.data || [], 
+          sent: snt.data || [],
+          upgradeRequests: upgrades.data || []
+        } 
+      },
       { status: 200 }
     );
   } catch (e) {

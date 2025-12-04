@@ -307,6 +307,7 @@ export async function updateConnectionRequestDetails(
   updates: {
     how_met?: string;
     met_through_id?: string | null;
+    connection_type?: "first" | "one_point_five";
   }
 ) {
   const { data, error } = await supabase
@@ -514,6 +515,21 @@ export async function requestConnectionTypeUpgrade(
   return { data, error };
 }
 
+// Cancel/unsend an upgrade request
+export async function cancelConnectionTypeUpgradeRequest(connectionId: string) {
+  const { data, error } = await supabase
+    .from("connections")
+    .update({
+      upgrade_requested_type: null,
+      upgrade_requested_by: null,
+    })
+    .eq("id", connectionId)
+    .eq("status", "accepted")
+    .select()
+    .single();
+  return { data, error };
+}
+
 // Downgrade a connection type from 1st to 1.5 (no approval needed)
 export async function downgradeConnectionType(connectionId: string) {
   const { data, error } = await supabase
@@ -528,6 +544,16 @@ export async function downgradeConnectionType(connectionId: string) {
     .select()
     .single();
   return { data, error };
+}
+
+// Remove a connection completely (like Snapchat unadd - instant, no approval)
+export async function removeConnection(connectionId: string) {
+  const { error } = await supabase
+    .from("connections")
+    .delete()
+    .eq("id", connectionId)
+    .eq("status", "accepted");
+  return { error };
 }
 
 // Accept a connection type upgrade request
