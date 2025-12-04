@@ -58,7 +58,11 @@ function stripYearFromHowMet(how_met: string | null | undefined): string {
 
 // UI now uses a free-form description and optional year instead of type + label
 
-export default function Inbox() {
+type InboxProps = {
+  onOpenProfile?: (userId: string) => void;
+};
+
+export default function Inbox({ onOpenProfile }: InboxProps = {}) {
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [received, setReceived] = useState<ConnectionRow[]>([]);
   const [sent, setSent] = useState<ConnectionRow[]>([]);
@@ -353,7 +357,10 @@ export default function Inbox() {
                       // Upgrade Request UI
                       <div className="flex items-center justify-between">
                         <div className="flex-1">
-                          <div className="font-semibold">
+                          <div
+                            className="font-semibold cursor-pointer hover:underline"
+                            onClick={() => onOpenProfile?.(otherUser.id)}
+                          >
                             {otherUser.preferred_name || otherUser.name}
                           </div>
                           <div className="text-xs text-gray-600 dark:text-gray-400 mt-1">
@@ -400,7 +407,10 @@ export default function Inbox() {
                         <div className="flex items-center justify-between">
                           <div>
                             <div className="flex items-center gap-2">
-                              <div className="font-semibold">
+                              <div
+                                className="font-semibold cursor-pointer hover:underline"
+                                onClick={() => onOpenProfile?.(conn.requester.id)}
+                              >
                                 {conn.requester.preferred_name || conn.requester.name}
                               </div>
                               <span
@@ -539,7 +549,10 @@ export default function Inbox() {
                       // Upgrade Request UI (Sent by me)
                       <div className="flex items-center justify-between">
                         <div className="flex-1">
-                          <div className="font-semibold">
+                          <div
+                            className="font-semibold cursor-pointer hover:underline"
+                            onClick={() => onOpenProfile?.(otherUser.id)}
+                          >
                             {otherUser.preferred_name || otherUser.name}
                           </div>
                           <div className="text-xs text-gray-600 dark:text-gray-400 mt-1">
@@ -570,7 +583,10 @@ export default function Inbox() {
                         <div className="flex items-center justify-between">
                           <div>
                             <div className="flex items-center gap-2">
-                              <div className="font-semibold">
+                              <div
+                                className="font-semibold cursor-pointer hover:underline"
+                                onClick={() => onOpenProfile?.(conn.recipient.id)}
+                              >
                                 {conn.recipient.preferred_name || conn.recipient.name}
                               </div>
                               <span

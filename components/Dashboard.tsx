@@ -624,7 +624,17 @@ export default function Dashboard() {
 
         {activeTab === "inbox" && (
           <div className="max-w-7xl mx-auto px-4 py-8">
-            <Inbox />
+            <Inbox
+              onOpenProfile={(userId) => {
+                setSelectedConnectionUser({
+                  id: userId,
+                  username: "",
+                  name: "",
+                  preferred_name: null,
+                  profile_image_url: null,
+                });
+              }}
+            />
           </div>
         )}
 
