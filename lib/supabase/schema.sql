@@ -14,11 +14,6 @@ CREATE TABLE IF NOT EXISTS users (
   gender TEXT,
   bio TEXT,
   profile_image_url TEXT,
-  visibility_level INTEGER DEFAULT 3, -- How many connections away can see full profile
-  show_profile_image BOOLEAN DEFAULT true,
-  show_full_name BOOLEAN DEFAULT true,
-  show_gender BOOLEAN DEFAULT true,
-  show_social_links BOOLEAN DEFAULT true,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
@@ -148,10 +143,9 @@ CREATE POLICY "Users can view profiles based on connection distance"
       -- Can always see yourself
       id = auth.uid() 
       OR
-      -- Can see others if within visibility level and not blocked
+      -- Can see others if not blocked
       (
-        calculate_connection_distance(auth.uid(), id) <= visibility_level
-        AND NOT EXISTS (
+        NOT EXISTS (
           SELECT 1 FROM blocked_users 
           WHERE (blocker_id = id AND blocked_id = auth.uid())
             OR (blocker_id = auth.uid() AND blocked_id = id)
@@ -175,7 +169,6 @@ CREATE POLICY "Users can view social links based on user visibility"
     EXISTS (
       SELECT 1 FROM users 
       WHERE users.id = social_links.user_id
-        AND (users.id = auth.uid() OR users.show_social_links = true)
     )
   );
 

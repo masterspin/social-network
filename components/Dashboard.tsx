@@ -131,11 +131,6 @@ export default function Dashboard() {
     gender: "",
     bio: "",
     profile_image_url: "",
-    visibility_level: 3,
-    show_profile_image: true,
-    show_full_name: true,
-    show_gender: true,
-    show_social_links: true,
   });
   const [socialInputs, setSocialInputs] = useState<Record<string, string>>({});
 
@@ -195,11 +190,6 @@ export default function Dashboard() {
         gender: typedProfile.gender || "",
         bio: typedProfile.bio || "",
         profile_image_url: typedProfile.profile_image_url || "",
-        visibility_level: (typedProfile.visibility_level as number) || 0,
-        show_profile_image: typedProfile.show_profile_image ?? true,
-        show_full_name: typedProfile.show_full_name ?? true,
-        show_gender: typedProfile.show_gender ?? true,
-        show_social_links: typedProfile.show_social_links ?? true,
       });
     }
     // Load accepted connections via server API (includes mutual counts); fallback to client query
@@ -303,11 +293,6 @@ export default function Dashboard() {
         gender: userProfile.gender || "",
         bio: userProfile.bio || "",
         profile_image_url: userProfile.profile_image_url || "",
-        visibility_level: userProfile.visibility_level ?? 0,
-        show_profile_image: userProfile.show_profile_image ?? true,
-        show_full_name: userProfile.show_full_name ?? true,
-        show_gender: userProfile.show_gender ?? true,
-        show_social_links: userProfile.show_social_links ?? true,
       });
     }
     setIsEditingProfile(false);
@@ -323,11 +308,6 @@ export default function Dashboard() {
       gender: editForm.gender || null,
       bio: editForm.bio || null,
       profile_image_url: editForm.profile_image_url || null,
-      visibility_level: editForm.visibility_level,
-      show_profile_image: editForm.show_profile_image,
-      show_full_name: editForm.show_full_name,
-      show_gender: editForm.show_gender,
-      show_social_links: editForm.show_social_links,
     });
 
     if (!error) {

@@ -340,8 +340,8 @@ export async function getNetworkData(userId: string) {
     .select(
       `
       *,
-      requester:users!connections_requester_id_fkey(id, username, name, preferred_name, profile_image_url, visibility_level, show_profile_image, show_full_name),
-      recipient:users!connections_recipient_id_fkey(id, username, name, preferred_name, profile_image_url, visibility_level, show_profile_image, show_full_name),
+      requester:users!connections_requester_id_fkey(id, username, name, preferred_name, profile_image_url),
+      recipient:users!connections_recipient_id_fkey(id, username, name, preferred_name, profile_image_url),
       met_through:users!connections_met_through_id_fkey(id, username, name, preferred_name)
     `
     )
@@ -359,8 +359,6 @@ export async function getNetworkData(userId: string) {
     preferred_name: string | null;
     profile_image_url: string | null;
     distance?: number;
-    show_profile_image?: boolean;
-    show_full_name?: boolean;
   }
 
   interface NetworkEdge {
@@ -406,8 +404,6 @@ export async function getNetworkData(userId: string) {
         name: requester.name,
         preferred_name: requester.preferred_name,
         profile_image_url: requester.profile_image_url,
-        show_profile_image: requester.show_profile_image,
-        show_full_name: requester.show_full_name,
       });
     }
 
@@ -418,8 +414,6 @@ export async function getNetworkData(userId: string) {
         name: recipient.name,
         preferred_name: recipient.preferred_name,
         profile_image_url: recipient.profile_image_url,
-        show_profile_image: recipient.show_profile_image,
-        show_full_name: recipient.show_full_name,
       });
     }
 

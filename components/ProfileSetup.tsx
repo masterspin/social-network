@@ -124,23 +124,6 @@ export default function ProfileSetup({
     existingProfile?.profile_image_url || ""
   );
 
-  // Privacy settings
-  const [visibilityLevel, setVisibilityLevel] = useState(
-    existingProfile?.visibility_level || 3
-  );
-  const [showProfileImage, setShowProfileImage] = useState(
-    existingProfile?.show_profile_image ?? true
-  );
-  const [showFullName, setShowFullName] = useState(
-    existingProfile?.show_full_name ?? true
-  );
-  const [showGender, setShowGender] = useState(
-    existingProfile?.show_gender ?? true
-  );
-  const [showSocialLinks, setShowSocialLinks] = useState(
-    existingProfile?.show_social_links ?? true
-  );
-
   // Social links
   const [socialLinks, setSocialLinks] = useState<SocialLink[]>([]);
 
@@ -355,11 +338,6 @@ export default function ProfileSetup({
       gender: gender || null,
       bio: bio || null,
       profile_image_url: profileImageUrl || null,
-      visibility_level: visibilityLevel,
-      show_profile_image: showProfileImage,
-      show_full_name: showFullName,
-      show_gender: showGender,
-      show_social_links: showSocialLinks,
     };
 
     let result;
@@ -840,85 +818,6 @@ export default function ProfileSetup({
                   </div>
                 </div>
               )}
-            </div>
-          </div>
-
-          {/* Privacy Settings */}
-          <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow">
-            <h3 className="text-xl font-semibold mb-4">Privacy Settings</h3>
-
-            <div className="space-y-4">
-              <div>
-                <label
-                  htmlFor="visibility"
-                  className="block text-sm font-medium mb-2"
-                >
-                  Visibility Level: {visibilityLevel}{" "}
-                  {visibilityLevel === 1 ? "connection" : "connections"} away
-                </label>
-                <input
-                  id="visibility"
-                  type="range"
-                  min="1"
-                  max="6"
-                  value={visibilityLevel}
-                  onChange={(e) => setVisibilityLevel(Number(e.target.value))}
-                  className="w-full"
-                />
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                  Users beyond this distance will see limited information
-                </p>
-              </div>
-
-              <div className="space-y-2">
-                <label className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    checked={showProfileImage}
-                    onChange={(e) => setShowProfileImage(e.target.checked)}
-                    className="w-4 h-4"
-                  />
-                  <span className="text-sm">
-                    Show profile image to distant connections
-                  </span>
-                </label>
-
-                <label className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    checked={showFullName}
-                    onChange={(e) => setShowFullName(e.target.checked)}
-                    className="w-4 h-4"
-                  />
-                  <span className="text-sm">
-                    Show full name to distant connections
-                  </span>
-                </label>
-
-                <label className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    checked={showGender}
-                    onChange={(e) => setShowGender(e.target.checked)}
-                    className="w-4 h-4"
-                  />
-                  <span className="text-sm">
-                    Show gender to distant connections
-                  </span>
-                </label>
-
-                <label className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    checked={showSocialLinks}
-                    onChange={(e) => setShowSocialLinks(e.target.checked)}
-                    className="w-4 h-4"
-                  />
-                  <span className="text-sm">
-                    Show social links to distant connections
-                  </span>
-                </label>
-              </div>
             </div>
           </div>
 

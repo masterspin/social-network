@@ -40,7 +40,7 @@ export async function GET(
         admin
           .from("users")
           .select(
-            "id, username, name, preferred_name, profile_image_url, bio, gender, visibility_level, show_profile_image, show_full_name, show_gender, show_social_links"
+            "id, username, name, preferred_name, profile_image_url, bio, gender"
           )
           .eq("id", userId)
           .single(),
