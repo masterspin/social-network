@@ -16,10 +16,16 @@ type NodeData = {
   preferred_name: string | null;
   profile_image_url: string | null;
   distance?: number;
+  connection_type?: string;
   x?: number;
   y?: number;
 };
-type LinkData = { source: string; target: string; how_met: string };
+type LinkData = { 
+  source: string; 
+  target: string; 
+  how_met: string;
+  connection_type?: string;
+};
 type GraphData = { nodes: NodeData[]; links: LinkData[] };
 type OpenUser = (user: {
   id: string;
@@ -75,16 +81,29 @@ export default function NetworkGraph({
     }
   }, [graphData.nodes.length]);
 
-  const getNodeColor = (n: NodeData) =>
-    n.id === currentUserId
-      ? "#3b82f6"
-      : n.distance === 1
-      ? "#10b981"
-      : n.distance === 2
-      ? "#f59e0b"
-      : n.distance === 3
-      ? "#ef4444"
-      : "#6b7280";
+  const getNodeColor = (n: NodeData) => {
+    // Current user is always blue
+    if (n.id === currentUserId) return "#3b82f6"; // blue
+    
+    // Pending connections are yellow
+    if (n.connection_type === "pending") return "#eab308"; // yellow
+    
+    // 1st degree connections are green
+    if (n.connection_type === "first" || n.distance === 1) return "#10b981"; // green
+    
+    // 1.5 connections are purple
+    if (n.connection_type === "one_point_five") return "#a855f7"; // purple
+    
+    // 2nd+ degree connections: gradient from green to gray
+    // The further away, the more gray
+    const dist = n.distance || 2;
+    if (dist === 2) return "#22c55e"; // lighter green
+    if (dist === 3) return "#84cc16"; // yellow-green
+    if (dist === 4) return "#a3a3a3"; // light gray
+    if (dist === 5) return "#737373"; // medium gray
+    
+    return "#6b7280"; // gray for 6+ or unknown
+  };
   const getNodeLabel = (n: NodeData) => n.preferred_name || n.name;
   const pushGraphData = useCallback(
     (update: (g: GraphData) => GraphData) =>

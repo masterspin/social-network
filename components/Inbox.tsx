@@ -29,12 +29,6 @@ type ConnectionRow = Database["public"]["Tables"]["connections"]["Row"] & {
     profile_image_url: string | null;
     username?: string;
   };
-  met_through: {
-    id: string;
-    username: string;
-    name: string;
-    preferred_name: string | null;
-  } | null;
 };
 
 // Encode optional year inside how_met: "description (Year: YYYY)"

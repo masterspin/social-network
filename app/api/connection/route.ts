@@ -36,8 +36,7 @@ export async function GET(request: Request) {
     const select = `
       *,
       requester:users!connections_requester_id_fkey(id, username, name, preferred_name, profile_image_url),
-      recipient:users!connections_recipient_id_fkey(id, username, name, preferred_name, profile_image_url),
-      met_through:users!connections_met_through_id_fkey(id, username, name, preferred_name)
+      recipient:users!connections_recipient_id_fkey(id, username, name, preferred_name, profile_image_url)
     `;
 
     const { data, error } = await admin

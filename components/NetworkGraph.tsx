@@ -125,18 +125,27 @@ export default function NetworkGraph({
   }, []);
 
   const getNodeColor = (n: NodeData) => {
-    if (n.id === currentUserId) return "#3b82f6"; // blue for current user
-
-    // Prioritize connection type over distance
-    if (n.connection_type === "first") return "#10b981"; // green for 1st connections
-    if (n.connection_type === "one_point_five") return "#a855f7"; // purple for 1.5 connections
-
-    // Fall back to distance-based colors for others
-    if (n.distance === 1) return "#10b981"; // green
-    if (n.distance === 2) return "#f59e0b"; // orange
-    if (n.distance === 3) return "#ef4444"; // red
-
-    return "#6b7280"; // gray for unknown
+    // Current user is always blue
+    if (n.id === currentUserId) return "#3b82f6"; // blue
+    
+    // Pending connections are yellow
+    if (n.connection_type === "pending") return "#eab308"; // yellow
+    
+    // 1st degree connections are green
+    if (n.connection_type === "first" || n.distance === 1) return "#10b981"; // green
+    
+    // 1.5 connections are purple
+    if (n.connection_type === "one_point_five") return "#a855f7"; // purple
+    
+    // 2nd+ degree connections: gradient from green to gray
+    // The further away, the more gray
+    const dist = n.distance || 2;
+    if (dist === 2) return "#22c55e"; // lighter green
+    if (dist === 3) return "#84cc16"; // yellow-green
+    if (dist === 4) return "#a3a3a3"; // light gray
+    if (dist === 5) return "#737373"; // medium gray
+    
+    return "#6b7280"; // gray for 6+ or unknown
   };
 
   // Debug logging

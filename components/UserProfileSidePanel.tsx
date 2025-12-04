@@ -52,12 +52,6 @@ type ConnectionRow = Database["public"]["Tables"]["connections"]["Row"] & {
     profile_image_url: string | null;
     username?: string;
   };
-  met_through: {
-    id: string;
-    username: string;
-    name: string;
-    preferred_name: string | null;
-  } | null;
 };
 
 // no predefined connection types; use a free-form description + optional year
@@ -756,12 +750,6 @@ export default function UserProfileSidePanel({
                             {parseYearFromHowMet(connection.how_met)}
                           </>
                         )}
-                        {connection.met_through?.username ? (
-                          <>
-                            {" • "}met through @
-                            {connection.met_through.username}
-                          </>
-                        ) : null}
                       </div>
 
                       {/* Connection type management - only show if no pending upgrade */}
@@ -830,18 +818,11 @@ export default function UserProfileSidePanel({
                               {stripYearFromHowMet(connection.how_met) || "—"}
                             </div>
                             {(parseYearFromHowMet(connection.how_met) ||
-                              connection.met_through) && (
                               <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1">
                                 {parseYearFromHowMet(connection.how_met) && (
                                   <span className="inline-flex items-center px-2 py-0.5 rounded bg-gray-100 dark:bg-gray-700 text-xs text-gray-700 dark:text-gray-200">
                                     Year:{" "}
                                     {parseYearFromHowMet(connection.how_met)}
-                                  </span>
-                                )}
-                                {connection.met_through && (
-                                  <span className="inline-flex items-center px-2 py-0.5 rounded bg-gray-100 dark:bg-gray-700 text-xs text-gray-700 dark:text-gray-200">
-                                    Met through @
-                                    {connection.met_through.username}
                                   </span>
                                 )}
                               </div>

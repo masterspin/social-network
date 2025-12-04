@@ -31,15 +31,17 @@ CREATE TABLE IF NOT EXISTS social_links (
 -- Connections table (edges in the graph)
 CREATE TABLE IF NOT EXISTS connections (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  requester_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE, -- Who sent the request
-  recipient_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE, -- Who received the request
-  how_met TEXT NOT NULL, -- How they met/reason for connection
-  met_through_id UUID REFERENCES users(id) ON DELETE SET NULL, -- Optional: mutual connection
+  requester_id UUID NOT NULL,
+  recipient_id UUID NOT NULL,
+  how_met TEXT NOT NULL,
   status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'accepted', 'rejected')),
+  connection_type TEXT DEFAULT 'first' CHECK (connection_type IN ('first', 'one_point_five')),
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   CHECK (requester_id <> recipient_id),
-  UNIQUE(requester_id, recipient_id)
+  UNIQUE(requester_id, recipient_id),
+  CONSTRAINT connections_requester_id_fkey FOREIGN KEY (requester_id) REFERENCES users(id) ON DELETE CASCADE,
+  CONSTRAINT connections_recipient_id_fkey FOREIGN KEY (recipient_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
 -- Blocked users table

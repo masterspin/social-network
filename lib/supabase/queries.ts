@@ -207,8 +207,7 @@ export async function getUserConnections(userId: string) {
       `
       *,
       requester:users!connections_requester_id_fkey(id, username, name, preferred_name, profile_image_url),
-      recipient:users!connections_recipient_id_fkey(id, username, name, preferred_name, profile_image_url),
-      met_through:users!connections_met_through_id_fkey(id, username, name, preferred_name)
+      recipient:users!connections_recipient_id_fkey(id, username, name, preferred_name, profile_image_url)
     `
     )
     .or(`requester_id.eq.${userId},recipient_id.eq.${userId}`)
@@ -223,8 +222,7 @@ export async function getPendingConnectionRequests(userId: string) {
       `
       *,
       requester:users!connections_requester_id_fkey(id, username, name, preferred_name, profile_image_url),
-      recipient:users!connections_recipient_id_fkey(id, username, name, preferred_name, profile_image_url),
-      met_through:users!connections_met_through_id_fkey(id, username, name, preferred_name)
+      recipient:users!connections_recipient_id_fkey(id, username, name, preferred_name, profile_image_url)
     `
     )
     .eq("recipient_id", userId)
@@ -239,8 +237,7 @@ export async function getSentConnectionRequests(userId: string) {
       `
       *,
       requester:users!connections_requester_id_fkey(id, username, name, preferred_name, profile_image_url),
-      recipient:users!connections_recipient_id_fkey(id, username, name, preferred_name, profile_image_url),
-      met_through:users!connections_met_through_id_fkey(id, username, name, preferred_name)
+      recipient:users!connections_recipient_id_fkey(id, username, name, preferred_name, profile_image_url)
     `
     )
     .eq("requester_id", userId)
@@ -256,8 +253,7 @@ export async function getConnectionBetweenUsers(aId: string, bId: string) {
       `
       *,
       requester:users!connections_requester_id_fkey(id, username, name, preferred_name, profile_image_url),
-      recipient:users!connections_recipient_id_fkey(id, username, name, preferred_name, profile_image_url),
-      met_through:users!connections_met_through_id_fkey(id, username, name, preferred_name)
+      recipient:users!connections_recipient_id_fkey(id, username, name, preferred_name, profile_image_url)
     `
     )
     .or(
@@ -306,7 +302,6 @@ export async function updateConnectionRequestDetails(
   connectionId: string,
   updates: {
     how_met?: string;
-    met_through_id?: string | null;
     connection_type?: "first" | "one_point_five";
   }
 ) {
@@ -340,9 +335,8 @@ export async function getNetworkData(userId: string) {
     .select(
       `
       *,
-      requester:users!connections_requester_id_fkey(id, username, name, preferred_name, profile_image_url),
-      recipient:users!connections_recipient_id_fkey(id, username, name, preferred_name, profile_image_url),
-      met_through:users!connections_met_through_id_fkey(id, username, name, preferred_name)
+      requester:users!connections_requester_id_fkey(id, username, name, preferred_name, profile_image_url)
+      recipient:users!connections_recipient_id_fkey(id, username, name, preferred_name, profile_image_url)
     `
     )
     .eq("status", "accepted");
@@ -366,12 +360,6 @@ export async function getNetworkData(userId: string) {
     target: string;
     label: string;
     how_met: string;
-    met_through: {
-      id: string;
-      username: string;
-      name: string;
-      preferred_name: string | null;
-    } | null;
   }
 
   const nodes = new Map<string, NetworkNode>();
@@ -423,7 +411,6 @@ export async function getNetworkData(userId: string) {
       target: recipient.id,
       label: conn.how_met,
       how_met: conn.how_met,
-      met_through: conn.met_through,
     });
   });
 
@@ -460,10 +447,10 @@ export async function getBlockedUsers(blockerId: string) {
     .from("blocked_users")
     .select(
       `
-      id,
-      blocked_id,
-      blocker_id,
-      created_at,
+      id
+      blocked_id
+      blocker_id
+      created_at
       blocked_user:users!blocked_id(id, username, name, preferred_name, profile_image_url)
     `
     )
@@ -591,7 +578,7 @@ export async function getConnectionTypeUpgradeRequests(userId: string) {
     .select(
       `
       *,
-      requester:users!connections_requester_id_fkey(id, username, name, preferred_name, profile_image_url),
+      requester:users!connections_requester_id_fkey(id, username, name, preferred_name, profile_image_url)
       recipient:users!connections_recipient_id_fkey(id, username, name, preferred_name, profile_image_url)
     `
     )

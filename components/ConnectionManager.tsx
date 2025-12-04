@@ -45,12 +45,6 @@ interface PendingRequest {
     preferred_name: string | null;
     profile_image_url: string | null;
   };
-  met_through: {
-    id: string;
-    username: string;
-    name: string;
-    preferred_name: string | null;
-  } | null;
 }
 
 // connection types handled in the side panel
