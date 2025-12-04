@@ -112,6 +112,7 @@ export default function Dashboard() {
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [showConnectionsModal, setShowConnectionsModal] = useState(false);
   const [connectionsSearch, setConnectionsSearch] = useState("");
+  const [connectionTypeFilter, setConnectionTypeFilter] = useState<"all" | "first" | "one_point_five">("all");
   const [selectedConnectionUser, setSelectedConnectionUser] = useState<{
     id: string;
     username: string;
@@ -233,6 +234,7 @@ export default function Dashboard() {
     preferred_name: string | null;
     profile_image_url: string | null;
     how_met?: string;
+    connection_type?: "first" | "one_point_five";
   }[] = (connections as unknown[]).flatMap((c) => {
     try {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -253,6 +255,7 @@ export default function Dashboard() {
           preferred_name: (other.preferred_name as string) ?? null,
           profile_image_url: (other.profile_image_url as string) ?? null,
           how_met: (conn.how_met as string) ?? "",
+          connection_type: (conn.connection_type as "first" | "one_point_five") || "first",
         },
       ];
     } catch {
@@ -261,6 +264,11 @@ export default function Dashboard() {
   });
 
   const filteredConnectionUsers = connectionUsers.filter((u) => {
+    // Filter by type
+    if (connectionTypeFilter !== "all" && u.connection_type !== connectionTypeFilter) {
+      return false;
+    }
+    // Filter by search
     const q = connectionsSearch.trim().toLowerCase();
     if (!q) return true;
     const display = `${u.username} ${u.name} ${
@@ -648,9 +656,9 @@ export default function Dashboard() {
 
         {activeTab === "profile" && userProfile && (
           <div className="max-w-7xl mx-auto px-4 py-8">
-            {/* Hero Card with Profile Image & Username */}
+            {/* Hero Card with Profile Image, Username & Connections */}
             <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg shadow-sm p-8 mb-6">
-              <div className="flex flex-col md:flex-row items-center gap-6">
+              <div className="flex flex-col md:flex-row items-start gap-6">
                 {/* Profile Image */}
                 <div className="flex-shrink-0">
                   {!isEditingProfile ? (
@@ -700,8 +708,8 @@ export default function Dashboard() {
                   )}
                 </div>
 
-                {/* User Info */}
-                <div className="flex-1 text-center md:text-left">
+                {/* User Info & Connections */}
+                <div className="flex-1">
                   {!isEditingProfile ? (
                     <>
                       <h1 className="text-4xl font-bold mb-2 text-gray-900 dark:text-white">
@@ -711,10 +719,57 @@ export default function Dashboard() {
                         @{userProfile.username}
                       </p>
                       {userProfile.bio && (
-                        <p className="text-gray-600 dark:text-gray-400 text-lg max-w-2xl">
+                        <p className="text-gray-600 dark:text-gray-400 text-lg mb-4 max-w-2xl">
                           {userProfile.bio}
                         </p>
                       )}
+                      
+                      {/* Connections Card - Inline */}
+                      <div 
+                        className="mt-4 inline-block bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 border border-blue-200 dark:border-blue-700 rounded-xl p-4 cursor-pointer hover:shadow-md transition-all"
+                        onClick={() => setShowConnectionsModal(true)}
+                        role="button"
+                        aria-label="View connections"
+                      >
+                        <div className="flex items-center gap-4">
+                          <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 dark:from-blue-600 dark:to-blue-700 rounded-xl flex items-center justify-center shadow-sm">
+                            <svg
+                              className="w-6 h-6 text-white"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
+                              />
+                            </svg>
+                          </div>
+                          <div>
+                            <p className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-blue-800 dark:from-blue-400 dark:to-blue-600 bg-clip-text text-transparent">
+                              {connections.length}
+                            </p>
+                            <p className="text-sm text-gray-600 dark:text-gray-400">
+                              Connections
+                            </p>
+                          </div>
+                          <svg
+                            className="w-5 h-5 text-gray-400 ml-2"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M9 5l7 7-7 7"
+                            />
+                          </svg>
+                        </div>
+                      </div>
                     </>
                   ) : (
                     <div className="space-y-3">
@@ -816,113 +871,14 @@ export default function Dashboard() {
               </div>
             </div>
 
-            {/* Stats Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-              <div
-                className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 border border-gray-200 dark:border-gray-700 cursor-pointer hover:shadow-xl transition-shadow"
-                onClick={() => setShowConnectionsModal(true)}
-                role="button"
-                aria-label="View connections"
-              >
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 bg-gray-100 dark:bg-gray-900 rounded-full flex items-center justify-center">
+            {/* Full Width Content */}
+            <div className="space-y-6">
+              {/* About Card */}
+              <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-8 border border-gray-200 dark:border-gray-700">
+                <h3 className="text-xl font-bold mb-6 flex items-center gap-3">
+                  <div className="w-10 h-10 bg-gradient-to-br from-gray-500 to-gray-600 dark:from-gray-600 dark:to-gray-700 rounded-xl flex items-center justify-center">
                     <svg
-                      className="w-6 h-6 text-gray-600 dark:text-gray-400"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
-                      />
-                    </svg>
-                  </div>
-                  <div>
-                    <p className="text-3xl font-bold">{connections.length}</p>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">
-                      Connections
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 border border-gray-200 dark:border-gray-700">
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 bg-gray-100 dark:bg-gray-900 rounded-full flex items-center justify-center flex-shrink-0">
-                    <svg
-                      className="w-6 h-6 text-gray-600 dark:text-gray-400"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-                      />
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
-                      />
-                    </svg>
-                  </div>
-                  <div className="flex-1">
-                    {!isEditingProfile ? (
-                      <>
-                        <p className="text-3xl font-bold">
-                          {userProfile.visibility_level}
-                        </p>
-                        <p className="text-sm text-gray-600 dark:text-gray-400">
-                          Visibility Level
-                        </p>
-                      </>
-                    ) : (
-                      <div className="w-full">
-                        <label className="text-sm text-gray-600 dark:text-gray-400 block mb-2">
-                          Visibility: {editForm.visibility_level}{" "}
-                          {editForm.visibility_level === 1
-                            ? "connection"
-                            : "connections"}{" "}
-                          away
-                        </label>
-                        <input
-                          type="range"
-                          min="0"
-                          max="5"
-                          value={editForm.visibility_level}
-                          onChange={(e) =>
-                            setEditForm({
-                              ...editForm,
-                              visibility_level: parseInt(e.target.value),
-                            })
-                          }
-                          className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-700"
-                        />
-                        <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400 mt-1">
-                          <span>Direct</span>
-                          <span>Extended</span>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              {/* Main Info Card */}
-              <div className="lg:col-span-2 space-y-6">
-                {/* About Card */}
-                <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 border border-gray-200 dark:border-gray-700">
-                  <h3 className="text-xl font-bold mb-4 flex items-center gap-2">
-                    <svg
-                      className="w-6 h-6 text-gray-600 dark:text-gray-400"
+                      className="w-5 h-5 text-white"
                       fill="none"
                       stroke="currentColor"
                       viewBox="0 0 24 24"
@@ -934,79 +890,14 @@ export default function Dashboard() {
                         d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
                       />
                     </svg>
-                    About
-                  </h3>
-                  <div className="space-y-4">
-                    {/* Email (read-only) */}
-                    <div className="flex items-start gap-3">
-                      <svg
-                        className="w-5 h-5 text-gray-400 mt-0.5"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
-                        />
-                      </svg>
-                      <div>
-                        <p className="text-sm text-gray-500 dark:text-gray-400">
-                          Email
-                        </p>
-                        <p className="font-medium">{userProfile.email}</p>
-                      </div>
-                    </div>
-
-                    {/* Gender */}
-                    <div className="flex items-start gap-3">
-                      <svg
-                        className="w-5 h-5 text-gray-400 mt-0.5"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
-                        />
-                      </svg>
-                      <div className="flex-1">
-                        <p className="text-sm text-gray-500 dark:text-gray-400">
-                          Gender
-                        </p>
-                        {!isEditingProfile ? (
-                          <p className="font-medium">
-                            {userProfile.gender || "Not specified"}
-                          </p>
-                        ) : (
-                          <input
-                            type="text"
-                            value={editForm.gender}
-                            onChange={(e) =>
-                              setEditForm({
-                                ...editForm,
-                                gender: e.target.value,
-                              })
-                            }
-                            placeholder="Optional"
-                            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 mt-1"
-                          />
-                        )}
-                      </div>
-                    </div>
                   </div>
-                </div>
-
-                {/* Social Links Card */}
-                <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 border border-gray-200 dark:border-gray-700">
-                  <h3 className="text-xl font-bold mb-4 flex items-center gap-2">
+                  About
+                </h3>
+                <div className="space-y-6">
+                  {/* Email (read-only) */}
+                  <div className="flex items-start gap-3">
                     <svg
-                      className="w-6 h-6 text-gray-600 dark:text-gray-400"
+                      className="w-5 h-5 text-gray-400 mt-0.5"
                       fill="none"
                       stroke="currentColor"
                       viewBox="0 0 24 24"
@@ -1015,14 +906,82 @@ export default function Dashboard() {
                         strokeLinecap="round"
                         strokeLinejoin="round"
                         strokeWidth={2}
-                        d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"
+                        d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
                       />
                     </svg>
+                    <div>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">
+                        Email
+                      </p>
+                      <p className="font-medium">{userProfile.email}</p>
+                    </div>
+                  </div>
+
+                  {/* Gender */}
+                  <div className="flex items-start gap-3">
+                    <svg
+                      className="w-5 h-5 text-gray-400 mt-0.5"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+                      />
+                    </svg>
+                    <div className="flex-1">
+                      <p className="text-sm text-gray-500 dark:text-gray-400">
+                        Gender
+                      </p>
+                      {!isEditingProfile ? (
+                        <p className="font-medium">
+                          {userProfile.gender || "Not specified"}
+                        </p>
+                      ) : (
+                        <input
+                          type="text"
+                          value={editForm.gender}
+                          onChange={(e) =>
+                            setEditForm({
+                              ...editForm,
+                              gender: e.target.value,
+                            })
+                          }
+                          placeholder="Optional"
+                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 mt-1"
+                        />
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Social Links Card */}
+              <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-8 border border-gray-200 dark:border-gray-700">
+                  <h3 className="text-xl font-bold mb-6 flex items-center gap-3">
+                    <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-purple-600 dark:from-purple-600 dark:to-purple-700 rounded-xl flex items-center justify-center">
+                      <svg
+                        className="w-5 h-5 text-white"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"
+                        />
+                      </svg>
+                    </div>
                     Social Links
                   </h3>
 
                   {/* Social Links Grid - Always visible, editable in edit mode */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {Object.entries(SOCIAL_PLATFORMS)
                       .filter(([key]) => key !== "LinkedIn")
                       .map(([key, config]) => {
@@ -1229,286 +1188,7 @@ export default function Dashboard() {
                 </div>
               </div>
 
-              {/* Privacy Settings Sidebar */}
-              <div className="space-y-6">
-                <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 border border-gray-200 dark:border-gray-700">
-                  <h3 className="text-xl font-bold mb-4 flex items-center gap-2">
-                    <svg
-                      className="w-6 h-6 text-gray-600 dark:text-gray-400"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
-                      />
-                    </svg>
-                    Privacy
-                  </h3>
-                  <div className="space-y-4">
-                    {/* Profile Image Privacy */}
-                    <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
-                      <div className="flex items-center gap-3">
-                        <div
-                          className={`w-10 h-10 rounded-full ${
-                            (
-                              isEditingProfile
-                                ? editForm.show_profile_image
-                                : userProfile.show_profile_image
-                            )
-                              ? "bg-green-100 dark:bg-green-900/30"
-                              : "bg-gray-200 dark:bg-gray-700"
-                          } flex items-center justify-center`}
-                        >
-                          {(
-                            isEditingProfile
-                              ? editForm.show_profile_image
-                              : userProfile.show_profile_image
-                          ) ? (
-                            <svg
-                              className="w-5 h-5 text-green-600 dark:text-green-400"
-                              fill="currentColor"
-                              viewBox="0 0 20 20"
-                            >
-                              <path
-                                fillRule="evenodd"
-                                d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                                clipRule="evenodd"
-                              />
-                            </svg>
-                          ) : (
-                            <svg
-                              className="w-5 h-5 text-gray-400"
-                              fill="currentColor"
-                              viewBox="0 0 20 20"
-                            >
-                              <path
-                                fillRule="evenodd"
-                                d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
-                                clipRule="evenodd"
-                              />
-                            </svg>
-                          )}
-                        </div>
-                        <span className="text-sm font-medium">
-                          Profile Image
-                        </span>
-                      </div>
-                      {isEditingProfile && (
-                        <input
-                          type="checkbox"
-                          checked={editForm.show_profile_image}
-                          onChange={(e) =>
-                            setEditForm({
-                              ...editForm,
-                              show_profile_image: e.target.checked,
-                            })
-                          }
-                          className="w-5 h-5 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
-                        />
-                      )}
-                    </div>
-
-                    {/* Full Name Privacy */}
-                    <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
-                      <div className="flex items-center gap-3">
-                        <div
-                          className={`w-10 h-10 rounded-full ${
-                            (
-                              isEditingProfile
-                                ? editForm.show_full_name
-                                : userProfile.show_full_name
-                            )
-                              ? "bg-green-100 dark:bg-green-900/30"
-                              : "bg-gray-200 dark:bg-gray-700"
-                          } flex items-center justify-center`}
-                        >
-                          {(
-                            isEditingProfile
-                              ? editForm.show_full_name
-                              : userProfile.show_full_name
-                          ) ? (
-                            <svg
-                              className="w-5 h-5 text-green-600 dark:text-green-400"
-                              fill="currentColor"
-                              viewBox="0 0 20 20"
-                            >
-                              <path
-                                fillRule="evenodd"
-                                d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                                clipRule="evenodd"
-                              />
-                            </svg>
-                          ) : (
-                            <svg
-                              className="w-5 h-5 text-gray-400"
-                              fill="currentColor"
-                              viewBox="0 0 20 20"
-                            >
-                              <path
-                                fillRule="evenodd"
-                                d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
-                                clipRule="evenodd"
-                              />
-                            </svg>
-                          )}
-                        </div>
-                        <span className="text-sm font-medium">Full Name</span>
-                      </div>
-                      {isEditingProfile && (
-                        <input
-                          type="checkbox"
-                          checked={editForm.show_full_name}
-                          onChange={(e) =>
-                            setEditForm({
-                              ...editForm,
-                              show_full_name: e.target.checked,
-                            })
-                          }
-                          className="w-5 h-5 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
-                        />
-                      )}
-                    </div>
-
-                    {/* Gender Privacy */}
-                    <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
-                      <div className="flex items-center gap-3">
-                        <div
-                          className={`w-10 h-10 rounded-full ${
-                            (
-                              isEditingProfile
-                                ? editForm.show_gender
-                                : userProfile.show_gender
-                            )
-                              ? "bg-green-100 dark:bg-green-900/30"
-                              : "bg-gray-200 dark:bg-gray-700"
-                          } flex items-center justify-center`}
-                        >
-                          {(
-                            isEditingProfile
-                              ? editForm.show_gender
-                              : userProfile.show_gender
-                          ) ? (
-                            <svg
-                              className="w-5 h-5 text-green-600 dark:text-green-400"
-                              fill="currentColor"
-                              viewBox="0 0 20 20"
-                            >
-                              <path
-                                fillRule="evenodd"
-                                d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                                clipRule="evenodd"
-                              />
-                            </svg>
-                          ) : (
-                            <svg
-                              className="w-5 h-5 text-gray-400"
-                              fill="currentColor"
-                              viewBox="0 0 20 20"
-                            >
-                              <path
-                                fillRule="evenodd"
-                                d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
-                                clipRule="evenodd"
-                              />
-                            </svg>
-                          )}
-                        </div>
-                        <span className="text-sm font-medium">Gender</span>
-                      </div>
-                      {isEditingProfile && (
-                        <input
-                          type="checkbox"
-                          checked={editForm.show_gender}
-                          onChange={(e) =>
-                            setEditForm({
-                              ...editForm,
-                              show_gender: e.target.checked,
-                            })
-                          }
-                          className="w-5 h-5 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
-                        />
-                      )}
-                    </div>
-
-                    {/* Social Links Privacy */}
-                    <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
-                      <div className="flex items-center gap-3">
-                        <div
-                          className={`w-10 h-10 rounded-full ${
-                            (
-                              isEditingProfile
-                                ? editForm.show_social_links
-                                : userProfile.show_social_links
-                            )
-                              ? "bg-green-100 dark:bg-green-900/30"
-                              : "bg-gray-200 dark:bg-gray-700"
-                          } flex items-center justify-center`}
-                        >
-                          {(
-                            isEditingProfile
-                              ? editForm.show_social_links
-                              : userProfile.show_social_links
-                          ) ? (
-                            <svg
-                              className="w-5 h-5 text-green-600 dark:text-green-400"
-                              fill="currentColor"
-                              viewBox="0 0 20 20"
-                            >
-                              <path
-                                fillRule="evenodd"
-                                d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                                clipRule="evenodd"
-                              />
-                            </svg>
-                          ) : (
-                            <svg
-                              className="w-5 h-5 text-gray-400"
-                              fill="currentColor"
-                              viewBox="0 0 20 20"
-                            >
-                              <path
-                                fillRule="evenodd"
-                                d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
-                                clipRule="evenodd"
-                              />
-                            </svg>
-                          )}
-                        </div>
-                        <span className="text-sm font-medium">
-                          Social Links
-                        </span>
-                      </div>
-                      {isEditingProfile && (
-                        <input
-                          type="checkbox"
-                          checked={editForm.show_social_links}
-                          onChange={(e) =>
-                            setEditForm({
-                              ...editForm,
-                              show_social_links: e.target.checked,
-                            })
-                          }
-                          className="w-5 h-5 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
-                        />
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
-                    <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed">
-                      These settings control what information is visible to
-                      connections beyond your visibility level (
-                      {userProfile.visibility_level} connections away).
-                    </p>
-                  </div>
-                </div>
-              </div>
             </div>
-          </div>
         )}
 
         {activeTab === "blocked" && (
@@ -1686,7 +1366,7 @@ export default function Dashboard() {
                 </svg>
               </button>
             </div>
-            <div className="px-5 pt-4">
+            <div className="px-5 pt-4 space-y-3">
               <input
                 type="text"
                 value={connectionsSearch}
@@ -1694,6 +1374,38 @@ export default function Dashboard() {
                 placeholder="Search connections by name or username..."
                 className="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setConnectionTypeFilter("all")}
+                  className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                    connectionTypeFilter === "all"
+                      ? "bg-blue-600 text-white"
+                      : "bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700"
+                  }`}
+                >
+                  All ({connectionUsers.length})
+                </button>
+                <button
+                  onClick={() => setConnectionTypeFilter("first")}
+                  className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                    connectionTypeFilter === "first"
+                      ? "bg-green-600 text-white"
+                      : "bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700"
+                  }`}
+                >
+                  1st ({connectionUsers.filter(u => u.connection_type === "first").length})
+                </button>
+                <button
+                  onClick={() => setConnectionTypeFilter("one_point_five")}
+                  className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                    connectionTypeFilter === "one_point_five"
+                      ? "bg-purple-600 text-white"
+                      : "bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700"
+                  }`}
+                >
+                  1.5 ({connectionUsers.filter(u => u.connection_type === "one_point_five").length})
+                </button>
+              </div>
             </div>
             <div className="p-5 max-h-[60vh] overflow-y-auto divide-y divide-gray-200 dark:divide-gray-800">
               {filteredConnectionUsers.length === 0 ? (
@@ -1725,12 +1437,23 @@ export default function Dashboard() {
                       </div>
                     )}
                     <div className="flex-1">
-                      <p className="font-medium">
-                        {u.preferred_name || u.name}
-                        <span className="ml-2 text-sm text-gray-500 dark:text-gray-400">
-                          @{u.username}
+                      <div className="flex items-center gap-2">
+                        <p className="font-medium">
+                          {u.preferred_name || u.name}
+                          <span className="ml-2 text-sm text-gray-500 dark:text-gray-400">
+                            @{u.username}
+                          </span>
+                        </p>
+                        <span
+                          className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
+                            u.connection_type === "first"
+                              ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300"
+                              : "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300"
+                          }`}
+                        >
+                          {u.connection_type === "first" ? "1st" : "1.5"}
                         </span>
-                      </p>
+                      </div>
                       {u.how_met && (
                         <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
                           {u.how_met}
