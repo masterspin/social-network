@@ -466,8 +466,11 @@ export async function getBlockedUsers(blockerId: string) {
     .from("blocked_users")
     .select(
       `
-      *,
-      blocked_user:users!blocked_users_blocked_id_fkey(id, name, preferred_name, profile_image_url)
+      id,
+      blocked_id,
+      blocker_id,
+      created_at,
+      blocked_user:users!blocked_id(id, username, name, preferred_name, profile_image_url)
     `
     )
     .eq("blocker_id", blockerId);

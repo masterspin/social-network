@@ -113,6 +113,10 @@ export default function Dashboard() {
   const [showConnectionsModal, setShowConnectionsModal] = useState(false);
   const [connectionsSearch, setConnectionsSearch] = useState("");
   const [connectionTypeFilter, setConnectionTypeFilter] = useState<"all" | "first" | "one_point_five">("all");
+  const [message, setMessage] = useState<{
+    type: "success" | "error";
+    text: string;
+  } | null>(null);
   const [selectedConnectionUser, setSelectedConnectionUser] = useState<{
     id: string;
     username: string;
@@ -220,8 +224,17 @@ export default function Dashboard() {
     const { data: links } = await getUserSocialLinks(user.id);
     if (links) setSocialLinks(links as SocialLink[]);
 
-    const { data: blocked } = await getBlockedUsers(user.id);
-    if (blocked) setBlockedUsers(blocked);
+    const { data: blocked, error: blockedError } = await getBlockedUsers(user.id);
+    if (blockedError) {
+      console.error("Error loading blocked users:", blockedError);
+    }
+    if (blocked) {
+      console.log("Loaded blocked users:", blocked);
+      setBlockedUsers(blocked);
+    } else {
+      console.log("No blocked users found");
+      setBlockedUsers([]);
+    }
 
     setLoading(false);
   };
@@ -370,7 +383,13 @@ export default function Dashboard() {
 
   const handleUnblock = async (blockedId: string) => {
     if (!userProfile) return;
-    await unblockUser(userProfile.id, blockedId);
+    const { error } = await unblockUser(userProfile.id, blockedId);
+    if (error) {
+      console.error("Error unblocking user:", error);
+      setMessage({ type: "error", text: "Failed to unblock user" });
+    } else {
+      setMessage({ type: "success", text: "User unblocked successfully" });
+    }
     loadData();
   };
 
@@ -1249,6 +1268,7 @@ export default function Dashboard() {
                       id: string;
                       blocked_id: string;
                       blocked_user: {
+                        username: string;
                         preferred_name: string | null;
                         name: string;
                         profile_image_url: string | null;
@@ -1259,45 +1279,35 @@ export default function Dashboard() {
                         key={blockedData.id}
                         className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700/50 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 transition-all border border-gray-200 dark:border-gray-600"
                       >
-                        <div className="flex items-center gap-3">
-                          {blockedData.blocked_user.profile_image_url ? (
-                            // eslint-disable-next-line @next/next/no-img-element
-                            <img
-                              src={blockedData.blocked_user.profile_image_url}
-                              alt="Profile"
-                              className="w-12 h-12 rounded-full object-cover border-2 border-gray-200 dark:border-gray-600"
-                            />
-                          ) : (
-                            <div className="w-12 h-12 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center border-2 border-gray-200 dark:border-gray-600">
-                              <span className="text-lg font-bold text-red-600 dark:text-red-400">
-                                {(
-                                  blockedData.blocked_user.preferred_name ||
-                                  blockedData.blocked_user.name
-                                )
-                                  .charAt(0)
-                                  .toUpperCase()}
-                              </span>
-                            </div>
-                          )}
-                          <div>
-                            <p className="font-semibold text-gray-900 dark:text-gray-100">
-                              {blockedData.blocked_user.preferred_name ||
-                                blockedData.blocked_user.name}
-                            </p>
-                            <div className="flex items-center gap-1.5 text-xs text-red-600 dark:text-red-400">
-                              <svg
-                                className="w-3 h-3"
-                                fill="currentColor"
-                                viewBox="0 0 20 20"
-                              >
-                                <path
-                                  fillRule="evenodd"
-                                  d="M13.477 14.89A6 6 0 015.11 6.524l8.367 8.368zm1.414-1.414L6.524 5.11a6 6 0 018.367 8.367zM18 10a8 8 0 11-16 0 8 8 0 0116 0z"
-                                  clipRule="evenodd"
-                                />
-                              </svg>
-                              <span className="font-medium">Blocked</span>
-                            </div>
+                        <div>
+                          <button
+                            onClick={() =>
+                              setSelectedConnectionUser({
+                                id: blockedData.blocked_id,
+                                username: blockedData.blocked_user.username || "",
+                                name: blockedData.blocked_user.name,
+                                preferred_name: blockedData.blocked_user.preferred_name,
+                                profile_image_url: blockedData.blocked_user.profile_image_url,
+                              })
+                            }
+                            className="font-semibold text-gray-900 dark:text-gray-100 hover:text-blue-600 dark:hover:text-blue-400 transition-colors text-left"
+                          >
+                            {blockedData.blocked_user.preferred_name ||
+                              blockedData.blocked_user.name}
+                          </button>
+                          <div className="flex items-center gap-1.5 text-xs text-red-600 dark:text-red-400">
+                            <svg
+                              className="w-3 h-3"
+                              fill="currentColor"
+                              viewBox="0 0 20 20"
+                            >
+                              <path
+                                fillRule="evenodd"
+                                d="M13.477 14.89A6 6 0 015.11 6.524l8.367 8.368zm1.414-1.414L6.524 5.11a6 6 0 018.367 8.367zM18 10a8 8 0 11-16 0 8 8 0 0116 0z"
+                                clipRule="evenodd"
+                              />
+                            </svg>
+                            <span className="font-medium">Blocked</span>
                           </div>
                         </div>
                         <button
