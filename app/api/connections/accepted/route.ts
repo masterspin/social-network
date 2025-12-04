@@ -69,12 +69,12 @@ export async function GET(request: Request) {
       recipient:users!connections_recipient_id_fkey(id, username, name, preferred_name, profile_image_url)
     `;
 
-    // Step 1: fetch direct accepted connections for the user
+    // Step 1: fetch direct accepted AND pending connections for the user
     const { data: myConns, error: e1 } = await admin
       .from("connections")
       .select(baseSelect)
       .or(`requester_id.eq.${userId},recipient_id.eq.${userId}`)
-      .eq("status", "accepted");
+      .in("status", ["accepted", "pending"]);
     if (e1) return NextResponse.json({ error: e1 }, { status: 400 });
 
     const neighborIds = Array.from(
@@ -141,6 +141,7 @@ export async function GET(request: Request) {
       return {
         id: c.id as string,
         how_met: c.how_met as string,
+        status: c.status as string,
         connection_type:
           (c as unknown as { connection_type?: string }).connection_type ||
           "first",

@@ -17,6 +17,7 @@ type NodeData = {
   profile_image_url: string | null;
   distance?: number;
   connection_type?: string;
+  path_type?: "first" | "one_point_five" | "pending";
   x?: number;
   y?: number;
 };
@@ -85,24 +86,39 @@ export default function NetworkGraph({
     // Current user is always blue
     if (n.id === currentUserId) return "#3b82f6"; // blue
     
-    // Pending connections are yellow
-    if (n.connection_type === "pending") return "#eab308"; // yellow
+    const dist = n.distance || 0;
     
-    // 1st degree connections are green
-    if (n.connection_type === "first" || n.distance === 1) return "#10b981"; // green
+    // Direct connections (distance 1)
+    if (dist === 1) {
+      if (n.connection_type === "pending") return "#eab308"; // yellow
+      if (n.connection_type === "one_point_five") return "#a855f7"; // purple
+      return "#10b981"; // green (first connection)
+    }
     
-    // 1.5 connections are purple
-    if (n.connection_type === "one_point_five") return "#a855f7"; // purple
+    // Indirect connections - gradient based on path type
+    const pathType = n.path_type || n.connection_type;
     
-    // 2nd+ degree connections: gradient from green to gray
-    // The further away, the more gray
-    const dist = n.distance || 2;
+    if (pathType === "pending") {
+      // Pending connections should not have children shown
+      return "#eab308"; // yellow
+    }
+    
+    if (pathType === "one_point_five") {
+      // Purple to gray gradient for 1.5 connection paths
+      if (dist === 2) return "#c084fc"; // lighter purple
+      if (dist === 3) return "#d8b4fe"; // very light purple
+      if (dist === 4) return "#c4b5fd"; // light purple-gray
+      if (dist === 5) return "#a8a29e"; // purple-gray
+      return "#78716c"; // gray
+    }
+    
+    // First connection path (default) - green to gray gradient
     if (dist === 2) return "#22c55e"; // lighter green
-    if (dist === 3) return "#84cc16"; // yellow-green
-    if (dist === 4) return "#a3a3a3"; // light gray
-    if (dist === 5) return "#737373"; // medium gray
+    if (dist === 3) return "#4ade80"; // light green
+    if (dist === 4) return "#86efac"; // very light green
+    if (dist === 5) return "#a8a29e"; // green-gray
     
-    return "#6b7280"; // gray for 6+ or unknown
+    return "#78716c"; // gray for 6+ or unknown
   };
   const getNodeLabel = (n: NodeData) => n.preferred_name || n.name;
   const pushGraphData = useCallback(

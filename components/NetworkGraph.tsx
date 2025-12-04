@@ -16,6 +16,7 @@ type NodeData = {
   profile_image_url: string | null;
   distance?: number;
   connection_type?: string;
+  path_type?: "first" | "one_point_five" | "pending"; // How we reached this node
   x?: number;
   y?: number;
 };
@@ -43,6 +44,7 @@ export default function NetworkGraph({
     nodes: [],
     links: [],
   });
+  const graphDataRef = useRef<GraphData>({ nodes: [], links: [] });
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [maxDepth, setMaxDepth] = useState<number>(3);
   const [selectedNode, setSelectedNode] = useState<NodeData | null>(null);
@@ -128,24 +130,44 @@ export default function NetworkGraph({
     // Current user is always blue
     if (n.id === currentUserId) return "#3b82f6"; // blue
     
-    // Pending connections are yellow
-    if (n.connection_type === "pending") return "#eab308"; // yellow
+    const dist = n.distance || 0;
     
-    // 1st degree connections are green
-    if (n.connection_type === "first" || n.distance === 1) return "#10b981"; // green
+    // Direct connections (distance 1)
+    if (dist === 1) {
+      if (n.connection_type === "pending") return "#eab308"; // yellow
+      if (n.connection_type === "one_point_five") return "#a855f7"; // purple
+      return "#10b981"; // green (first connection)
+    }
     
-    // 1.5 connections are purple
-    if (n.connection_type === "one_point_five") return "#a855f7"; // purple
+    // Indirect connections - gradient based on path type
+    const pathType = n.path_type || n.connection_type;
     
-    // 2nd+ degree connections: gradient from green to gray
-    // The further away, the more gray
-    const dist = n.distance || 2;
+    // Debug log
+    if (dist > 1) {
+      console.log(`[Color] Node ${n.name} dist=${dist} connection_type=${n.connection_type} path_type=${n.path_type} pathType=${pathType}`);
+    }
+    
+    if (pathType === "pending") {
+      // Pending connections should not have children shown
+      return "#eab308"; // yellow
+    }
+    
+    if (pathType === "one_point_five") {
+      // Purple to gray gradient for 1.5 connection paths
+      if (dist === 2) return "#c084fc"; // lighter purple
+      if (dist === 3) return "#d8b4fe"; // very light purple
+      if (dist === 4) return "#c4b5fd"; // light purple-gray
+      if (dist === 5) return "#a8a29e"; // purple-gray
+      return "#78716c"; // gray
+    }
+    
+    // First connection path (default) - green to gray gradient
     if (dist === 2) return "#22c55e"; // lighter green
-    if (dist === 3) return "#84cc16"; // yellow-green
-    if (dist === 4) return "#a3a3a3"; // light gray
-    if (dist === 5) return "#737373"; // medium gray
+    if (dist === 3) return "#4ade80"; // light green
+    if (dist === 4) return "#86efac"; // very light green
+    if (dist === 5) return "#a8a29e"; // green-gray
     
-    return "#6b7280"; // gray for 6+ or unknown
+    return "#78716c"; // gray for 6+ or unknown
   };
 
   // Debug logging
@@ -196,12 +218,25 @@ export default function NetworkGraph({
         console.log("[NetworkGraph] Already expanded, skipping");
         return;
       }
+      
+      // Check if this node is a pending connection - don't expand it
+      const currentNode = graphDataRef.current.nodes.find(n => n.id === nodeId);
+      if (currentNode?.connection_type === "pending") {
+        console.log("[NetworkGraph] Node is pending connection, not expanding");
+        return;
+      }
+      
       const depthOfNode = nodeDepthMapRef.current.get(nodeId) ?? 0;
       if (depthOfNode >= maxDepth) {
         console.log("[NetworkGraph] Max depth reached for:", nodeId);
         return;
       }
       expandedRef.current.add(nodeId);
+      
+      // Determine the path type for children of this node
+      const nodePathType = currentNode?.path_type || currentNode?.connection_type || "first";
+      console.log(`[ExpandStart] Expanding ${nodeId} with path_type=${currentNode?.path_type} connection_type=${currentNode?.connection_type} nodePathType=${nodePathType}`);
+      
       try {
         const res = await fetch(
           `/api/connections/accepted?userId=${encodeURIComponent(nodeId)}`
@@ -219,6 +254,7 @@ export default function NetworkGraph({
         const rows = (j.data || []) as Array<{
           id: string;
           how_met: string;
+          status: string;
           connection_type?: string;
           other_user: {
             id: string;
@@ -244,6 +280,14 @@ export default function NetworkGraph({
           );
           let addedNodes = 0;
           let addedLinks = 0;
+          
+          // Hierarchy: first > one_point_five > pending
+          const getPathPriority = (type?: string) => {
+            if (type === "first") return 3;
+            if (type === "one_point_five") return 2;
+            if (type === "pending") return 1;
+            return 0;
+          };
 
           for (const row of rows) {
             const other = row.other_user;
@@ -255,22 +299,45 @@ export default function NetworkGraph({
               );
               continue;
             }
+            
             const nextDepth = depthOfNode + 1;
-            const prevDepth = nodeDepthMapRef.current.get(other.id);
-            if (prevDepth == null || nextDepth < prevDepth)
-              nodeDepthMapRef.current.set(other.id, nextDepth);
-            if (!existingIds.has(other.id)) {
+            const rowType = row.status === "pending" ? "pending" : (row.connection_type || "first");
+            
+            // Determine path type: inherit from parent unless this is a direct connection from user
+            const pathType = depthOfNode === 0 ? rowType : nodePathType;
+            
+            console.log(`[Expand] Adding ${other.name}: depth=${nextDepth} rowType=${rowType} nodePathType=${nodePathType} pathType=${pathType}`);
+            
+            const existingNode = nodes.find(n => n.id === other.id);
+            
+            if (existingNode) {
+              // Node exists - update if we have a better path (higher priority or shorter distance)
+              const existingPriority = getPathPriority(existingNode.path_type);
+              const newPriority = getPathPriority(pathType as any);
+              
+              if (newPriority > existingPriority || 
+                  (newPriority === existingPriority && nextDepth < (existingNode.distance || Infinity))) {
+                existingNode.distance = nextDepth;
+                existingNode.path_type = pathType as any;
+                existingNode.connection_type = rowType;
+                nodeDepthMapRef.current.set(other.id, nextDepth);
+              }
+            } else {
+              // New node
               existingIds.add(other.id);
               addedNodes++;
+              nodeDepthMapRef.current.set(other.id, nextDepth);
               nodes.push({
                 id: other.id,
                 name: other.name,
                 preferred_name: other.preferred_name,
                 profile_image_url: other.profile_image_url,
                 distance: nextDepth,
-                connection_type: row.connection_type,
+                connection_type: rowType,
+                path_type: pathType as any,
               });
             }
+            // Add edge between nodeId and other.id (always add edges, showing all connections)
             const k1 = `${nodeId}__${other.id}`;
             const k2 = `${other.id}__${nodeId}`;
             if (!linkKeys.has(k1) && !linkKeys.has(k2)) {
@@ -280,7 +347,7 @@ export default function NetworkGraph({
                 source: nodeId,
                 target: other.id,
                 how_met: row.how_met,
-                connection_type: row.connection_type,
+                connection_type: row.status === "pending" ? "pending" : row.connection_type,
               });
             }
           }
@@ -295,7 +362,9 @@ export default function NetworkGraph({
             links.length,
             "links"
           );
-          return { nodes, links };
+          const newData = { nodes, links };
+          graphDataRef.current = newData;
+          return newData;
         });
       } catch (err) {
         console.error("[NetworkGraph] expandNodeNeighbors error:", err);
@@ -337,7 +406,7 @@ export default function NetworkGraph({
       }
       nodeDepthMapRef.current = new Map([[user.id, 0]]);
       expandedRef.current = new Set();
-      setGraphData({
+      const initialData = {
         nodes: [
           {
             id: user.id,
@@ -348,7 +417,9 @@ export default function NetworkGraph({
           },
         ],
         links: [],
-      });
+      };
+      graphDataRef.current = initialData;
+      setGraphData(initialData);
       console.log(
         "[NetworkGraph] Created initial node, calling expandNodeNeighbors"
       );
