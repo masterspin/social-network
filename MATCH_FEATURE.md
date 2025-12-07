@@ -1,6 +1,7 @@
 # Match Feature
 
 ## Overview
+
 The Match feature allows users to play matchmaker by connecting two of their first connections together. When a match is created, both matched users get access to a private chat where they can communicate. Either user can delete the chat at any time, and once deleted, it cannot be recovered.
 
 ## Database Schema
@@ -8,22 +9,25 @@ The Match feature allows users to play matchmaker by connecting two of their fir
 ### Tables
 
 #### `matches`
+
 Tracks who matched whom together.
 
 ```sql
 - id: UUID (PK)
 - matchmaker_id: UUID (FK -> users)
-- user1_id: UUID (FK -> users) 
+- user1_id: UUID (FK -> users)
 - user2_id: UUID (FK -> users)
 - created_at: TIMESTAMP
 ```
 
 Constraints:
+
 - `user1_id < user2_id` (ensures consistent ordering)
 - Unique pair (user1_id, user2_id)
 - All three users must be different
 
 #### `match_chats`
+
 Tracks the chat status for each participant in a match.
 
 ```sql
@@ -37,9 +41,11 @@ Tracks the chat status for each participant in a match.
 ```
 
 Constraints:
+
 - Unique (match_id, user_id)
 
 #### `match_messages`
+
 Stores chat messages between matched users.
 
 ```sql
@@ -53,14 +59,17 @@ Stores chat messages between matched users.
 ### Database Function
 
 #### `create_match(matchmaker_id, user1_id, user2_id)`
+
 Creates a match and initializes chat rooms for both users atomically.
 
 ## API Endpoints
 
 ### POST /api/match
+
 Create a new match between two users.
 
 **Request Body:**
+
 ```json
 {
   "matchmaker_id": "uuid",
@@ -70,10 +79,12 @@ Create a new match between two users.
 ```
 
 **Validation:**
+
 - Both user1 and user2 must be first connections of the matchmaker
 - Users cannot already be matched together
 
 **Response:**
+
 ```json
 {
   "match_id": "uuid"
@@ -81,9 +92,11 @@ Create a new match between two users.
 ```
 
 ### GET /api/match?user_id=xxx
+
 Get all matches for a user.
 
 **Response:**
+
 ```json
 {
   "data": [
@@ -112,9 +125,11 @@ Get all matches for a user.
 ```
 
 ### GET /api/match/messages?match_id=xxx
+
 Get all messages for a match.
 
 **Response:**
+
 ```json
 {
   "data": [
@@ -137,9 +152,11 @@ Get all messages for a match.
 ```
 
 ### POST /api/match/messages
+
 Send a message in a match chat.
 
 **Request Body:**
+
 ```json
 {
   "match_id": "uuid",
@@ -149,9 +166,11 @@ Send a message in a match chat.
 ```
 
 **Validation:**
+
 - Sender must have an active chat for this match
 
 **Response:**
+
 ```json
 {
   "data": {
@@ -165,9 +184,11 @@ Send a message in a match chat.
 ```
 
 ### POST /api/match/delete
+
 Delete/leave a match chat.
 
 **Request Body:**
+
 ```json
 {
   "match_id": "uuid",
@@ -176,6 +197,7 @@ Delete/leave a match chat.
 ```
 
 **Response:**
+
 ```json
 {
   "message": "Chat deleted successfully"
@@ -185,20 +207,24 @@ Delete/leave a match chat.
 ## Security (RLS Policies)
 
 ### matches table
+
 - Users can view matches where they are the matchmaker or one of the matched users
 - Only matchmakers can create matches
 
 ### match_chats table
+
 - Users can only view and update their own chat status
 - System can create chat records
 
 ### match_messages table
+
 - Users can view messages in matches where they have an active chat
 - Users can send messages only in their active matches
 
 ## Workflow
 
 1. **Creating a Match**
+
    - Matchmaker selects two of their first connections
    - System validates both are first connections
    - System creates match record
@@ -206,6 +232,7 @@ Delete/leave a match chat.
    - Both users are notified
 
 2. **Chatting**
+
    - Users with active chats can send messages
    - Messages are visible to both participants
    - Messages are ordered by creation time
@@ -220,18 +247,21 @@ Delete/leave a match chat.
 ## UI Components (To Be Created)
 
 ### MatchMaker Component
+
 - Shows list of user's first connections
 - Allows selecting two connections
 - Button to create match
 - Confirmation dialog
 
 ### MatchesList Component
+
 - Shows all matches for the current user
 - Indicates active vs deleted chats
 - Shows who matched them
 - Link to open chat
 
 ### MatchChat Component
+
 - Chat interface for a specific match
 - Shows message history
 - Input for sending messages
@@ -242,9 +272,44 @@ Delete/leave a match chat.
 
 1. ✅ Database schema created
 2. ✅ API endpoints created
-3. ⏳ UI components (next step)
-4. ⏳ Integration with dashboard
-5. ⏳ Real-time updates (optional with Supabase subscriptions)
+3. ✅ UI components created with WebSocket support
+4. ✅ Integration with dashboard
+5. ✅ Real-time updates via Supabase WebSocket subscriptions
+
+## WebSocket Implementation
+
+The chat feature uses Supabase real-time subscriptions (WebSockets) for instant message delivery:
+
+- Messages appear in real-time without polling
+- Efficient resource usage
+- Included in Supabase free tier (200 concurrent connections, 2M messages/month)
+- Automatic reconnection on network issues
+
+### Components
+
+#### Chat.tsx
+
+Reusable WebSocket-based chat component that can be used for:
+
+- Match chats
+- Future direct messaging features
+- Any other real-time messaging needs
+
+Features:
+
+- Real-time message delivery via Supabase subscriptions
+- Auto-scroll to latest messages
+- Message timestamps
+- Sender identification
+- Delete chat functionality
+
+#### MatchMaker.tsx
+
+Interface for creating matches between two first connections.
+
+#### MatchesList.tsx
+
+Shows all matches for the current user and opens the chat interface.
 
 ## Notes
 
@@ -253,3 +318,5 @@ Delete/leave a match chat.
 - Same pair cannot be matched multiple times
 - Chat deletion is per-user and irreversible
 - Messages are not deleted when a user leaves the chat
+- WebSocket connections are managed automatically by Supabase client
+- Chat component is reusable for other messaging features

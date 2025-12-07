@@ -19,6 +19,8 @@ import NetworkGraph from "./NetworkGraph";
 import ConnectionManager from "./ConnectionManager";
 import UserProfileSidePanel from "./UserProfileSidePanel";
 import Inbox from "./Inbox";
+import MatchMaker from "./MatchMaker";
+import MatchesList from "./MatchesList";
 import {
   FaInstagram,
   FaTwitter,
@@ -102,7 +104,10 @@ const SOCIAL_PLATFORMS: Record<string, PlatformConfig> = {
 
 export default function Dashboard() {
   const [activeTab, setActiveTab] = useState<
-    "network" | "search" | "inbox" | "profile" | "blocked"
+    | "network"
+    | "inbox"
+    | "profile"
+    | "matches"
   >("network");
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [connections, setConnections] = useState<unknown[]>([]);
@@ -111,8 +116,12 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [showConnectionsModal, setShowConnectionsModal] = useState(false);
+  const [showSearchModal, setShowSearchModal] = useState(false);
+  const [showBlockedModal, setShowBlockedModal] = useState(false);
   const [connectionsSearch, setConnectionsSearch] = useState("");
-  const [connectionTypeFilter, setConnectionTypeFilter] = useState<"all" | "first" | "one_point_five">("all");
+  const [connectionTypeFilter, setConnectionTypeFilter] = useState<
+    "all" | "first" | "one_point_five"
+  >("all");
   const [message, setMessage] = useState<{
     type: "success" | "error";
     text: string;
@@ -162,15 +171,18 @@ export default function Dashboard() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Close connections modal with Escape
+  // Close modals with Escape
   useEffect(() => {
-    if (!showConnectionsModal) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setShowConnectionsModal(false);
+      if (e.key === "Escape") {
+        setShowConnectionsModal(false);
+        setShowSearchModal(false);
+        setShowBlockedModal(false);
+      }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [showConnectionsModal]);
+  }, []);
 
   const loadData = async () => {
     const { user } = await getCurrentUser();
@@ -195,9 +207,7 @@ export default function Dashboard() {
     // Load accepted connections via server API (includes mutual counts); fallback to client query
     try {
       const res = await fetch(
-        `/api/connections/accepted?userId=${encodeURIComponent(
-          user.id
-        )}`
+        `/api/connections/accepted?userId=${encodeURIComponent(user.id)}`
       );
       if (res.ok) {
         const j = await res.json();
@@ -214,7 +224,9 @@ export default function Dashboard() {
     const { data: links } = await getUserSocialLinks(user.id);
     if (links) setSocialLinks(links as SocialLink[]);
 
-    const { data: blocked, error: blockedError } = await getBlockedUsers(user.id);
+    const { data: blocked, error: blockedError } = await getBlockedUsers(
+      user.id
+    );
     if (blockedError) {
       console.error("Error loading blocked users:", blockedError);
     }
@@ -258,7 +270,8 @@ export default function Dashboard() {
           preferred_name: (other.preferred_name as string) ?? null,
           profile_image_url: (other.profile_image_url as string) ?? null,
           how_met: (conn.how_met as string) ?? "",
-          connection_type: (conn.connection_type as "first" | "one_point_five") || "first",
+          connection_type:
+            (conn.connection_type as "first" | "one_point_five") || "first",
         },
       ];
     } catch {
@@ -268,7 +281,10 @@ export default function Dashboard() {
 
   const filteredConnectionUsers = connectionUsers.filter((u) => {
     // Filter by type
-    if (connectionTypeFilter !== "all" && u.connection_type !== connectionTypeFilter) {
+    if (
+      connectionTypeFilter !== "all" &&
+      u.connection_type !== connectionTypeFilter
+    ) {
       return false;
     }
     // Filter by search
@@ -432,26 +448,47 @@ export default function Dashboard() {
               </div>
             </div>
 
-            {/* Sign Out Button */}
-            <button
-              onClick={handleSignOut}
-              className="flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-xl font-medium transition-all hover:scale-105"
-            >
-              <svg
-                className="w-5 h-5"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
+            {/* Search & Sign Out Buttons */}
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => setShowSearchModal(true)}
+                className="flex items-center gap-2 px-4 py-2 bg-blue-100 hover:bg-blue-200 dark:bg-blue-900/30 dark:hover:bg-blue-900/50 text-blue-700 dark:text-blue-300 rounded-xl font-medium transition-all hover:scale-105"
               >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
-                />
-              </svg>
-              <span className="hidden sm:inline">Sign Out</span>
-            </button>
+                <svg
+                  className="w-5 h-5"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M21 21l-4.35-4.35M10 18a8 8 0 110-16 8 8 0 010 16z"
+                  />
+                </svg>
+                <span className="hidden sm:inline">Search</span>
+              </button>
+              <button
+                onClick={handleSignOut}
+                className="flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-xl font-medium transition-all hover:scale-105"
+              >
+                <svg
+                  className="w-5 h-5"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
+                  />
+                </svg>
+                <span className="hidden sm:inline">Sign Out</span>
+              </button>
+            </div>
           </div>
         </div>
       </header>
@@ -519,9 +556,9 @@ export default function Dashboard() {
             </button>
 
             <button
-              onClick={() => setActiveTab("search")}
+              onClick={() => setActiveTab("matches")}
               className={`group relative py-4 px-6 font-medium text-sm transition-colors ${
-                activeTab === "search"
+                activeTab === "matches"
                   ? "text-gray-900 dark:text-white"
                   : "text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
               }`}
@@ -537,12 +574,12 @@ export default function Dashboard() {
                     strokeLinecap="round"
                     strokeLinejoin="round"
                     strokeWidth={2}
-                    d="M21 21l-4.35-4.35M10 18a8 8 0 110-16 8 8 0 010 16z"
+                    d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
                   />
                 </svg>
-                Search
+                Matches
               </span>
-              {activeTab === "search" && (
+              {activeTab === "matches" && (
                 <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gray-900 dark:bg-white"></div>
               )}
             </button>
@@ -572,40 +609,6 @@ export default function Dashboard() {
                 Profile
               </span>
               {activeTab === "profile" && (
-                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gray-900 dark:bg-white"></div>
-              )}
-            </button>
-
-            <button
-              onClick={() => setActiveTab("blocked")}
-              className={`group relative py-4 px-6 font-medium text-sm transition-colors ${
-                activeTab === "blocked"
-                  ? "text-gray-900 dark:text-white"
-                  : "text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
-              }`}
-            >
-              <span className="flex items-center gap-2">
-                <svg
-                  className="w-5 h-5"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"
-                  />
-                </svg>
-                Blocked
-                {blockedUsers.length > 0 && (
-                  <span className="px-2 py-0.5 text-xs bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded-full font-semibold">
-                    {blockedUsers.length}
-                  </span>
-                )}
-              </span>
-              {activeTab === "blocked" && (
                 <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gray-900 dark:bg-white"></div>
               )}
             </button>
@@ -645,11 +648,16 @@ export default function Dashboard() {
           </div>
         )}
 
-        {activeTab === "search" && (
+        {activeTab === "matches" && (
           <div className="max-w-7xl mx-auto px-4 py-8">
-            <ConnectionManager
-              onOpenUser={(u) => setSelectedConnectionUser(u)}
-            />
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div>
+                <MatchesList />
+              </div>
+              <div>
+                <MatchMaker onMatchCreated={() => loadData()} />
+              </div>
+            </div>
           </div>
         )}
 
@@ -722,40 +730,15 @@ export default function Dashboard() {
                           {userProfile.bio}
                         </p>
                       )}
-                      
-                      {/* Connections Card - Inline */}
-                      <div 
-                        className="mt-4 inline-block bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 border border-blue-200 dark:border-blue-700 rounded-xl p-4 cursor-pointer hover:shadow-md transition-all"
-                        onClick={() => setShowConnectionsModal(true)}
-                        role="button"
-                        aria-label="View connections"
-                      >
-                        <div className="flex items-center gap-4">
-                          <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 dark:from-blue-600 dark:to-blue-700 rounded-xl flex items-center justify-center shadow-sm">
-                            <svg
-                              className="w-6 h-6 text-white"
-                              fill="none"
-                              stroke="currentColor"
-                              viewBox="0 0 24 24"
-                            >
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
-                              />
-                            </svg>
-                          </div>
-                          <div>
-                            <p className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-blue-800 dark:from-blue-400 dark:to-blue-600 bg-clip-text text-transparent">
-                              {connections.length}
-                            </p>
-                            <p className="text-sm text-gray-600 dark:text-gray-400">
-                              Connections
-                            </p>
-                          </div>
+
+                      {/* Connections & Blocked - Subtle inline links */}
+                      <div className="flex items-center gap-4">
+                        <button
+                          onClick={() => setShowConnectionsModal(true)}
+                          className="inline-flex items-center gap-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 transition-colors group"
+                        >
                           <svg
-                            className="w-5 h-5 text-gray-400 ml-2"
+                            className="w-4 h-4"
                             fill="none"
                             stroke="currentColor"
                             viewBox="0 0 24 24"
@@ -764,10 +747,42 @@ export default function Dashboard() {
                               strokeLinecap="round"
                               strokeLinejoin="round"
                               strokeWidth={2}
-                              d="M9 5l7 7-7 7"
+                              d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
                             />
                           </svg>
-                        </div>
+                          <span className="font-medium">
+                            {connections.length}{" "}
+                            <span className="group-hover:underline">
+                              {connections.length === 1
+                                ? "Connection"
+                                : "Connections"}
+                            </span>
+                          </span>
+                        </button>
+                        <span className="text-gray-300 dark:text-gray-700">•</span>
+                        <button
+                          onClick={() => setShowBlockedModal(true)}
+                          className="inline-flex items-center gap-2 text-gray-600 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-colors group"
+                        >
+                          <svg
+                            className="w-4 h-4"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"
+                            />
+                          </svg>
+                          <span className="font-medium group-hover:underline">
+                            {blockedUsers.length > 0
+                              ? `${blockedUsers.length} blocked`
+                              : "Blocked"}
+                          </span>
+                        </button>
                       </div>
                     </>
                   ) : (
@@ -816,27 +831,29 @@ export default function Dashboard() {
                 </div>
 
                 {/* Edit/Save/Cancel Buttons */}
-                <div className="flex-shrink-0 flex gap-3">
+                <div className="flex-shrink-0 flex flex-col gap-3">
                   {!isEditingProfile ? (
-                    <button
-                      onClick={handleEditProfile}
-                      className="px-6 py-3 bg-gray-900 dark:bg-white text-white dark:text-gray-900 hover:bg-gray-800 dark:hover:bg-gray-100 rounded-lg font-semibold transition-colors flex items-center gap-2"
-                    >
-                      <svg
-                        className="w-5 h-5"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
+                    <>
+                      <button
+                        onClick={handleEditProfile}
+                        className="px-6 py-3 bg-gray-900 dark:bg-white text-white dark:text-gray-900 hover:bg-gray-800 dark:hover:bg-gray-100 rounded-lg font-semibold transition-colors flex items-center gap-2"
                       >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-                        />
-                      </svg>
-                      Edit Profile
-                    </button>
+                        <svg
+                          className="w-5 h-5"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                          />
+                        </svg>
+                        Edit Profile
+                      </button>
+                    </>
                   ) : (
                     <>
                       <button
@@ -960,101 +977,50 @@ export default function Dashboard() {
 
               {/* Social Links Card */}
               <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-8 border border-gray-200 dark:border-gray-700">
-                  <h3 className="text-xl font-bold mb-6 flex items-center gap-3">
-                    <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-purple-600 dark:from-purple-600 dark:to-purple-700 rounded-xl flex items-center justify-center">
-                      <svg
-                        className="w-5 h-5 text-white"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"
-                        />
-                      </svg>
-                    </div>
-                    Social Links
-                  </h3>
+                <h3 className="text-xl font-bold mb-6 flex items-center gap-3">
+                  <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-purple-600 dark:from-purple-600 dark:to-purple-700 rounded-xl flex items-center justify-center">
+                    <svg
+                      className="w-5 h-5 text-white"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"
+                      />
+                    </svg>
+                  </div>
+                  Social Links
+                </h3>
 
-                  {/* Social Links Grid - Always visible, editable in edit mode */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {Object.entries(SOCIAL_PLATFORMS)
-                      .filter(([key]) => key !== "LinkedIn")
-                      .map(([key, config]) => {
-                        const Icon = config.icon;
-                        const existingLink = socialLinks.find(
-                          (link) => link.platform === key
-                        );
-                        return (
-                          <div key={key} className="relative">
-                            <label className="block mb-1.5">
-                              <div className="flex items-center gap-2 text-sm font-medium mb-1">
-                                <Icon className={`text-lg ${config.color}`} />
-                                <span>{config.name}</span>
-                              </div>
-                            </label>
-                            {!isEditingProfile ? (
-                              existingLink ? (
-                                <a
-                                  href={existingLink.url}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="relative flex items-center border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700/50 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors group"
-                                >
-                                  <span
-                                    className={`px-3 py-2.5 text-sm text-gray-500 dark:text-gray-400 font-medium ${
-                                      key !== "Discord"
-                                        ? "border-r border-gray-300 dark:border-gray-600"
-                                        : ""
-                                    }`}
-                                  >
-                                    {config.prefix}
-                                  </span>
-                                  <span className="flex-1 px-3 py-2.5 text-sm truncate">
-                                    {existingLink.url
-                                      .replace(/^https?:\/\//, "")
-                                      .replace(
-                                        config.baseUrl?.replace(
-                                          /^https?:\/\//,
-                                          ""
-                                        ) || "",
-                                        ""
-                                      )
-                                      .replace(config.prefix, "")}
-                                  </span>
-                                  <svg
-                                    className="w-4 h-4 text-gray-400 mr-3 opacity-0 group-hover:opacity-100 transition-opacity"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    viewBox="0 0 24 24"
-                                  >
-                                    <path
-                                      strokeLinecap="round"
-                                      strokeLinejoin="round"
-                                      strokeWidth={2}
-                                      d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
-                                    />
-                                  </svg>
-                                </a>
-                              ) : (
-                                <div className="relative flex items-center border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700/30">
-                                  <span
-                                    className={`px-3 py-2.5 text-sm text-gray-500 dark:text-gray-400 font-medium ${
-                                      key !== "Discord"
-                                        ? "border-r border-gray-300 dark:border-gray-600"
-                                        : ""
-                                    }`}
-                                  >
-                                    {config.prefix}
-                                  </span>
-                                  <span className="flex-1 px-3 py-2.5 text-sm text-gray-400 dark:text-gray-500"></span>
-                                </div>
-                              )
-                            ) : (
-                              <div className="relative flex items-center border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 focus-within:ring-2 focus-within:ring-teal-500 focus-within:border-transparent">
+                {/* Social Links Grid - Always visible, editable in edit mode */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {Object.entries(SOCIAL_PLATFORMS)
+                    .filter(([key]) => key !== "LinkedIn")
+                    .map(([key, config]) => {
+                      const Icon = config.icon;
+                      const existingLink = socialLinks.find(
+                        (link) => link.platform === key
+                      );
+                      return (
+                        <div key={key} className="relative">
+                          <label className="block mb-1.5">
+                            <div className="flex items-center gap-2 text-sm font-medium mb-1">
+                              <Icon className={`text-lg ${config.color}`} />
+                              <span>{config.name}</span>
+                            </div>
+                          </label>
+                          {!isEditingProfile ? (
+                            existingLink ? (
+                              <a
+                                href={existingLink.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="relative flex items-center border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700/50 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors group"
+                              >
                                 <span
                                   className={`px-3 py-2.5 text-sm text-gray-500 dark:text-gray-400 font-medium ${
                                     key !== "Discord"
@@ -1064,67 +1030,17 @@ export default function Dashboard() {
                                 >
                                   {config.prefix}
                                 </span>
-                                <input
-                                  type="text"
-                                  value={socialInputs[key] || ""}
-                                  onChange={(e) =>
-                                    setSocialInputs({
-                                      ...socialInputs,
-                                      [key]: e.target.value,
-                                    })
-                                  }
-                                  onBlur={(e) => {
-                                    const value = e.target.value.trim();
-                                    if (value) {
-                                      // Save/update the link
-                                      handleAddSocialLink(key, value);
-                                    } else if (existingLink) {
-                                      // Delete the link if field is cleared
-                                      handleDeleteSocialLink(existingLink.id);
-                                    }
-                                  }}
-                                  className="flex-1 px-3 py-2.5 text-sm bg-transparent border-0 focus:outline-none focus:ring-0"
-                                />
-                              </div>
-                            )}
-                          </div>
-                        );
-                      })}
-                  </div>
-
-                  {/* LinkedIn full width at bottom */}
-                  {SOCIAL_PLATFORMS.LinkedIn && (
-                    <div className="relative mt-3">
-                      <label className="block mb-1.5">
-                        <div className="flex items-center gap-2 text-sm font-medium mb-1">
-                          <FaLinkedin
-                            className={`text-lg ${SOCIAL_PLATFORMS.LinkedIn.color}`}
-                          />
-                          <span>{SOCIAL_PLATFORMS.LinkedIn.name}</span>
-                        </div>
-                      </label>
-                      {!isEditingProfile
-                        ? (() => {
-                            const existingLink = socialLinks.find(
-                              (link) => link.platform === "LinkedIn"
-                            );
-                            return existingLink ? (
-                              <a
-                                href={existingLink.url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="relative flex items-center border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700/50 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors group"
-                              >
-                                <span className="px-3 py-2.5 text-sm text-gray-500 dark:text-gray-400 font-medium border-r border-gray-300 dark:border-gray-600">
-                                  {SOCIAL_PLATFORMS.LinkedIn.prefix}
-                                </span>
                                 <span className="flex-1 px-3 py-2.5 text-sm truncate">
                                   {existingLink.url
                                     .replace(/^https?:\/\//, "")
                                     .replace(
-                                      SOCIAL_PLATFORMS.LinkedIn.prefix,
+                                      config.baseUrl?.replace(
+                                        /^https?:\/\//,
+                                        ""
+                                      ) || "",
                                       ""
-                                    )}
+                                    )
+                                    .replace(config.prefix, "")}
                                 </span>
                                 <svg
                                   className="w-4 h-4 text-gray-400 mr-3 opacity-0 group-hover:opacity-100 transition-opacity"
@@ -1142,81 +1058,237 @@ export default function Dashboard() {
                               </a>
                             ) : (
                               <div className="relative flex items-center border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700/30">
-                                <span className="px-3 py-2.5 text-sm text-gray-500 dark:text-gray-400 font-medium border-r border-gray-300 dark:border-gray-600">
-                                  {SOCIAL_PLATFORMS.LinkedIn.prefix}
+                                <span
+                                  className={`px-3 py-2.5 text-sm text-gray-500 dark:text-gray-400 font-medium ${
+                                    key !== "Discord"
+                                      ? "border-r border-gray-300 dark:border-gray-600"
+                                      : ""
+                                  }`}
+                                >
+                                  {config.prefix}
                                 </span>
                                 <span className="flex-1 px-3 py-2.5 text-sm text-gray-400 dark:text-gray-500"></span>
                               </div>
-                            );
-                          })()
-                        : (() => {
-                            const existingLink = socialLinks.find(
-                              (link) => link.platform === "LinkedIn"
-                            );
-                            return (
-                              <div className="relative flex items-center border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 focus-within:ring-2 focus-within:ring-teal-500 focus-within:border-transparent">
-                                <span className="px-3 py-2.5 text-sm text-gray-500 dark:text-gray-400 font-medium border-r border-gray-300 dark:border-gray-600">
-                                  {SOCIAL_PLATFORMS.LinkedIn.prefix}
-                                </span>
-                                <input
-                                  type="text"
-                                  value={socialInputs.LinkedIn || ""}
-                                  onChange={(e) =>
-                                    setSocialInputs({
-                                      ...socialInputs,
-                                      LinkedIn: e.target.value,
-                                    })
+                            )
+                          ) : (
+                            <div className="relative flex items-center border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 focus-within:ring-2 focus-within:ring-teal-500 focus-within:border-transparent">
+                              <span
+                                className={`px-3 py-2.5 text-sm text-gray-500 dark:text-gray-400 font-medium ${
+                                  key !== "Discord"
+                                    ? "border-r border-gray-300 dark:border-gray-600"
+                                    : ""
+                                }`}
+                              >
+                                {config.prefix}
+                              </span>
+                              <input
+                                type="text"
+                                value={socialInputs[key] || ""}
+                                onChange={(e) =>
+                                  setSocialInputs({
+                                    ...socialInputs,
+                                    [key]: e.target.value,
+                                  })
+                                }
+                                onBlur={(e) => {
+                                  const value = e.target.value.trim();
+                                  if (value) {
+                                    // Save/update the link
+                                    handleAddSocialLink(key, value);
+                                  } else if (existingLink) {
+                                    // Delete the link if field is cleared
+                                    handleDeleteSocialLink(existingLink.id);
                                   }
-                                  onBlur={(e) => {
-                                    const value = e.target.value.trim();
-                                    if (value) {
-                                      // Save/update the link
-                                      handleAddSocialLink("LinkedIn", value);
-                                    } else if (existingLink) {
-                                      // Delete the link if field is cleared
-                                      handleDeleteSocialLink(existingLink.id);
-                                    }
-                                  }}
-                                  className="flex-1 px-3 py-2.5 text-sm bg-transparent border-0 focus:outline-none focus:ring-0"
+                                }}
+                                className="flex-1 px-3 py-2.5 text-sm bg-transparent border-0 focus:outline-none focus:ring-0"
+                              />
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                </div>
+
+                {/* LinkedIn full width at bottom */}
+                {SOCIAL_PLATFORMS.LinkedIn && (
+                  <div className="relative mt-3">
+                    <label className="block mb-1.5">
+                      <div className="flex items-center gap-2 text-sm font-medium mb-1">
+                        <FaLinkedin
+                          className={`text-lg ${SOCIAL_PLATFORMS.LinkedIn.color}`}
+                        />
+                        <span>{SOCIAL_PLATFORMS.LinkedIn.name}</span>
+                      </div>
+                    </label>
+                    {!isEditingProfile
+                      ? (() => {
+                          const existingLink = socialLinks.find(
+                            (link) => link.platform === "LinkedIn"
+                          );
+                          return existingLink ? (
+                            <a
+                              href={existingLink.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="relative flex items-center border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700/50 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors group"
+                            >
+                              <span className="px-3 py-2.5 text-sm text-gray-500 dark:text-gray-400 font-medium border-r border-gray-300 dark:border-gray-600">
+                                {SOCIAL_PLATFORMS.LinkedIn.prefix}
+                              </span>
+                              <span className="flex-1 px-3 py-2.5 text-sm truncate">
+                                {existingLink.url
+                                  .replace(/^https?:\/\//, "")
+                                  .replace(
+                                    SOCIAL_PLATFORMS.LinkedIn.prefix,
+                                    ""
+                                  )}
+                              </span>
+                              <svg
+                                className="w-4 h-4 text-gray-400 mr-3 opacity-0 group-hover:opacity-100 transition-opacity"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
                                 />
-                              </div>
-                            );
-                          })()}
-                    </div>
-                  )}
-                </div>
+                              </svg>
+                            </a>
+                          ) : (
+                            <div className="relative flex items-center border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700/30">
+                              <span className="px-3 py-2.5 text-sm text-gray-500 dark:text-gray-400 font-medium border-r border-gray-300 dark:border-gray-600">
+                                {SOCIAL_PLATFORMS.LinkedIn.prefix}
+                              </span>
+                              <span className="flex-1 px-3 py-2.5 text-sm text-gray-400 dark:text-gray-500"></span>
+                            </div>
+                          );
+                        })()
+                      : (() => {
+                          const existingLink = socialLinks.find(
+                            (link) => link.platform === "LinkedIn"
+                          );
+                          return (
+                            <div className="relative flex items-center border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 focus-within:ring-2 focus-within:ring-teal-500 focus-within:border-transparent">
+                              <span className="px-3 py-2.5 text-sm text-gray-500 dark:text-gray-400 font-medium border-r border-gray-300 dark:border-gray-600">
+                                {SOCIAL_PLATFORMS.LinkedIn.prefix}
+                              </span>
+                              <input
+                                type="text"
+                                value={socialInputs.LinkedIn || ""}
+                                onChange={(e) =>
+                                  setSocialInputs({
+                                    ...socialInputs,
+                                    LinkedIn: e.target.value,
+                                  })
+                                }
+                                onBlur={(e) => {
+                                  const value = e.target.value.trim();
+                                  if (value) {
+                                    // Save/update the link
+                                    handleAddSocialLink("LinkedIn", value);
+                                  } else if (existingLink) {
+                                    // Delete the link if field is cleared
+                                    handleDeleteSocialLink(existingLink.id);
+                                  }
+                                }}
+                                className="flex-1 px-3 py-2.5 text-sm bg-transparent border-0 focus:outline-none focus:ring-0"
+                              />
+                            </div>
+                          );
+                        })()}
+                  </div>
+                )}
               </div>
-
             </div>
+          </div>
         )}
+      </main>
 
-        {activeTab === "blocked" && (
-          <div className="max-w-7xl mx-auto px-4 py-8">
-            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6 md:p-8 border border-gray-100 dark:border-gray-700">
-              <div className="flex items-center gap-3 mb-6">
-                <div className="w-12 h-12 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center">
-                  <svg
-                    className="w-6 h-6 text-red-600 dark:text-red-400"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"
-                    />
-                  </svg>
-                </div>
-                <div>
-                  <h2 className="text-2xl font-bold">Blocked Users</h2>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">
-                    Manage users you&apos;ve blocked from your network
-                  </p>
-                </div>
+      {/* Search Modal */}
+      {showSearchModal && (
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50"
+          onClick={() => setShowSearchModal(false)}
+        >
+          <div
+            className="bg-white dark:bg-gray-900 w-full max-w-4xl mx-4 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 max-h-[85vh] overflow-hidden flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="p-5 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
+              <h3 className="text-xl font-bold">Search Users</h3>
+              <button
+                onClick={() => setShowSearchModal(false)}
+                className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800"
+                aria-label="Close"
+              >
+                <svg
+                  className="w-5 h-5"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M6 18L18 6M6 6l12 12"
+                  />
+                </svg>
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto p-5">
+              <ConnectionManager
+                onOpenUser={(u) => {
+                  setSelectedConnectionUser(u);
+                  setShowSearchModal(false);
+                }}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Blocked Users Modal */}
+      {showBlockedModal && (
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50"
+          onClick={() => setShowBlockedModal(false)}
+        >
+          <div
+            className="bg-white dark:bg-gray-900 w-full max-w-2xl mx-4 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="p-5 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
+              <div>
+                <h3 className="text-xl font-bold">Blocked Users</h3>
+                <p className="text-sm text-gray-500 dark:text-gray-400">
+                  Manage users you&apos;ve blocked from your network
+                </p>
               </div>
-
+              <button
+                onClick={() => setShowBlockedModal(false)}
+                className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800"
+                aria-label="Close"
+              >
+                <svg
+                  className="w-5 h-5"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M6 18L18 6M6 6l12 12"
+                  />
+                </svg>
+              </button>
+            </div>
+            <div className="p-5 max-h-[60vh] overflow-y-auto">
               {blockedUsers.length === 0 ? (
                 <div className="text-center py-12">
                   <div className="w-20 h-20 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -1261,15 +1333,19 @@ export default function Dashboard() {
                       >
                         <div>
                           <button
-                            onClick={() =>
+                            onClick={() => {
                               setSelectedConnectionUser({
                                 id: blockedData.blocked_id,
-                                username: blockedData.blocked_user.username || "",
+                                username:
+                                  blockedData.blocked_user.username || "",
                                 name: blockedData.blocked_user.name,
-                                preferred_name: blockedData.blocked_user.preferred_name,
-                                profile_image_url: blockedData.blocked_user.profile_image_url,
-                              })
-                            }
+                                preferred_name:
+                                  blockedData.blocked_user.preferred_name,
+                                profile_image_url:
+                                  blockedData.blocked_user.profile_image_url,
+                              });
+                              setShowBlockedModal(false);
+                            }}
                             className="font-semibold text-gray-900 dark:text-gray-100 hover:text-blue-600 dark:hover:text-blue-400 transition-colors text-left"
                           >
                             {blockedData.blocked_user.preferred_name ||
@@ -1316,8 +1392,8 @@ export default function Dashboard() {
               )}
             </div>
           </div>
-        )}
-      </main>
+        </div>
+      )}
 
       {/* Connections Modal */}
       {showConnectionsModal && (
@@ -1383,7 +1459,12 @@ export default function Dashboard() {
                       : "bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700"
                   }`}
                 >
-                  1st ({connectionUsers.filter(u => u.connection_type === "first").length})
+                  1st (
+                  {
+                    connectionUsers.filter((u) => u.connection_type === "first")
+                      .length
+                  }
+                  )
                 </button>
                 <button
                   onClick={() => setConnectionTypeFilter("one_point_five")}
@@ -1393,7 +1474,13 @@ export default function Dashboard() {
                       : "bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700"
                   }`}
                 >
-                  1.5 ({connectionUsers.filter(u => u.connection_type === "one_point_five").length})
+                  1.5 (
+                  {
+                    connectionUsers.filter(
+                      (u) => u.connection_type === "one_point_five"
+                    ).length
+                  }
+                  )
                 </button>
               </div>
             </div>
