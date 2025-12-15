@@ -485,18 +485,28 @@ export async function requestConnectionTypeUpgrade(
   connectionId: string,
   requesterId: string
 ) {
-  const { data, error } = await supabase
-    .from("connections")
-    .update({
-      upgrade_requested_type: "first",
-      upgrade_requested_by: requesterId,
-    })
-    .eq("id", connectionId)
-    .eq("status", "accepted")
-    .eq("connection_type", "one_point_five")
-    .select()
-    .single();
-  return { data, error };
+  try {
+    const res = await fetch("/api/connections/upgrade/request", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ connectionId, requesterId }),
+    });
+
+    const json = (await res.json().catch(() => ({}))) as {
+      data?: unknown;
+      error?: { message?: string };
+    };
+
+    if (!res.ok) {
+      const message =
+        json?.error?.message || "Failed to request connection upgrade.";
+      return { data: null, error: new Error(message) };
+    }
+
+    return { data: json.data ?? null, error: null };
+  } catch (error) {
+    return { data: null, error: error as Error };
+  }
 }
 
 // Cancel/unsend an upgrade request
@@ -588,4 +598,3 @@ export async function getConnectionTypeUpgradeRequests(userId: string) {
     .not("upgrade_requested_by", "eq", userId);
   return { data, error };
 }
-

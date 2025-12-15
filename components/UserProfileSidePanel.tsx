@@ -347,14 +347,21 @@ export default function UserProfileSidePanel({
     }
 
     // Check if upgrading to first connection and if user has reached limit
-    if (connection?.connection_type === "one_point_five" && connectionType === "first") {
-      const { count, error: countError } = await getFirstConnectionCount(currentUserId);
+    if (
+      connection?.connection_type === "one_point_five" &&
+      connectionType === "first"
+    ) {
+      const { count, error: countError } = await getFirstConnectionCount(
+        currentUserId
+      );
       if (countError) {
         setError("Failed to check connection limit. Please try again.");
         return;
       }
       if (count >= 100) {
-        setError("You cannot change to 1st connection. You have reached the limit of 100 first connections.");
+        setError(
+          "You cannot change to 1st connection. You have reached the limit of 100 first connections."
+        );
         return;
       }
     }
@@ -374,7 +381,12 @@ export default function UserProfileSidePanel({
 
   async function handleBlock() {
     if (isMe || blockBusy) return;
-    if (!confirm("Block this user? They won't be able to send you connection requests.")) return;
+    if (
+      !confirm(
+        "Block this user? They won't be able to send you connection requests."
+      )
+    )
+      return;
     setBlockBusy(true);
     setError(null);
     try {
@@ -446,7 +458,10 @@ export default function UserProfileSidePanel({
         connection.id,
         currentUserId
       );
-      if (e) throw e;
+      if (e) {
+        setError(e.message);
+        return;
+      }
       await refresh();
       onChanged?.();
     } catch (e) {
@@ -493,7 +508,9 @@ export default function UserProfileSidePanel({
     setChangingType(true);
     setError(null);
     try {
-      const { error: e } = await cancelConnectionTypeUpgradeRequest(connection.id);
+      const { error: e } = await cancelConnectionTypeUpgradeRequest(
+        connection.id
+      );
       if (e) throw e;
       await refresh();
       onChanged?.();
@@ -817,7 +834,7 @@ export default function UserProfileSidePanel({
                               </span>{" "}
                               {stripYearFromHowMet(connection.how_met) || "—"}
                             </div>
-                            {(parseYearFromHowMet(connection.how_met) ||
+                            {parseYearFromHowMet(connection.how_met) || (
                               <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1">
                                 {parseYearFromHowMet(connection.how_met) && (
                                   <span className="inline-flex items-center px-2 py-0.5 rounded bg-gray-100 dark:bg-gray-700 text-xs text-gray-700 dark:text-gray-200">
@@ -841,7 +858,9 @@ export default function UserProfileSidePanel({
                                   value={connectionType}
                                   onChange={(e) =>
                                     setConnectionType(
-                                      e.target.value as "first" | "one_point_five"
+                                      e.target.value as
+                                        | "first"
+                                        | "one_point_five"
                                     )
                                   }
                                 >
@@ -918,7 +937,11 @@ export default function UserProfileSidePanel({
                                   setYear(
                                     parseYearFromHowMet(connection.how_met)
                                   );
-                                  setConnectionType((connection.connection_type || "first") as "first" | "one_point_five");
+                                  setConnectionType(
+                                    (connection.connection_type || "first") as
+                                      | "first"
+                                      | "one_point_five"
+                                  );
                                   setAmendMode(true);
                                 }}
                               >
