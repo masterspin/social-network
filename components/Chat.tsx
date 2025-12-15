@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { supabase } from "@/lib/supabase/client";
 import type { RealtimeChannel } from "@supabase/supabase-js";
 
@@ -32,6 +32,24 @@ type ChatProps = {
   onDelete?: () => void;
 };
 
+function areMessagesEqual(a: Message[], b: Message[]) {
+  if (a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i += 1) {
+    const left = a[i];
+    const right = b[i];
+    if (!right) return false;
+    if (
+      left.id !== right.id ||
+      left.message !== right.message ||
+      left.sender_id !== right.sender_id ||
+      left.created_at !== right.created_at
+    ) {
+      return false;
+    }
+  }
+  return true;
+}
+
 export default function Chat({
   matchId,
   currentUserId,
@@ -44,43 +62,163 @@ export default function Chat({
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [realtimeStatus, setRealtimeStatus] = useState<string>("idle");
+  const [lastRealtimeEventAt, setLastRealtimeEventAt] = useState<string | null>(
+    null
+  );
+  const [lastPollAt, setLastPollAt] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const channelRef = useRef<RealtimeChannel | null>(null);
+  const senderCacheRef = useRef<Record<string, Message["sender"]>>({});
+
+  useEffect(() => {
+    senderCacheRef.current[otherUser.id] = {
+      id: otherUser.id,
+      username: otherUser.username,
+      name: otherUser.name,
+      preferred_name: otherUser.preferred_name,
+      profile_image_url: otherUser.profile_image_url,
+    };
+  }, [otherUser]);
+
+  useEffect(() => {
+    if (!senderCacheRef.current[currentUserId]) {
+      senderCacheRef.current[currentUserId] = {
+        id: currentUserId,
+        username: "",
+        name: "",
+        preferred_name: null,
+        profile_image_url: null,
+      };
+    }
+  }, [currentUserId]);
+
+  const applyMessages = useCallback((incoming: Message[]) => {
+    incoming.forEach((msg) => {
+      if (msg.sender) {
+        senderCacheRef.current[msg.sender.id] = msg.sender;
+      }
+    });
+    setMessages((prev) => (areMessagesEqual(prev, incoming) ? prev : incoming));
+  }, []);
+
+  const fetchMessages = useCallback(async () => {
+    const res = await fetch(
+      `/api/match/messages?match_id=${encodeURIComponent(matchId)}`
+    );
+    const json = await res.json();
+
+    if (!res.ok) {
+      throw new Error(json?.error || "Failed to load messages");
+    }
+
+    return (json.data || []) as Message[];
+  }, [matchId]);
+
+  const upsertMessage = useCallback(
+    (message: Message) => {
+      let enriched: Message = message;
+
+      if (!enriched.sender) {
+        const cached = senderCacheRef.current[enriched.sender_id];
+        if (cached) {
+          enriched = { ...enriched, sender: cached };
+        } else if (enriched.sender_id === otherUser.id) {
+          enriched = {
+            ...enriched,
+            sender: {
+              id: otherUser.id,
+              username: otherUser.username,
+              name: otherUser.name,
+              preferred_name: otherUser.preferred_name,
+              profile_image_url: otherUser.profile_image_url,
+            },
+          };
+        }
+      }
+
+      if (enriched.sender) {
+        senderCacheRef.current[enriched.sender.id] = enriched.sender;
+      }
+
+      setMessages((prev) => {
+        const existingIndex = prev.findIndex((m) => m.id === enriched.id);
+        if (existingIndex >= 0) {
+          const next = [...prev];
+          next[existingIndex] = enriched;
+          return next;
+        }
+
+        const optimisticIndex = prev.findIndex((m) => {
+          if (!m.id.startsWith("optimistic-")) return false;
+          if (m.sender_id !== enriched.sender_id) return false;
+          if (m.message.trim() !== enriched.message.trim()) return false;
+          const optimisticTime = new Date(m.created_at).getTime();
+          const enrichedTime = new Date(enriched.created_at).getTime();
+          return Math.abs(optimisticTime - enrichedTime) < 30000;
+        });
+
+        if (optimisticIndex >= 0) {
+          const next = [...prev];
+          next[optimisticIndex] = enriched;
+          next.sort(
+            (a, b) =>
+              new Date(a.created_at).getTime() -
+              new Date(b.created_at).getTime()
+          );
+          return next;
+        }
+
+        const next = [...prev, enriched];
+        next.sort(
+          (a, b) =>
+            new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+        );
+        return next;
+      });
+    },
+    [otherUser]
+  );
 
   // Scroll to bottom when messages change
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  // Load initial messages and set up real-time subscription
+  // Load initial messages
   useEffect(() => {
-    let mounted = true;
+    let cancelled = false;
 
-    async function loadMessages() {
+    const load = async () => {
+      setLoading(true);
       try {
-        const res = await fetch(
-          `/api/match/messages?match_id=${encodeURIComponent(matchId)}`
-        );
-        const json = await res.json();
-
-        if (!mounted) return;
-
-        if (!res.ok) {
-          setError(json?.error || "Failed to load messages");
-          setLoading(false);
-          return;
+        const data = await fetchMessages();
+        if (!cancelled) {
+          applyMessages(data);
+          setLastPollAt(new Date().toISOString());
+          setError(null);
         }
-
-        setMessages(json.data || []);
-        setLoading(false);
       } catch (e) {
-        if (!mounted) return;
-        setError((e as Error).message);
-        setLoading(false);
+        if (!cancelled) {
+          setError((e as Error).message);
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
       }
-    }
+    };
 
-    // Set up real-time subscription
+    load();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [fetchMessages, applyMessages]);
+
+  useEffect(() => {
+    setRealtimeStatus("connecting");
+    console.log("[match_messages] setting up channel", matchId);
     const channel = supabase
       .channel(`match_messages:${matchId}`)
       .on(
@@ -91,40 +229,87 @@ export default function Chat({
           table: "match_messages",
           filter: `match_id=eq.${matchId}`,
         },
-        async (payload) => {
-          // Fetch the full message with sender details
-          const res = await fetch(
-            `/api/match/messages?match_id=${encodeURIComponent(matchId)}`
-          );
-          const json = await res.json();
+        (payload) => {
+          console.log("[match_messages] change payload", payload);
+          setLastRealtimeEventAt(new Date().toISOString());
+          const row = payload?.new as
+            | {
+                id: string;
+                sender_id: string;
+                message: string;
+                created_at: string;
+              }
+            | undefined;
+          if (!row) return;
 
-          if (res.ok && json.data) {
-            // Find the new message
-            const newMsg = json.data.find(
-              (msg: Message) => msg.id === payload.new.id
-            );
-            if (newMsg) {
-              setMessages((prev) => {
-                // Avoid duplicates
-                if (prev.find((m) => m.id === newMsg.id)) return prev;
-                return [...prev, newMsg];
-              });
-            }
-          }
+          const senderFromCache = senderCacheRef.current[row.sender_id];
+          const fallbackSender =
+            row.sender_id === otherUser.id
+              ? {
+                  id: otherUser.id,
+                  username: otherUser.username,
+                  name: otherUser.name,
+                  preferred_name: otherUser.preferred_name,
+                  profile_image_url: otherUser.profile_image_url,
+                }
+              : senderCacheRef.current[currentUserId];
+
+          const senderInfo = senderFromCache ||
+            fallbackSender || {
+              id: row.sender_id,
+              username: "",
+              name: "",
+              preferred_name: null,
+              profile_image_url: null,
+            };
+
+          const message: Message = {
+            id: row.id,
+            sender_id: row.sender_id,
+            message: row.message,
+            created_at: row.created_at,
+            sender: senderInfo,
+          };
+
+          upsertMessage(message);
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log("[match_messages] realtime status", status);
+        setRealtimeStatus(String(status));
+        if (status === "CHANNEL_ERROR") {
+          console.error(
+            "[match_messages] realtime channel error",
+            channel.topic
+          );
+        }
+      });
 
     channelRef.current = channel;
-    loadMessages();
 
     return () => {
-      mounted = false;
       if (channelRef.current) {
         supabase.removeChannel(channelRef.current);
+        channelRef.current = null;
       }
+      setRealtimeStatus("idle");
     };
-  }, [matchId, supabase]);
+  }, [matchId, upsertMessage, otherUser, currentUserId]);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      fetchMessages()
+        .then((data) => {
+          applyMessages(data);
+          setLastPollAt(new Date().toISOString());
+        })
+        .catch((e) => {
+          console.error("[Match Messages poll]", e);
+        });
+    }, 15000);
+
+    return () => clearInterval(interval);
+  }, [fetchMessages, applyMessages]);
 
   async function sendMessage(e: React.FormEvent) {
     e.preventDefault();
@@ -132,6 +317,25 @@ export default function Chat({
 
     setSending(true);
     setError(null);
+
+    const optimisticId = `optimistic-${Date.now()}`;
+    const optimisticSender = senderCacheRef.current[currentUserId] || {
+      id: currentUserId,
+      username: "",
+      name: "",
+      preferred_name: null,
+      profile_image_url: null,
+    };
+    senderCacheRef.current[currentUserId] = optimisticSender;
+    const optimisticMessage: Message = {
+      id: optimisticId,
+      sender_id: currentUserId,
+      message: newMessage.trim(),
+      created_at: new Date().toISOString(),
+      sender: optimisticSender,
+    };
+
+    setMessages((prev) => [...prev, optimisticMessage]);
 
     try {
       const res = await fetch("/api/match/messages", {
@@ -148,14 +352,27 @@ export default function Chat({
 
       if (!res.ok) {
         setError(json?.error || "Failed to send message");
-        setSending(false);
+        setMessages((prev) => prev.filter((msg) => msg.id !== optimisticId));
         return;
       }
 
       setNewMessage("");
-      setSending(false);
+
+      if (json?.data) {
+        const responseMessage = Array.isArray(json.data)
+          ? (json.data[0] as Message | undefined)
+          : (json.data as Message | undefined);
+        if (responseMessage) {
+          setMessages((prev) =>
+            prev.map((msg) => (msg.id === optimisticId ? responseMessage : msg))
+          );
+          upsertMessage(responseMessage);
+        }
+      }
     } catch (e) {
       setError((e as Error).message);
+      setMessages((prev) => prev.filter((msg) => msg.id !== optimisticId));
+    } finally {
       setSending(false);
     }
   }
@@ -211,6 +428,22 @@ export default function Chat({
             </button>
           )}
         </div>
+      </div>
+
+      <div className="px-4 py-2 border-b border-gray-200 dark:border-gray-700 text-xs text-gray-500 flex flex-wrap gap-x-4 gap-y-1">
+        <span>Realtime: {realtimeStatus}</span>
+        <span>
+          Last realtime event:
+          {lastRealtimeEventAt
+            ? ` ${new Date(lastRealtimeEventAt).toLocaleTimeString()}`
+            : " none"}
+        </span>
+        <span>
+          Last poll:
+          {lastPollAt
+            ? ` ${new Date(lastPollAt).toLocaleTimeString()}`
+            : " none"}
+        </span>
       </div>
 
       {/* Messages */}

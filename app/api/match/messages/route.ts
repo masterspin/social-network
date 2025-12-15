@@ -5,10 +5,11 @@ import { createClient } from "@supabase/supabase-js";
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const matchId = searchParams.get("match_id");
+  const messageId = searchParams.get("message_id");
 
-  if (!matchId) {
+  if (!matchId && !messageId) {
     return NextResponse.json(
-      { error: "Missing match_id parameter" },
+      { error: "Missing match_id or message_id parameter" },
       { status: 400 }
     );
   }
@@ -28,16 +29,26 @@ export async function GET(request: Request) {
   });
 
   try {
-    const { data, error } = await admin
-      .from("match_messages")
-      .select(
-        `
+    const baseSelect = `
         *,
         sender:users!match_messages_sender_id_fkey(id, username, name, preferred_name, profile_image_url)
-      `
-      )
-      .eq("match_id", matchId)
-      .order("created_at", { ascending: true });
+      `;
+
+    let query = admin.from("match_messages").select(baseSelect);
+
+    if (matchId) {
+      query = query.eq("match_id", matchId);
+    }
+
+    if (messageId) {
+      const { data, error } = await query.eq("id", messageId).single();
+      if (error) throw error;
+      return NextResponse.json({ data }, { status: 200 });
+    }
+
+    const { data, error } = await query.order("created_at", {
+      ascending: true,
+    });
 
     if (error) throw error;
 
@@ -101,7 +112,12 @@ export async function POST(request: Request) {
         sender_id,
         message,
       })
-      .select()
+      .select(
+        `
+        *,
+        sender:users!match_messages_sender_id_fkey(id, username, name, preferred_name, profile_image_url)
+      `
+      )
       .single();
 
     if (error) throw error;
