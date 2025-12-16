@@ -239,3 +239,101 @@ CREATE TRIGGER update_connections_updated_at
   BEFORE UPDATE ON connections
   FOR EACH ROW
   EXECUTE FUNCTION update_updated_at_column();
+
+-- High-level travel itinerary feature (see migrations/add_itinerary_feature.sql for full policies)
+
+CREATE TABLE IF NOT EXISTS itineraries (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  owner_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  title TEXT NOT NULL,
+  description TEXT,
+  summary TEXT,
+  start_date TIMESTAMP WITH TIME ZONE,
+  end_date TIMESTAMP WITH TIME ZONE,
+  timezone TEXT,
+  visibility TEXT DEFAULT 'private' CHECK (visibility IN ('private', 'shared', 'public')),
+  status TEXT DEFAULT 'planning' CHECK (status IN ('planning', 'confirmed', 'completed', 'cancelled')),
+  cover_image_url TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS itinerary_travelers (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  itinerary_id UUID NOT NULL REFERENCES itineraries(id) ON DELETE CASCADE,
+  user_id UUID REFERENCES users(id) ON DELETE SET NULL,
+  email TEXT,
+  role TEXT DEFAULT 'traveler' CHECK (role IN ('owner', 'traveler', 'viewer')),
+  invitation_status TEXT DEFAULT 'pending' CHECK (invitation_status IN ('pending', 'accepted', 'declined')),
+  color_hex TEXT,
+  is_favorite BOOLEAN DEFAULT FALSE,
+  notifications_enabled BOOLEAN DEFAULT TRUE,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  CHECK (user_id IS NOT NULL OR email IS NOT NULL)
+);
+
+CREATE TABLE IF NOT EXISTS itinerary_segments (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  itinerary_id UUID NOT NULL REFERENCES itineraries(id) ON DELETE CASCADE,
+  type TEXT NOT NULL CHECK (type IN ('flight', 'lodging', 'ground', 'event', 'dining', 'cruise', 'note', 'custom')),
+  title TEXT NOT NULL,
+  description TEXT,
+  location_name TEXT,
+  location_address TEXT,
+  location_lat DOUBLE PRECISION,
+  location_lng DOUBLE PRECISION,
+  start_time TIMESTAMP WITH TIME ZONE,
+  end_time TIMESTAMP WITH TIME ZONE,
+  is_all_day BOOLEAN DEFAULT FALSE,
+  provider_name TEXT,
+  confirmation_code TEXT,
+  transport_number TEXT,
+  seat_info TEXT,
+  reminder_offset_minutes INTEGER,
+  metadata JSONB DEFAULT '{}'::JSONB,
+  cost_amount NUMERIC(12, 2),
+  cost_currency TEXT,
+  created_by UUID REFERENCES users(id) ON DELETE SET NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  CHECK (start_time IS NULL OR end_time IS NULL OR end_time >= start_time)
+);
+
+CREATE TABLE IF NOT EXISTS itinerary_checklists (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  itinerary_id UUID NOT NULL REFERENCES itineraries(id) ON DELETE CASCADE,
+  title TEXT NOT NULL,
+  created_by UUID REFERENCES users(id) ON DELETE SET NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS itinerary_tasks (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  itinerary_id UUID NOT NULL REFERENCES itineraries(id) ON DELETE CASCADE,
+  checklist_id UUID REFERENCES itinerary_checklists(id) ON DELETE CASCADE,
+  title TEXT NOT NULL,
+  notes TEXT,
+  due_at TIMESTAMP WITH TIME ZONE,
+  assignee_id UUID REFERENCES users(id) ON DELETE SET NULL,
+  status TEXT DEFAULT 'open' CHECK (status IN ('open', 'in_progress', 'done', 'cancelled')),
+  priority TEXT DEFAULT 'normal' CHECK (priority IN ('low', 'normal', 'high', 'critical')),
+  created_by UUID REFERENCES users(id) ON DELETE SET NULL,
+  completed_at TIMESTAMP WITH TIME ZONE,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS itinerary_comments (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  itinerary_id UUID NOT NULL REFERENCES itineraries(id) ON DELETE CASCADE,
+  segment_id UUID REFERENCES itinerary_segments(id) ON DELETE CASCADE,
+  author_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  body TEXT NOT NULL,
+  parent_comment_id UUID REFERENCES itinerary_comments(id) ON DELETE CASCADE,
+  is_private BOOLEAN DEFAULT FALSE,
+  is_deleted BOOLEAN DEFAULT FALSE,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);

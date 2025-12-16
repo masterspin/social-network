@@ -114,6 +114,399 @@ export type Database = {
           }
         ];
       };
+      itineraries: {
+        Row: {
+          cover_image_url: string | null;
+          created_at: string | null;
+          description: string | null;
+          end_date: string | null;
+          id: string;
+          owner_id: string;
+          start_date: string | null;
+          status: string | null;
+          summary: string | null;
+          timezone: string | null;
+          title: string;
+          updated_at: string | null;
+          visibility: string | null;
+        };
+        Insert: {
+          cover_image_url?: string | null;
+          created_at?: string | null;
+          description?: string | null;
+          end_date?: string | null;
+          id?: string;
+          owner_id: string;
+          start_date?: string | null;
+          status?: string | null;
+          summary?: string | null;
+          timezone?: string | null;
+          title: string;
+          updated_at?: string | null;
+          visibility?: string | null;
+        };
+        Update: {
+          cover_image_url?: string | null;
+          created_at?: string | null;
+          description?: string | null;
+          end_date?: string | null;
+          id?: string;
+          owner_id?: string;
+          start_date?: string | null;
+          status?: string | null;
+          summary?: string | null;
+          timezone?: string | null;
+          title?: string;
+          updated_at?: string | null;
+          visibility?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "itineraries_owner_id_fkey";
+            columns: ["owner_id"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          }
+        ];
+      };
+      itinerary_checklists: {
+        Row: {
+          created_at: string | null;
+          created_by: string | null;
+          id: string;
+          itinerary_id: string;
+          title: string;
+          updated_at: string | null;
+        };
+        Insert: {
+          created_at?: string | null;
+          created_by?: string | null;
+          id?: string;
+          itinerary_id: string;
+          title: string;
+          updated_at?: string | null;
+        };
+        Update: {
+          created_at?: string | null;
+          created_by?: string | null;
+          id?: string;
+          itinerary_id?: string;
+          title?: string;
+          updated_at?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "itinerary_checklists_created_by_fkey";
+            columns: ["created_by"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "itinerary_checklists_itinerary_id_fkey";
+            columns: ["itinerary_id"];
+            isOneToOne: false;
+            referencedRelation: "itineraries";
+            referencedColumns: ["id"];
+          }
+        ];
+      };
+      itinerary_comments: {
+        Row: {
+          author_id: string;
+          body: string;
+          created_at: string | null;
+          id: string;
+          is_deleted: boolean | null;
+          is_private: boolean | null;
+          itinerary_id: string;
+          parent_comment_id: string | null;
+          segment_id: string | null;
+          updated_at: string | null;
+        };
+        Insert: {
+          author_id: string;
+          body: string;
+          created_at?: string | null;
+          id?: string;
+          is_deleted?: boolean | null;
+          is_private?: boolean | null;
+          itinerary_id: string;
+          parent_comment_id?: string | null;
+          segment_id?: string | null;
+          updated_at?: string | null;
+        };
+        Update: {
+          author_id?: string;
+          body?: string;
+          created_at?: string | null;
+          id?: string;
+          is_deleted?: boolean | null;
+          is_private?: boolean | null;
+          itinerary_id?: string;
+          parent_comment_id?: string | null;
+          segment_id?: string | null;
+          updated_at?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "itinerary_comments_author_id_fkey";
+            columns: ["author_id"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "itinerary_comments_itinerary_id_fkey";
+            columns: ["itinerary_id"];
+            isOneToOne: false;
+            referencedRelation: "itineraries";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "itinerary_comments_parent_comment_id_fkey";
+            columns: ["parent_comment_id"];
+            isOneToOne: false;
+            referencedRelation: "itinerary_comments";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "itinerary_comments_segment_id_fkey";
+            columns: ["segment_id"];
+            isOneToOne: false;
+            referencedRelation: "itinerary_segments";
+            referencedColumns: ["id"];
+          }
+        ];
+      };
+      itinerary_segments: {
+        Row: {
+          confirmation_code: string | null;
+          cost_amount: number | null;
+          cost_currency: string | null;
+          created_at: string | null;
+          created_by: string | null;
+          description: string | null;
+          end_time: string | null;
+          id: string;
+          is_all_day: boolean | null;
+          itinerary_id: string;
+          location_address: string | null;
+          location_lat: number | null;
+          location_lng: number | null;
+          location_name: string | null;
+          metadata: Json | null;
+          provider_name: string | null;
+          reminder_offset_minutes: number | null;
+          seat_info: string | null;
+          start_time: string | null;
+          title: string;
+          transport_number: string | null;
+          type: string;
+          updated_at: string | null;
+        };
+        Insert: {
+          confirmation_code?: string | null;
+          cost_amount?: number | null;
+          cost_currency?: string | null;
+          created_at?: string | null;
+          created_by?: string | null;
+          description?: string | null;
+          end_time?: string | null;
+          id?: string;
+          is_all_day?: boolean | null;
+          itinerary_id: string;
+          location_address?: string | null;
+          location_lat?: number | null;
+          location_lng?: number | null;
+          location_name?: string | null;
+          metadata?: Json | null;
+          provider_name?: string | null;
+          reminder_offset_minutes?: number | null;
+          seat_info?: string | null;
+          start_time?: string | null;
+          title: string;
+          transport_number?: string | null;
+          type: string;
+          updated_at?: string | null;
+        };
+        Update: {
+          confirmation_code?: string | null;
+          cost_amount?: number | null;
+          cost_currency?: string | null;
+          created_at?: string | null;
+          created_by?: string | null;
+          description?: string | null;
+          end_time?: string | null;
+          id?: string;
+          is_all_day?: boolean | null;
+          itinerary_id?: string;
+          location_address?: string | null;
+          location_lat?: number | null;
+          location_lng?: number | null;
+          location_name?: string | null;
+          metadata?: Json | null;
+          provider_name?: string | null;
+          reminder_offset_minutes?: number | null;
+          seat_info?: string | null;
+          start_time?: string | null;
+          title?: string;
+          transport_number?: string | null;
+          type?: string;
+          updated_at?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "itinerary_segments_created_by_fkey";
+            columns: ["created_by"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "itinerary_segments_itinerary_id_fkey";
+            columns: ["itinerary_id"];
+            isOneToOne: false;
+            referencedRelation: "itineraries";
+            referencedColumns: ["id"];
+          }
+        ];
+      };
+      itinerary_tasks: {
+        Row: {
+          assignee_id: string | null;
+          checklist_id: string | null;
+          completed_at: string | null;
+          created_at: string | null;
+          created_by: string | null;
+          due_at: string | null;
+          id: string;
+          itinerary_id: string;
+          notes: string | null;
+          priority: string | null;
+          status: string | null;
+          title: string;
+          updated_at: string | null;
+        };
+        Insert: {
+          assignee_id?: string | null;
+          checklist_id?: string | null;
+          completed_at?: string | null;
+          created_at?: string | null;
+          created_by?: string | null;
+          due_at?: string | null;
+          id?: string;
+          itinerary_id: string;
+          notes?: string | null;
+          priority?: string | null;
+          status?: string | null;
+          title: string;
+          updated_at?: string | null;
+        };
+        Update: {
+          assignee_id?: string | null;
+          checklist_id?: string | null;
+          completed_at?: string | null;
+          created_at?: string | null;
+          created_by?: string | null;
+          due_at?: string | null;
+          id?: string;
+          itinerary_id?: string;
+          notes?: string | null;
+          priority?: string | null;
+          status?: string | null;
+          title?: string;
+          updated_at?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "itinerary_tasks_assignee_id_fkey";
+            columns: ["assignee_id"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "itinerary_tasks_checklist_id_fkey";
+            columns: ["checklist_id"];
+            isOneToOne: false;
+            referencedRelation: "itinerary_checklists";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "itinerary_tasks_created_by_fkey";
+            columns: ["created_by"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "itinerary_tasks_itinerary_id_fkey";
+            columns: ["itinerary_id"];
+            isOneToOne: false;
+            referencedRelation: "itineraries";
+            referencedColumns: ["id"];
+          }
+        ];
+      };
+      itinerary_travelers: {
+        Row: {
+          color_hex: string | null;
+          created_at: string | null;
+          email: string | null;
+          id: string;
+          invitation_status: string | null;
+          itinerary_id: string;
+          is_favorite: boolean | null;
+          notifications_enabled: boolean | null;
+          role: string | null;
+          updated_at: string | null;
+          user_id: string | null;
+        };
+        Insert: {
+          color_hex?: string | null;
+          created_at?: string | null;
+          email?: string | null;
+          id?: string;
+          invitation_status?: string | null;
+          itinerary_id: string;
+          is_favorite?: boolean | null;
+          notifications_enabled?: boolean | null;
+          role?: string | null;
+          updated_at?: string | null;
+          user_id?: string | null;
+        };
+        Update: {
+          color_hex?: string | null;
+          created_at?: string | null;
+          email?: string | null;
+          id?: string;
+          invitation_status?: string | null;
+          itinerary_id?: string;
+          is_favorite?: boolean | null;
+          notifications_enabled?: boolean | null;
+          role?: string | null;
+          updated_at?: string | null;
+          user_id?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "itinerary_travelers_itinerary_id_fkey";
+            columns: ["itinerary_id"];
+            isOneToOne: false;
+            referencedRelation: "itineraries";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "itinerary_travelers_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          }
+        ];
+      };
       social_links: {
         Row: {
           created_at: string | null;
