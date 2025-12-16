@@ -88,8 +88,11 @@ export async function POST(request: Request) {
 
       if (hasActiveChat) {
         return NextResponse.json(
-          { error: "These users are already matched" },
-          { status: 400 }
+          {
+            match_id: existingMatch.id,
+            message: "Match created successfully!",
+          },
+          { status: 200 }
         );
       }
 
@@ -111,15 +114,28 @@ export async function POST(request: Request) {
     if (error) {
       if (error.code === "23505") {
         // Unique constraint violation
+        const { data: conflictMatch } = await admin
+          .from("matches")
+          .select("id")
+          .eq("user1_id", lowerUserId)
+          .eq("user2_id", higherUserId)
+          .maybeSingle();
+
         return NextResponse.json(
-          { error: "These users are already matched" },
-          { status: 400 }
+          {
+            match_id: conflictMatch?.id ?? null,
+            message: "Match created successfully!",
+          },
+          { status: 200 }
         );
       }
       throw error;
     }
 
-    return NextResponse.json({ match_id: data }, { status: 201 });
+    return NextResponse.json(
+      { match_id: data, message: "Match created successfully!" },
+      { status: 201 }
+    );
   } catch (error) {
     console.error("[Match API] Error:", error);
     return NextResponse.json(
