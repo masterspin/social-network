@@ -28,17 +28,37 @@ export async function POST(request: Request) {
       );
     }
 
-    // Update the chat status to inactive
-    const { error } = await admin
-      .from("match_chats")
-      .update({
-        is_active: false,
-        deleted_at: new Date().toISOString(),
-      })
-      .eq("match_id", match_id)
-      .eq("user_id", user_id);
+    const { data: match, error: matchFetchError } = await admin
+      .from("matches")
+      .select("id, user1_id, user2_id")
+      .eq("id", match_id)
+      .maybeSingle();
 
-    if (error) throw error;
+    if (matchFetchError) throw matchFetchError;
+
+    if (!match) {
+      return NextResponse.json(
+        { error: "Match not found" },
+        { status: 404 }
+      );
+    }
+
+    const isParticipant =
+      match.user1_id === user_id || match.user2_id === user_id;
+
+    if (!isParticipant) {
+      return NextResponse.json(
+        { error: "User is not a participant in this chat" },
+        { status: 403 }
+      );
+    }
+
+    const { error: deleteMatchError } = await admin
+      .from("matches")
+      .delete()
+      .eq("id", match_id);
+
+    if (deleteMatchError) throw deleteMatchError;
 
     return NextResponse.json(
       { message: "Chat deleted successfully" },

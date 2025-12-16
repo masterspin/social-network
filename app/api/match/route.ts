@@ -57,11 +57,51 @@ export async function POST(request: Request) {
     if (!user1Connected || !user2Connected) {
       return NextResponse.json(
         {
-          error:
-            "Both users must be first connections of the matchmaker",
+          error: "Both users must be first connections of the matchmaker",
         },
         { status: 400 }
       );
+    }
+
+    // Ensure these users can be re-matched if a previous chat was deleted
+    const [lowerUserId, higherUserId] =
+      user1_id < user2_id ? [user1_id, user2_id] : [user2_id, user1_id];
+
+    const {
+      data: existingMatch,
+      error: existingMatchError,
+    } = await admin
+      .from("matches")
+      .select("id")
+      .eq("user1_id", lowerUserId)
+      .eq("user2_id", higherUserId)
+      .maybeSingle();
+
+    if (existingMatchError) throw existingMatchError;
+
+    if (existingMatch) {
+      const { data: chatStatuses, error: chatStatusesError } = await admin
+        .from("match_chats")
+        .select("is_active")
+        .eq("match_id", existingMatch.id);
+
+      if (chatStatusesError) throw chatStatusesError;
+
+      const hasActiveChat = chatStatuses?.some((row) => row.is_active);
+
+      if (hasActiveChat) {
+        return NextResponse.json(
+          { error: "These users are already matched" },
+          { status: 400 }
+        );
+      }
+
+      const { error: deleteExistingError } = await admin
+        .from("matches")
+        .delete()
+        .eq("id", existingMatch.id);
+
+      if (deleteExistingError) throw deleteExistingError;
     }
 
     // Call the stored function to create the match
@@ -145,20 +185,22 @@ export async function GET(request: Request) {
     if (chatError) throw chatError;
 
     // Combine data
-    const result = matches?.map((match) => {
-      const chatStatus = chatStatuses?.find((c) => c.match_id === match.id);
-      const otherUser =
-        match.user1_id === userId ? match.user2 : match.user1;
+    const mappedMatches =
+      matches?.map((match) => {
+        const chatStatus = chatStatuses?.find((c) => c.match_id === match.id);
+        const otherUser = match.user1_id === userId ? match.user2 : match.user1;
 
-      return {
-        id: match.id,
-        matchmaker: match.matchmaker,
-        other_user: otherUser,
-        is_active: chatStatus?.is_active || false,
-        deleted_at: chatStatus?.deleted_at,
-        created_at: match.created_at,
-      };
-    });
+        return {
+          id: match.id,
+          matchmaker: match.matchmaker,
+          other_user: otherUser,
+          is_active: chatStatus?.is_active || false,
+          deleted_at: chatStatus?.deleted_at,
+          created_at: match.created_at,
+        };
+      }) ?? [];
+
+    const result = mappedMatches.filter((match) => match.is_active);
 
     return NextResponse.json({ data: result }, { status: 200 });
   } catch (error) {
