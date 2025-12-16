@@ -122,24 +122,8 @@ export default function MatchesList({ onClose }: MatchesListProps) {
     );
   }
 
-  // If a match is selected, show the chat
-  if (selectedMatch && currentUserId) {
-    return (
-      <div className="h-[600px]">
-        <Chat
-          matchId={selectedMatch.id}
-          currentUserId={currentUserId}
-          otherUser={selectedMatch.other_user}
-          onClose={() => setSelectedMatch(null)}
-          onDelete={() => deleteChat(selectedMatch.id)}
-        />
-      </div>
-    );
-  }
-
-  // Otherwise show the list of matches
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 border border-gray-200 dark:border-gray-700">
+    <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 border border-gray-200 dark:border-gray-700 relative">
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
           Your Matches
@@ -241,6 +225,26 @@ export default function MatchesList({ onClose }: MatchesListProps) {
               </div>
             </div>
           ))}
+        </div>
+      )}
+
+      {selectedMatch && currentUserId && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
+          onClick={() => setSelectedMatch(null)}
+        >
+          <div
+            className="relative w-full max-w-3xl h-[600px] mx-4"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <Chat
+              matchId={selectedMatch.id}
+              currentUserId={currentUserId}
+              otherUser={selectedMatch.other_user}
+              onClose={() => setSelectedMatch(null)}
+              onDelete={() => deleteChat(selectedMatch.id)}
+            />
+          </div>
         </div>
       )}
     </div>

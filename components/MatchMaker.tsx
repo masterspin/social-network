@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { getCurrentUser } from "@/lib/supabase/queries";
 
 type User = {
@@ -24,6 +24,8 @@ export default function MatchMaker({
   const [connections, setConnections] = useState<User[]>([]);
   const [selectedUser1, setSelectedUser1] = useState<string>("");
   const [selectedUser2, setSelectedUser2] = useState<string>("");
+  const [searchTerm1, setSearchTerm1] = useState("");
+  const [searchTerm2, setSearchTerm2] = useState("");
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
   const [message, setMessage] = useState<{
@@ -163,46 +165,41 @@ export default function MatchMaker({
           You need at least 2 first connections to create a match.
         </div>
       ) : (
-        <form onSubmit={createMatch} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Select first person
-            </label>
-            <select
-              value={selectedUser1}
-              onChange={(e) => setSelectedUser1(e.target.value)}
-              required
-              className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-            >
-              <option value="">Choose a connection...</option>
-              {connections.map((conn) => (
-                <option key={conn.id} value={conn.id}>
-                  {conn.preferred_name || conn.name} (@{conn.username})
-                </option>
-              ))}
-            </select>
-          </div>
+        <form onSubmit={createMatch} className="space-y-6">
+          <SearchablePicker
+            label="Select first person"
+            searchTerm={searchTerm1}
+            onSearchChange={setSearchTerm1}
+            connections={connections}
+            selectedId={selectedUser1}
+            onSelect={(id) => {
+              setSelectedUser1(id);
+              setSearchTerm1("");
+              if (id === selectedUser2) {
+                setSelectedUser2("");
+              }
+            }}
+            excludeIds={selectedUser2 ? [selectedUser2] : []}
+          />
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Select second person
-            </label>
-            <select
-              value={selectedUser2}
-              onChange={(e) => setSelectedUser2(e.target.value)}
-              required
-              className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-            >
-              <option value="">Choose a connection...</option>
-              {connections
-                .filter((conn) => conn.id !== selectedUser1)
-                .map((conn) => (
-                  <option key={conn.id} value={conn.id}>
-                    {conn.preferred_name || conn.name} (@{conn.username})
-                  </option>
-                ))}
-            </select>
-          </div>
+          <SearchablePicker
+            label="Select second person"
+            searchTerm={searchTerm2}
+            onSearchChange={setSearchTerm2}
+            connections={connections}
+            selectedId={selectedUser2}
+            onSelect={(id) => {
+              setSelectedUser2(id);
+              setSearchTerm2("");
+            }}
+            excludeIds={selectedUser1 ? [selectedUser1] : []}
+            disabled={!selectedUser1}
+            helperText={
+              !selectedUser1
+                ? "Select the first person before choosing a second"
+                : undefined
+            }
+          />
 
           <div className="flex gap-2">
             <button
@@ -223,6 +220,127 @@ export default function MatchMaker({
             )}
           </div>
         </form>
+      )}
+    </div>
+  );
+}
+
+type SearchablePickerProps = {
+  label: string;
+  searchTerm: string;
+  onSearchChange: (value: string) => void;
+  connections: User[];
+  selectedId: string;
+  onSelect: (id: string) => void;
+  excludeIds?: string[];
+  disabled?: boolean;
+  helperText?: string;
+};
+
+function SearchablePicker({
+  label,
+  searchTerm,
+  onSearchChange,
+  connections,
+  selectedId,
+  onSelect,
+  excludeIds = [],
+  disabled = false,
+  helperText,
+}: SearchablePickerProps) {
+  const normalizedSearch = searchTerm.trim().toLowerCase();
+  const hasSearch = normalizedSearch.length > 0;
+
+  const availableConnections = useMemo(() => {
+    return connections.filter((conn) => !excludeIds.includes(conn.id));
+  }, [connections, excludeIds]);
+
+  const filteredConnections = useMemo(() => {
+    if (!hasSearch) {
+      return [];
+    }
+
+    return availableConnections
+      .filter((conn) => {
+        const target = `${conn.preferred_name || conn.name} ${conn.username}`
+          .trim()
+          .toLowerCase();
+        return target.includes(normalizedSearch);
+      })
+      .slice(0, 20);
+  }, [availableConnections, hasSearch, normalizedSearch]);
+
+  const selectedConnection = useMemo(
+    () => availableConnections.find((conn) => conn.id === selectedId),
+    [availableConnections, selectedId]
+  );
+
+  return (
+    <div className={disabled ? "opacity-60" : undefined}>
+      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+        {label}
+      </label>
+      <input
+        type="text"
+        value={searchTerm}
+        onChange={(event) => onSearchChange(event.target.value)}
+        disabled={disabled}
+        placeholder="Search by name or @username"
+        className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+      />
+      {helperText && (
+        <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+          {helperText}
+        </p>
+      )}
+
+      {hasSearch && (
+        <div className="mt-3 max-h-56 overflow-y-auto rounded-lg border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-900/40">
+          {filteredConnections.length === 0 ? (
+            <div className="px-4 py-3 text-sm text-gray-500">
+              No matches found. Try a different search.
+            </div>
+          ) : (
+            filteredConnections.map((conn) => {
+              const displayName = conn.preferred_name || conn.name;
+              const isSelected = selectedId === conn.id;
+
+              return (
+                <button
+                  key={conn.id}
+                  type="button"
+                  disabled={disabled}
+                  onClick={() => onSelect(conn.id)}
+                  className={`w-full text-left px-4 py-2 text-sm transition-colors ${
+                    isSelected
+                      ? "bg-blue-600 text-white"
+                      : "hover:bg-blue-50 dark:hover:bg-blue-900/40 text-gray-700 dark:text-gray-200"
+                  }`}
+                >
+                  <span className="block font-medium">{displayName}</span>
+                  <span className="text-xs opacity-80">@{conn.username}</span>
+                </button>
+              );
+            })
+          )}
+        </div>
+      )}
+
+      {selectedConnection && (
+        <div className="mt-3 flex items-center justify-between rounded-lg border border-blue-200 dark:border-blue-700 bg-blue-50 dark:bg-blue-900/30 px-3 py-2 text-sm text-blue-700 dark:text-blue-200">
+          <span>
+            Selected:{" "}
+            {selectedConnection.preferred_name || selectedConnection.name} (@
+            {selectedConnection.username})
+          </span>
+          <button
+            type="button"
+            onClick={() => onSelect("")}
+            className="text-xs font-semibold uppercase tracking-wide text-blue-700 hover:text-blue-900 dark:text-blue-200 dark:hover:text-white"
+          >
+            Clear
+          </button>
+        </div>
       )}
     </div>
   );

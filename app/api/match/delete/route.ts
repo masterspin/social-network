@@ -37,10 +37,7 @@ export async function POST(request: Request) {
     if (matchFetchError) throw matchFetchError;
 
     if (!match) {
-      return NextResponse.json(
-        { error: "Match not found" },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: "Match not found" }, { status: 404 });
     }
 
     const isParticipant =

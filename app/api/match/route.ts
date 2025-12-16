@@ -67,10 +67,7 @@ export async function POST(request: Request) {
     const [lowerUserId, higherUserId] =
       user1_id < user2_id ? [user1_id, user2_id] : [user2_id, user1_id];
 
-    const {
-      data: existingMatch,
-      error: existingMatchError,
-    } = await admin
+    const { data: existingMatch, error: existingMatchError } = await admin
       .from("matches")
       .select("id")
       .eq("user1_id", lowerUserId)
