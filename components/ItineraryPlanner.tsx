@@ -514,7 +514,11 @@ export default function ItineraryPlanner() {
         </div>
       )}
 
-      <div className="relative min-h-[32rem]">
+      <div
+        className={`relative z-0 transition-[margin,padding] duration-300 ease-in-out ${
+          sidebarOpen ? "lg:pl-[21rem] lg:pr-10 xl:pr-14" : "lg:px-10 xl:px-14"
+        }`}
+      >
         {sidebarOpen && (
           <div
             className="absolute inset-0 z-10 bg-gray-900/40 backdrop-blur-sm transition-opacity duration-300 lg:hidden"
@@ -826,20 +830,6 @@ export default function ItineraryPlanner() {
             sidebarOpen ? "lg:pl-[21rem]" : "lg:pl-0"
           }`}
         >
-          {selectedSummary && (
-            <div className="mb-6 text-sm text-gray-500 dark:text-gray-400">
-              <p className="font-semibold text-gray-900 dark:text-white">
-                {selectedSummary.title}
-              </p>
-              <p>
-                {formatDateRange(
-                  selectedSummary.start_date,
-                  selectedSummary.end_date
-                )}
-              </p>
-            </div>
-          )}
-
           <div className="space-y-6">
             {detailLoading && (
               <div className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm p-6 text-sm text-gray-500 dark:text-gray-400">
@@ -930,7 +920,7 @@ export default function ItineraryPlanner() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+                <div className="space-y-6">
                   <div className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm p-6">
                     <div className="flex items-center justify-between">
                       <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
@@ -1006,135 +996,129 @@ export default function ItineraryPlanner() {
                     </div>
                   </div>
 
-                  <div className="space-y-6">
-                    <div className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm p-6">
-                      <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-                        Travelers & roles
-                      </h3>
-                      <div className="mt-4 grid grid-cols-1 gap-3">
-                        {detail.travelers?.map((traveler, index) => {
-                          const displayName = travelerDisplayName(
-                            traveler,
-                            usersById
-                          );
-                          const key =
-                            traveler.id ||
-                            traveler.user_id ||
-                            `${traveler.itinerary_id || "traveler"}-${index}`;
-                          return (
-                            <div
-                              key={key}
-                              className="flex items-center justify-between rounded-xl border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-950/40 px-4 py-3"
-                            >
-                              <div className="flex items-center gap-3">
-                                <div
-                                  className="h-9 w-9 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-xs font-semibold text-gray-700 dark:text-gray-200"
-                                  style={{
-                                    backgroundColor:
-                                      traveler.color_hex || undefined,
-                                  }}
-                                >
-                                  {avatarInitials(displayName)}
-                                </div>
-                                <div>
-                                  <p className="text-sm font-medium text-gray-900 dark:text-white">
-                                    {displayName}
-                                  </p>
-                                  <p className="text-xs text-gray-500 dark:text-gray-400">
-                                    {traveler.role || "Traveler"}
-                                  </p>
-                                </div>
-                              </div>
-                              <div className="text-right text-xs text-gray-500 dark:text-gray-400 space-y-1">
-                                {traveler.email && <p>{traveler.email}</p>}
-                                <p>
-                                  {traveler.invitation_status
-                                    ? traveler.invitation_status
-                                    : "pending"}
-                                </p>
-                                <p>
-                                  Alerts:{" "}
-                                  {traveler.notifications_enabled
-                                    ? "on"
-                                    : "off"}
-                                </p>
-                              </div>
-                            </div>
-                          );
-                        })}
-                        {!detail.travelers?.length && (
-                          <div className="rounded-xl border border-dashed border-gray-300 dark:border-gray-700 px-4 py-6 text-center text-sm text-gray-500 dark:text-gray-400">
-                            Only you have access for now.
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
-                    <div className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm p-6">
-                      <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-                        Checklists
-                      </h3>
-                      <div className="mt-4 space-y-4">
-                        {!detail.checklists?.length && (
-                          <div className="rounded-xl border border-dashed border-gray-300 dark:border-gray-700 px-4 py-6 text-center text-sm text-gray-500 dark:text-gray-400">
-                            Build mission checklists to coordinate sourcing,
-                            tickets, and concierge requests.
-                          </div>
-                        )}
-                        {detail.checklists?.map((checklist) => (
+                  <div className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm p-6">
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                      Travelers & roles
+                    </h3>
+                    <div className="mt-4 grid grid-cols-1 gap-3">
+                      {detail.travelers?.map((traveler, index) => {
+                        const displayName = travelerDisplayName(
+                          traveler,
+                          usersById
+                        );
+                        const key =
+                          traveler.id ||
+                          traveler.user_id ||
+                          `${traveler.itinerary_id || "traveler"}-${index}`;
+                        return (
                           <div
-                            key={checklist.id}
-                            className="rounded-xl border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-950/40 px-4 py-3"
+                            key={key}
+                            className="flex items-center justify-between rounded-xl border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-950/40 px-4 py-3"
                           >
-                            <div className="flex items-center justify-between">
-                              <p className="text-sm font-semibold text-gray-900 dark:text-white">
-                                {checklist.title}
-                              </p>
-                              <span className="text-xs text-gray-500 dark:text-gray-400">
-                                {checklist.tasks?.length ?? 0} task
-                                {(checklist.tasks?.length ?? 0) === 1
-                                  ? ""
-                                  : "s"}
-                              </span>
+                            <div className="flex items-center gap-3">
+                              <div
+                                className="h-9 w-9 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-xs font-semibold text-gray-700 dark:text-gray-200"
+                                style={{
+                                  backgroundColor:
+                                    traveler.color_hex || undefined,
+                                }}
+                              >
+                                {avatarInitials(displayName)}
+                              </div>
+                              <div>
+                                <p className="text-sm font-medium text-gray-900 dark:text-white">
+                                  {displayName}
+                                </p>
+                                <p className="text-xs text-gray-500 dark:text-gray-400">
+                                  {traveler.role || "Traveler"}
+                                </p>
+                              </div>
                             </div>
-                            <ul className="mt-3 space-y-2">
-                              {checklist.tasks?.map((task) => (
-                                <li
-                                  key={task.id}
-                                  className="flex items-start justify-between text-sm text-gray-600 dark:text-gray-300"
-                                >
-                                  <div>
-                                    <p className="font-medium text-gray-900 dark:text-white">
-                                      {task.title}
-                                    </p>
-                                    {task.notes && (
-                                      <p className="text-xs text-gray-500 dark:text-gray-400">
-                                        {task.notes}
-                                      </p>
-                                    )}
-                                  </div>
-                                  <div className="text-right text-xs text-gray-500 dark:text-gray-400 space-y-1">
-                                    {task.assignee?.preferred_name ||
-                                    task.assignee?.name ||
-                                    task.assignee?.username ? (
-                                      <p>
-                                        Owner:{" "}
-                                        {task.assignee?.preferred_name ||
-                                          task.assignee?.name ||
-                                          task.assignee?.username}
-                                      </p>
-                                    ) : null}
-                                    {task.due_at && (
-                                      <p>Due {formatDate(task.due_at)}</p>
-                                    )}
-                                    {task.status && <p>{task.status}</p>}
-                                  </div>
-                                </li>
-                              ))}
-                            </ul>
+                            <div className="text-right text-xs text-gray-500 dark:text-gray-400 space-y-1">
+                              {traveler.email && <p>{traveler.email}</p>}
+                              <p>
+                                {traveler.invitation_status
+                                  ? traveler.invitation_status
+                                  : "pending"}
+                              </p>
+                              <p>
+                                Alerts:{" "}
+                                {traveler.notifications_enabled ? "on" : "off"}
+                              </p>
+                            </div>
                           </div>
-                        ))}
-                      </div>
+                        );
+                      })}
+                      {!detail.travelers?.length && (
+                        <div className="rounded-xl border border-dashed border-gray-300 dark:border-gray-700 px-4 py-6 text-center text-sm text-gray-500 dark:text-gray-400">
+                          Only you have access for now.
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm p-6">
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                      Checklists
+                    </h3>
+                    <div className="mt-4 space-y-4">
+                      {!detail.checklists?.length && (
+                        <div className="rounded-xl border border-dashed border-gray-300 dark:border-gray-700 px-4 py-6 text-center text-sm text-gray-500 dark:text-gray-400">
+                          Build mission checklists to coordinate sourcing,
+                          tickets, and concierge requests.
+                        </div>
+                      )}
+                      {detail.checklists?.map((checklist) => (
+                        <div
+                          key={checklist.id}
+                          className="rounded-xl border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-950/40 px-4 py-3"
+                        >
+                          <div className="flex items-center justify-between">
+                            <p className="text-sm font-semibold text-gray-900 dark:text-white">
+                              {checklist.title}
+                            </p>
+                            <span className="text-xs text-gray-500 dark:text-gray-400">
+                              {checklist.tasks?.length ?? 0} task
+                              {(checklist.tasks?.length ?? 0) === 1 ? "" : "s"}
+                            </span>
+                          </div>
+                          <ul className="mt-3 space-y-2">
+                            {checklist.tasks?.map((task) => (
+                              <li
+                                key={task.id}
+                                className="flex items-start justify-between text-sm text-gray-600 dark:text-gray-300"
+                              >
+                                <div>
+                                  <p className="font-medium text-gray-900 dark:text-white">
+                                    {task.title}
+                                  </p>
+                                  {task.notes && (
+                                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                                      {task.notes}
+                                    </p>
+                                  )}
+                                </div>
+                                <div className="text-right text-xs text-gray-500 dark:text-gray-400 space-y-1">
+                                  {task.assignee?.preferred_name ||
+                                  task.assignee?.name ||
+                                  task.assignee?.username ? (
+                                    <p>
+                                      Owner:{" "}
+                                      {task.assignee?.preferred_name ||
+                                        task.assignee?.name ||
+                                        task.assignee?.username}
+                                    </p>
+                                  ) : null}
+                                  {task.due_at && (
+                                    <p>Due {formatDate(task.due_at)}</p>
+                                  )}
+                                  {task.status && <p>{task.status}</p>}
+                                </div>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      ))}
                     </div>
                   </div>
                 </div>
