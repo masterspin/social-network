@@ -178,6 +178,9 @@ export default function ItineraryPlanner() {
   );
   const [creating, setCreating] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [activeTab, setActiveTab] = useState<"itinerary" | "travelers">(
+    "itinerary"
+  );
   const [feedback, setFeedback] = useState<{
     type: "success" | "error";
     text: string;
@@ -934,156 +937,154 @@ export default function ItineraryPlanner() {
                   </div>
                 </div>
 
-                <div className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm p-6">
-                  <div className="grid gap-10 lg:grid-cols-[1.7fr,1fr]">
-                    <section>
-                      <div className="flex items-start justify-between gap-3">
-                        <div>
-                          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-                            Segments timeline
-                          </h3>
-                          <p className="text-sm text-gray-500 dark:text-gray-400">
-                            Curate logistics and highlights in chronological
-                            order.
-                          </p>
-                        </div>
-                        <span className="text-sm text-gray-500 dark:text-gray-400">
-                          {segmentCount} scheduled
+                {/* Tab Navigation */}
+                <div className="border-b border-gray-200 dark:border-gray-800">
+                  <nav className="flex gap-1" aria-label="Tabs">
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab("itinerary")}
+                      className={`px-4 py-2.5 text-sm font-medium rounded-t-lg transition-colors ${
+                        activeTab === "itinerary"
+                          ? "bg-white dark:bg-gray-900 text-blue-600 dark:text-blue-400 border border-b-0 border-gray-200 dark:border-gray-800 -mb-px"
+                          : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
+                      }`}
+                    >
+                      <span className="flex items-center gap-2">
+                        <svg
+                          className="h-4 w-4"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                          strokeWidth={1.5}
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5"
+                          />
+                        </svg>
+                        Itinerary
+                        <span className="rounded-full bg-gray-100 dark:bg-gray-800 px-2 py-0.5 text-xs">
+                          {segmentCount}
                         </span>
-                      </div>
-                      <div className="mt-5 space-y-4">
-                        {!segmentCount && (
-                          <div className="rounded-xl border border-dashed border-gray-300 dark:border-gray-700 px-4 py-6 text-center text-sm text-gray-500 dark:text-gray-400">
-                            No segments yet. Add your flights, hotel blocks, and
-                            experiences next.
-                          </div>
-                        )}
-                        {detail.segments?.map((segment) => (
-                          <article
-                            key={segment.id}
-                            className="rounded-xl border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-950/40 px-4 py-4"
-                          >
-                            <div className="flex flex-col gap-3 lg:flex-row lg:justify-between">
-                              <div>
-                                <p className="text-sm font-semibold text-gray-900 dark:text-white">
-                                  {segment.title}
-                                </p>
-                                <p className="text-xs uppercase tracking-wide text-blue-600 dark:text-blue-300">
-                                  {segment.type}
-                                </p>
-                                <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
-                                  {formatSegmentTime(segment)}
-                                </p>
-                                {segment.location_name && (
-                                  <p className="text-sm text-gray-500 dark:text-gray-400">
-                                    {segment.location_name}
-                                  </p>
-                                )}
-                                {segment.description && (
-                                  <p className="mt-3 text-sm text-gray-600 dark:text-gray-300">
-                                    {segment.description}
-                                  </p>
-                                )}
-                              </div>
-                              <div className="text-sm text-gray-500 dark:text-gray-400 space-y-1 lg:text-right">
-                                {segment.provider_name && (
-                                  <p>{segment.provider_name}</p>
-                                )}
-                                {segment.confirmation_code && (
-                                  <p>Ref#: {segment.confirmation_code}</p>
-                                )}
-                                {segment.transport_number && (
-                                  <p>Route: {segment.transport_number}</p>
-                                )}
-                                {segment.cost_amount &&
-                                  segment.cost_currency && (
-                                    <p>
-                                      {segment.cost_currency}{" "}
-                                      {segment.cost_amount}
-                                    </p>
-                                  )}
-                              </div>
-                            </div>
-                            {segment.metadata && (
-                              <details className="mt-3 text-sm text-gray-600 dark:text-gray-300">
-                                <summary className="cursor-pointer font-medium text-gray-700 dark:text-gray-200">
-                                  Metadata
-                                </summary>
-                                <pre className="mt-2 whitespace-pre-wrap break-words text-xs bg-black/5 dark:bg-white/5 rounded-lg px-3 py-2">
-                                  {JSON.stringify(segment.metadata, null, 2)}
-                                </pre>
-                              </details>
-                            )}
-                          </article>
-                        ))}
-                      </div>
-                    </section>
+                      </span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab("travelers")}
+                      className={`px-4 py-2.5 text-sm font-medium rounded-t-lg transition-colors ${
+                        activeTab === "travelers"
+                          ? "bg-white dark:bg-gray-900 text-blue-600 dark:text-blue-400 border border-b-0 border-gray-200 dark:border-gray-800 -mb-px"
+                          : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
+                      }`}
+                    >
+                      <span className="flex items-center gap-2">
+                        <svg
+                          className="h-4 w-4"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                          strokeWidth={1.5}
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z"
+                          />
+                        </svg>
+                        Travelers
+                        <span className="rounded-full bg-gray-100 dark:bg-gray-800 px-2 py-0.5 text-xs">
+                          {travelerCount}
+                        </span>
+                      </span>
+                    </button>
+                  </nav>
+                </div>
 
-                    <div className="space-y-10">
+                {/* Itinerary Tab Content */}
+                {activeTab === "itinerary" && (
+                  <div className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm p-6">
+                    <div className="grid gap-10 lg:grid-cols-[1.7fr,1fr]">
                       <section>
-                        <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-                          Travelers & roles
-                        </h3>
-                        <p className="text-sm text-gray-500 dark:text-gray-400">
-                          Keep tabs on who is joining and their
-                          responsibilities.
-                        </p>
-                        <div className="mt-5 space-y-3">
-                          {detail.travelers?.map((traveler, index) => {
-                            const displayName = travelerDisplayName(
-                              traveler,
-                              usersById
-                            );
-                            const key =
-                              traveler.id ||
-                              traveler.user_id ||
-                              `${traveler.itinerary_id || "traveler"}-${index}`;
-                            return (
-                              <div
-                                key={key}
-                                className="flex items-center justify-between rounded-xl border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-950/40 px-4 py-3"
-                              >
-                                <div className="flex items-center gap-3">
-                                  <div
-                                    className="h-9 w-9 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-xs font-semibold text-gray-700 dark:text-gray-200"
-                                    style={{
-                                      backgroundColor:
-                                        traveler.color_hex || undefined,
-                                    }}
-                                  >
-                                    {avatarInitials(displayName)}
-                                  </div>
-                                  <div>
-                                    <p className="text-sm font-medium text-gray-900 dark:text-white">
-                                      {displayName}
-                                    </p>
-                                    <p className="text-xs text-gray-500 dark:text-gray-400">
-                                      {traveler.role || "Traveler"}
-                                    </p>
-                                  </div>
-                                </div>
-                                <div className="text-right text-xs text-gray-500 dark:text-gray-400 space-y-1">
-                                  {traveler.email && <p>{traveler.email}</p>}
-                                  <p>
-                                    {traveler.invitation_status
-                                      ? traveler.invitation_status
-                                      : "pending"}
-                                  </p>
-                                  <p>
-                                    Alerts:{" "}
-                                    {traveler.notifications_enabled
-                                      ? "on"
-                                      : "off"}
-                                  </p>
-                                </div>
-                              </div>
-                            );
-                          })}
-                          {!detail.travelers?.length && (
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                              Segments timeline
+                            </h3>
+                            <p className="text-sm text-gray-500 dark:text-gray-400">
+                              Curate logistics and highlights in chronological
+                              order.
+                            </p>
+                          </div>
+                          <span className="text-sm text-gray-500 dark:text-gray-400">
+                            {segmentCount} scheduled
+                          </span>
+                        </div>
+                        <div className="mt-5 space-y-4">
+                          {!segmentCount && (
                             <div className="rounded-xl border border-dashed border-gray-300 dark:border-gray-700 px-4 py-6 text-center text-sm text-gray-500 dark:text-gray-400">
-                              Only you have access for now.
+                              No segments yet. Add your flights, hotel blocks,
+                              and experiences next.
                             </div>
                           )}
+                          {detail.segments?.map((segment) => (
+                            <article
+                              key={segment.id}
+                              className="rounded-xl border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-950/40 px-4 py-4"
+                            >
+                              <div className="flex flex-col gap-3 lg:flex-row lg:justify-between">
+                                <div>
+                                  <p className="text-sm font-semibold text-gray-900 dark:text-white">
+                                    {segment.title}
+                                  </p>
+                                  <p className="text-xs uppercase tracking-wide text-blue-600 dark:text-blue-300">
+                                    {segment.type}
+                                  </p>
+                                  <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
+                                    {formatSegmentTime(segment)}
+                                  </p>
+                                  {segment.location_name && (
+                                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                                      {segment.location_name}
+                                    </p>
+                                  )}
+                                  {segment.description && (
+                                    <p className="mt-3 text-sm text-gray-600 dark:text-gray-300">
+                                      {segment.description}
+                                    </p>
+                                  )}
+                                </div>
+                                <div className="text-sm text-gray-500 dark:text-gray-400 space-y-1 lg:text-right">
+                                  {segment.provider_name && (
+                                    <p>{segment.provider_name}</p>
+                                  )}
+                                  {segment.confirmation_code && (
+                                    <p>Ref#: {segment.confirmation_code}</p>
+                                  )}
+                                  {segment.transport_number && (
+                                    <p>Route: {segment.transport_number}</p>
+                                  )}
+                                  {segment.cost_amount &&
+                                    segment.cost_currency && (
+                                      <p>
+                                        {segment.cost_currency}{" "}
+                                        {segment.cost_amount}
+                                      </p>
+                                    )}
+                                </div>
+                              </div>
+                              {segment.metadata && (
+                                <details className="mt-3 text-sm text-gray-600 dark:text-gray-300">
+                                  <summary className="cursor-pointer font-medium text-gray-700 dark:text-gray-200">
+                                    Metadata
+                                  </summary>
+                                  <pre className="mt-2 whitespace-pre-wrap break-words text-xs bg-black/5 dark:bg-white/5 rounded-lg px-3 py-2">
+                                    {JSON.stringify(segment.metadata, null, 2)}
+                                  </pre>
+                                </details>
+                              )}
+                            </article>
+                          ))}
                         </div>
                       </section>
 
@@ -1158,7 +1159,162 @@ export default function ItineraryPlanner() {
                       </section>
                     </div>
                   </div>
-                </div>
+                )}
+
+                {/* Travelers Tab Content */}
+                {activeTab === "travelers" && (
+                  <div className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm overflow-hidden">
+                    <div className="px-6 py-4 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between">
+                      <div>
+                        <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                          Travelers & Roles
+                        </h3>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">
+                          Manage who&apos;s joining and their responsibilities
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        className="rounded-full bg-blue-600 text-white px-4 py-2 text-sm font-medium shadow-sm hover:bg-blue-700 transition"
+                      >
+                        Invite traveler
+                      </button>
+                    </div>
+                    <div className="divide-y divide-gray-100 dark:divide-gray-800">
+                      {!detail.travelers?.length && (
+                        <div className="px-6 py-12 text-center">
+                          <div className="mx-auto h-12 w-12 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center mb-3">
+                            <svg
+                              className="h-6 w-6 text-gray-400 dark:text-gray-500"
+                              fill="none"
+                              viewBox="0 0 24 24"
+                              stroke="currentColor"
+                              strokeWidth={1.5}
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                d="M18 18.72a9.094 9.094 0 003.741-.479 3 3 0 00-4.682-2.72m.94 3.198l.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0112 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 016 18.719m12 0a5.971 5.971 0 00-.941-3.197m0 0A5.995 5.995 0 0012 12.75a5.995 5.995 0 00-5.058 2.772m0 0a3 3 0 00-4.681 2.72 8.986 8.986 0 003.74.477m.94-3.197a5.971 5.971 0 00-.94 3.197M15 6.75a3 3 0 11-6 0 3 3 0 016 0zm6 3a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0zm-13.5 0a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0z"
+                              />
+                            </svg>
+                          </div>
+                          <p className="text-sm text-gray-500 dark:text-gray-400">
+                            No travelers yet
+                          </p>
+                          <p className="mt-1 text-xs text-gray-400 dark:text-gray-500">
+                            Invite friends and family to collaborate on this
+                            trip
+                          </p>
+                        </div>
+                      )}
+                      {detail.travelers?.map((traveler, index) => {
+                        const displayName = travelerDisplayName(
+                          traveler,
+                          usersById
+                        );
+                        const key =
+                          traveler.id ||
+                          traveler.user_id ||
+                          `${traveler.itinerary_id || "traveler"}-${index}`;
+                        return (
+                          <div
+                            key={key}
+                            className="px-6 py-4 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-gray-950/40 transition-colors"
+                          >
+                            <div className="flex items-center gap-4">
+                              <div
+                                className="h-11 w-11 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-sm font-semibold text-white shadow-sm"
+                                style={{
+                                  background: traveler.color_hex
+                                    ? traveler.color_hex
+                                    : undefined,
+                                }}
+                              >
+                                {avatarInitials(displayName)}
+                              </div>
+                              <div>
+                                <p className="text-sm font-semibold text-gray-900 dark:text-white">
+                                  {displayName}
+                                </p>
+                                <div className="flex items-center gap-2 mt-0.5">
+                                  <span className="inline-flex items-center rounded-full bg-blue-50 dark:bg-blue-900/30 px-2 py-0.5 text-xs font-medium text-blue-700 dark:text-blue-300">
+                                    {traveler.role || "Traveler"}
+                                  </span>
+                                  {traveler.invitation_status && (
+                                    <span
+                                      className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
+                                        traveler.invitation_status ===
+                                        "accepted"
+                                          ? "bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-300"
+                                          : traveler.invitation_status ===
+                                            "declined"
+                                          ? "bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300"
+                                          : "bg-yellow-50 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300"
+                                      }`}
+                                    >
+                                      {traveler.invitation_status}
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-3">
+                              {traveler.email && (
+                                <span className="text-sm text-gray-500 dark:text-gray-400 hidden sm:block">
+                                  {traveler.email}
+                                </span>
+                              )}
+                              <div
+                                className={`flex items-center gap-1 text-xs ${
+                                  traveler.notifications_enabled
+                                    ? "text-green-600 dark:text-green-400"
+                                    : "text-gray-400 dark:text-gray-500"
+                                }`}
+                              >
+                                <svg
+                                  className="h-4 w-4"
+                                  fill="none"
+                                  viewBox="0 0 24 24"
+                                  stroke="currentColor"
+                                  strokeWidth={1.5}
+                                >
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0"
+                                  />
+                                </svg>
+                                <span className="hidden sm:inline">
+                                  {traveler.notifications_enabled
+                                    ? "On"
+                                    : "Off"}
+                                </span>
+                              </div>
+                              <button
+                                type="button"
+                                className="p-2 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:text-gray-300 dark:hover:bg-gray-800 transition-colors"
+                              >
+                                <svg
+                                  className="h-5 w-5"
+                                  fill="none"
+                                  viewBox="0 0 24 24"
+                                  stroke="currentColor"
+                                  strokeWidth={1.5}
+                                >
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    d="M6.75 12a.75.75 0 11-1.5 0 .75.75 0 011.5 0zM12.75 12a.75.75 0 11-1.5 0 .75.75 0 011.5 0zM18.75 12a.75.75 0 11-1.5 0 .75.75 0 011.5 0z"
+                                  />
+                                </svg>
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
 
                 {/* Comments Section */}
                 <div className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm overflow-hidden">
