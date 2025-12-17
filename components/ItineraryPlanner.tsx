@@ -499,6 +499,20 @@ export default function ItineraryPlanner() {
 
   const travelerCount = detail?.travelers?.length ?? 0;
   const segmentCount = detail?.segments?.length ?? 0;
+  const tripDurationLabel = useMemo(() => {
+    if (!detail?.start_date || !detail?.end_date) return "Flexible timing";
+    const start = new Date(detail.start_date);
+    const end = new Date(detail.end_date);
+    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+      return "Flexible timing";
+    }
+    const diffDays =
+      Math.floor((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+    if (diffDays <= 0) {
+      return "Flexible timing";
+    }
+    return `${diffDays} day${diffDays === 1 ? "" : "s"}`;
+  }, [detail?.start_date, detail?.end_date]);
 
   return (
     <div className="space-y-6">
@@ -920,276 +934,350 @@ export default function ItineraryPlanner() {
                   </div>
                 </div>
 
-                <div className="space-y-6">
-                  <div className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm p-6">
-                    <div className="flex items-center justify-between">
-                      <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-                        Segments timeline
-                      </h3>
-                      <span className="text-sm text-gray-500 dark:text-gray-400">
-                        {segmentCount} scheduled
-                      </span>
-                    </div>
-                    <div className="mt-4 space-y-4">
-                      {!segmentCount && (
-                        <div className="rounded-xl border border-dashed border-gray-300 dark:border-gray-700 px-4 py-6 text-center text-sm text-gray-500 dark:text-gray-400">
-                          No segments yet. Add your flights, hotel blocks, and
-                          experiences next.
+                <div className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm p-6">
+                  <div className="grid gap-10 lg:grid-cols-[1.7fr,1fr]">
+                    <section>
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                            Segments timeline
+                          </h3>
+                          <p className="text-sm text-gray-500 dark:text-gray-400">
+                            Curate logistics and highlights in chronological
+                            order.
+                          </p>
                         </div>
-                      )}
-                      {detail.segments?.map((segment) => (
-                        <div
-                          key={segment.id}
-                          className="rounded-xl border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-950/40 px-4 py-3"
-                        >
-                          <div className="flex items-start justify-between gap-3">
-                            <div>
-                              <p className="text-sm font-semibold text-gray-900 dark:text-white">
-                                {segment.title}
-                              </p>
-                              <p className="text-xs uppercase tracking-wide text-blue-600 dark:text-blue-300">
-                                {segment.type}
-                              </p>
-                              <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
-                                {formatSegmentTime(segment)}
-                              </p>
-                              {segment.location_name && (
-                                <p className="text-sm text-gray-500 dark:text-gray-400">
-                                  {segment.location_name}
-                                </p>
-                              )}
-                            </div>
-                            <div className="text-right text-xs text-gray-500 dark:text-gray-400 space-y-1">
-                              {segment.provider_name && (
-                                <p>{segment.provider_name}</p>
-                              )}
-                              {segment.confirmation_code && (
-                                <p>Ref#: {segment.confirmation_code}</p>
-                              )}
-                              {segment.transport_number && (
-                                <p>Route: {segment.transport_number}</p>
-                              )}
-                              {segment.cost_amount && segment.cost_currency && (
-                                <p>
-                                  {segment.cost_currency} {segment.cost_amount}
-                                </p>
-                              )}
-                            </div>
+                        <span className="text-sm text-gray-500 dark:text-gray-400">
+                          {segmentCount} scheduled
+                        </span>
+                      </div>
+                      <div className="mt-5 space-y-4">
+                        {!segmentCount && (
+                          <div className="rounded-xl border border-dashed border-gray-300 dark:border-gray-700 px-4 py-6 text-center text-sm text-gray-500 dark:text-gray-400">
+                            No segments yet. Add your flights, hotel blocks, and
+                            experiences next.
                           </div>
-                          {segment.description && (
-                            <p className="mt-3 text-sm text-gray-600 dark:text-gray-300">
-                              {segment.description}
-                            </p>
-                          )}
-                          {segment.metadata && (
-                            <details className="mt-3 text-sm text-gray-600 dark:text-gray-300">
-                              <summary className="cursor-pointer font-medium text-gray-700 dark:text-gray-200">
-                                Metadata
-                              </summary>
-                              <pre className="mt-2 whitespace-pre-wrap break-words text-xs bg-black/5 dark:bg-white/5 rounded-lg px-3 py-2">
-                                {JSON.stringify(segment.metadata, null, 2)}
-                              </pre>
-                            </details>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm p-6">
-                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-                      Travelers & roles
-                    </h3>
-                    <div className="mt-4 grid grid-cols-1 gap-3">
-                      {detail.travelers?.map((traveler, index) => {
-                        const displayName = travelerDisplayName(
-                          traveler,
-                          usersById
-                        );
-                        const key =
-                          traveler.id ||
-                          traveler.user_id ||
-                          `${traveler.itinerary_id || "traveler"}-${index}`;
-                        return (
-                          <div
-                            key={key}
-                            className="flex items-center justify-between rounded-xl border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-950/40 px-4 py-3"
+                        )}
+                        {detail.segments?.map((segment) => (
+                          <article
+                            key={segment.id}
+                            className="rounded-xl border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-950/40 px-4 py-4"
                           >
-                            <div className="flex items-center gap-3">
-                              <div
-                                className="h-9 w-9 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-xs font-semibold text-gray-700 dark:text-gray-200"
-                                style={{
-                                  backgroundColor:
-                                    traveler.color_hex || undefined,
-                                }}
-                              >
-                                {avatarInitials(displayName)}
-                              </div>
+                            <div className="flex flex-col gap-3 lg:flex-row lg:justify-between">
                               <div>
-                                <p className="text-sm font-medium text-gray-900 dark:text-white">
-                                  {displayName}
+                                <p className="text-sm font-semibold text-gray-900 dark:text-white">
+                                  {segment.title}
                                 </p>
-                                <p className="text-xs text-gray-500 dark:text-gray-400">
-                                  {traveler.role || "Traveler"}
+                                <p className="text-xs uppercase tracking-wide text-blue-600 dark:text-blue-300">
+                                  {segment.type}
                                 </p>
-                              </div>
-                            </div>
-                            <div className="text-right text-xs text-gray-500 dark:text-gray-400 space-y-1">
-                              {traveler.email && <p>{traveler.email}</p>}
-                              <p>
-                                {traveler.invitation_status
-                                  ? traveler.invitation_status
-                                  : "pending"}
-                              </p>
-                              <p>
-                                Alerts:{" "}
-                                {traveler.notifications_enabled ? "on" : "off"}
-                              </p>
-                            </div>
-                          </div>
-                        );
-                      })}
-                      {!detail.travelers?.length && (
-                        <div className="rounded-xl border border-dashed border-gray-300 dark:border-gray-700 px-4 py-6 text-center text-sm text-gray-500 dark:text-gray-400">
-                          Only you have access for now.
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm p-6">
-                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-                      Checklists
-                    </h3>
-                    <div className="mt-4 space-y-4">
-                      {!detail.checklists?.length && (
-                        <div className="rounded-xl border border-dashed border-gray-300 dark:border-gray-700 px-4 py-6 text-center text-sm text-gray-500 dark:text-gray-400">
-                          Build mission checklists to coordinate sourcing,
-                          tickets, and concierge requests.
-                        </div>
-                      )}
-                      {detail.checklists?.map((checklist) => (
-                        <div
-                          key={checklist.id}
-                          className="rounded-xl border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-950/40 px-4 py-3"
-                        >
-                          <div className="flex items-center justify-between">
-                            <p className="text-sm font-semibold text-gray-900 dark:text-white">
-                              {checklist.title}
-                            </p>
-                            <span className="text-xs text-gray-500 dark:text-gray-400">
-                              {checklist.tasks?.length ?? 0} task
-                              {(checklist.tasks?.length ?? 0) === 1 ? "" : "s"}
-                            </span>
-                          </div>
-                          <ul className="mt-3 space-y-2">
-                            {checklist.tasks?.map((task) => (
-                              <li
-                                key={task.id}
-                                className="flex items-start justify-between text-sm text-gray-600 dark:text-gray-300"
-                              >
-                                <div>
-                                  <p className="font-medium text-gray-900 dark:text-white">
-                                    {task.title}
+                                <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
+                                  {formatSegmentTime(segment)}
+                                </p>
+                                {segment.location_name && (
+                                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                                    {segment.location_name}
                                   </p>
-                                  {task.notes && (
-                                    <p className="text-xs text-gray-500 dark:text-gray-400">
-                                      {task.notes}
+                                )}
+                                {segment.description && (
+                                  <p className="mt-3 text-sm text-gray-600 dark:text-gray-300">
+                                    {segment.description}
+                                  </p>
+                                )}
+                              </div>
+                              <div className="text-sm text-gray-500 dark:text-gray-400 space-y-1 lg:text-right">
+                                {segment.provider_name && (
+                                  <p>{segment.provider_name}</p>
+                                )}
+                                {segment.confirmation_code && (
+                                  <p>Ref#: {segment.confirmation_code}</p>
+                                )}
+                                {segment.transport_number && (
+                                  <p>Route: {segment.transport_number}</p>
+                                )}
+                                {segment.cost_amount &&
+                                  segment.cost_currency && (
+                                    <p>
+                                      {segment.cost_currency}{" "}
+                                      {segment.cost_amount}
                                     </p>
                                   )}
+                              </div>
+                            </div>
+                            {segment.metadata && (
+                              <details className="mt-3 text-sm text-gray-600 dark:text-gray-300">
+                                <summary className="cursor-pointer font-medium text-gray-700 dark:text-gray-200">
+                                  Metadata
+                                </summary>
+                                <pre className="mt-2 whitespace-pre-wrap break-words text-xs bg-black/5 dark:bg-white/5 rounded-lg px-3 py-2">
+                                  {JSON.stringify(segment.metadata, null, 2)}
+                                </pre>
+                              </details>
+                            )}
+                          </article>
+                        ))}
+                      </div>
+                    </section>
+
+                    <div className="space-y-10">
+                      <section>
+                        <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                          Travelers & roles
+                        </h3>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">
+                          Keep tabs on who is joining and their
+                          responsibilities.
+                        </p>
+                        <div className="mt-5 space-y-3">
+                          {detail.travelers?.map((traveler, index) => {
+                            const displayName = travelerDisplayName(
+                              traveler,
+                              usersById
+                            );
+                            const key =
+                              traveler.id ||
+                              traveler.user_id ||
+                              `${traveler.itinerary_id || "traveler"}-${index}`;
+                            return (
+                              <div
+                                key={key}
+                                className="flex items-center justify-between rounded-xl border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-950/40 px-4 py-3"
+                              >
+                                <div className="flex items-center gap-3">
+                                  <div
+                                    className="h-9 w-9 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-xs font-semibold text-gray-700 dark:text-gray-200"
+                                    style={{
+                                      backgroundColor:
+                                        traveler.color_hex || undefined,
+                                    }}
+                                  >
+                                    {avatarInitials(displayName)}
+                                  </div>
+                                  <div>
+                                    <p className="text-sm font-medium text-gray-900 dark:text-white">
+                                      {displayName}
+                                    </p>
+                                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                                      {traveler.role || "Traveler"}
+                                    </p>
+                                  </div>
                                 </div>
                                 <div className="text-right text-xs text-gray-500 dark:text-gray-400 space-y-1">
-                                  {task.assignee?.preferred_name ||
-                                  task.assignee?.name ||
-                                  task.assignee?.username ? (
-                                    <p>
-                                      Owner:{" "}
-                                      {task.assignee?.preferred_name ||
-                                        task.assignee?.name ||
-                                        task.assignee?.username}
-                                    </p>
-                                  ) : null}
-                                  {task.due_at && (
-                                    <p>Due {formatDate(task.due_at)}</p>
-                                  )}
-                                  {task.status && <p>{task.status}</p>}
+                                  {traveler.email && <p>{traveler.email}</p>}
+                                  <p>
+                                    {traveler.invitation_status
+                                      ? traveler.invitation_status
+                                      : "pending"}
+                                  </p>
+                                  <p>
+                                    Alerts:{" "}
+                                    {traveler.notifications_enabled
+                                      ? "on"
+                                      : "off"}
+                                  </p>
                                 </div>
-                              </li>
-                            ))}
-                          </ul>
+                              </div>
+                            );
+                          })}
+                          {!detail.travelers?.length && (
+                            <div className="rounded-xl border border-dashed border-gray-300 dark:border-gray-700 px-4 py-6 text-center text-sm text-gray-500 dark:text-gray-400">
+                              Only you have access for now.
+                            </div>
+                          )}
                         </div>
-                      ))}
+                      </section>
+
+                      <section>
+                        <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                          Checklists
+                        </h3>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">
+                          Track sourcing tasks, concierge asks, and follow-ups.
+                        </p>
+                        <div className="mt-5 space-y-4">
+                          {!detail.checklists?.length && (
+                            <div className="rounded-xl border border-dashed border-gray-300 dark:border-gray-700 px-4 py-6 text-center text-sm text-gray-500 dark:text-gray-400">
+                              Build mission checklists to coordinate sourcing,
+                              tickets, and concierge requests.
+                            </div>
+                          )}
+                          {detail.checklists?.map((checklist) => (
+                            <div
+                              key={checklist.id}
+                              className="rounded-xl border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-950/40 px-4 py-3"
+                            >
+                              <div className="flex items-center justify-between">
+                                <p className="text-sm font-semibold text-gray-900 dark:text-white">
+                                  {checklist.title}
+                                </p>
+                                <span className="text-xs text-gray-500 dark:text-gray-400">
+                                  {checklist.tasks?.length ?? 0} task
+                                  {(checklist.tasks?.length ?? 0) === 1
+                                    ? ""
+                                    : "s"}
+                                </span>
+                              </div>
+                              <ul className="mt-3 space-y-2">
+                                {checklist.tasks?.map((task) => (
+                                  <li
+                                    key={task.id}
+                                    className="flex items-start justify-between text-sm text-gray-600 dark:text-gray-300"
+                                  >
+                                    <div>
+                                      <p className="font-medium text-gray-900 dark:text-white">
+                                        {task.title}
+                                      </p>
+                                      {task.notes && (
+                                        <p className="text-xs text-gray-500 dark:text-gray-400">
+                                          {task.notes}
+                                        </p>
+                                      )}
+                                    </div>
+                                    <div className="text-right text-xs text-gray-500 dark:text-gray-400 space-y-1">
+                                      {task.assignee?.preferred_name ||
+                                      task.assignee?.name ||
+                                      task.assignee?.username ? (
+                                        <p>
+                                          Owner:{" "}
+                                          {task.assignee?.preferred_name ||
+                                            task.assignee?.name ||
+                                            task.assignee?.username}
+                                        </p>
+                                      ) : null}
+                                      {task.due_at && (
+                                        <p>Due {formatDate(task.due_at)}</p>
+                                      )}
+                                      {task.status && <p>{task.status}</p>}
+                                    </div>
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                          ))}
+                        </div>
+                      </section>
                     </div>
                   </div>
                 </div>
 
-                <div className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm p-6">
-                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-                    Mission thread
-                  </h3>
-                  <div className="mt-4 space-y-4">
+                {/* Comments Section */}
+                <div className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm overflow-hidden">
+                  <div className="px-6 py-4 border-b border-gray-100 dark:border-gray-800">
+                    <h3 className="text-base font-semibold text-gray-900 dark:text-white">
+                      Comments
+                      {comments.length > 0 && (
+                        <span className="ml-2 text-sm font-normal text-gray-500 dark:text-gray-400">
+                          ({comments.length})
+                        </span>
+                      )}
+                    </h3>
+                  </div>
+
+                  {/* Comment Input - Top like social media */}
+                  <div className="px-6 py-4 border-b border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-950/30">
+                    <form onSubmit={handleCommentSubmit} className="flex gap-3">
+                      <div className="h-9 w-9 shrink-0 rounded-full bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-200 flex items-center justify-center text-xs font-semibold">
+                        {avatarInitials(
+                          detail?.owner?.preferred_name || detail?.owner?.name,
+                          detail?.owner?.username
+                        )}
+                      </div>
+                      <div className="flex-1">
+                        <textarea
+                          value={commentInput}
+                          onChange={(event) =>
+                            setCommentInput(event.target.value)
+                          }
+                          className="w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-4 py-2.5 text-sm text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                          rows={1}
+                          placeholder="Add a comment..."
+                          onFocus={(e) => {
+                            e.target.rows = 3;
+                          }}
+                          onBlur={(e) => {
+                            if (!e.target.value.trim()) e.target.rows = 1;
+                          }}
+                        />
+                        {commentInput.trim() && (
+                          <div className="mt-2 flex justify-end">
+                            <button
+                              type="submit"
+                              className="rounded-full bg-blue-600 text-white px-4 py-1.5 text-sm font-medium shadow-sm hover:bg-blue-700 transition disabled:cursor-not-allowed disabled:opacity-50"
+                              disabled={commentSubmitting}
+                            >
+                              {commentSubmitting ? "Posting..." : "Post"}
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </form>
+                  </div>
+
+                  {/* Comments List */}
+                  <div className="divide-y divide-gray-100 dark:divide-gray-800">
                     {!comments.length && (
-                      <div className="rounded-xl border border-dashed border-gray-300 dark:border-gray-700 px-4 py-6 text-center text-sm text-gray-500 dark:text-gray-400">
-                        No commentary yet. Drop the first insight for the team.
+                      <div className="px-6 py-12 text-center">
+                        <div className="mx-auto h-12 w-12 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center mb-3">
+                          <svg
+                            className="h-6 w-6 text-gray-400 dark:text-gray-500"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                            strokeWidth={1.5}
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              d="M8.625 12a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H8.25m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H12m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 01-2.555-.337A5.972 5.972 0 015.41 20.97a5.969 5.969 0 01-.474-.065 4.48 4.48 0 00.978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25z"
+                            />
+                          </svg>
+                        </div>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">
+                          No comments yet
+                        </p>
+                        <p className="mt-1 text-xs text-gray-400 dark:text-gray-500">
+                          Be the first to start the conversation
+                        </p>
                       </div>
                     )}
                     {comments.map((comment) => (
-                      <div
-                        key={comment.id}
-                        className="rounded-xl border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-950/40 px-4 py-3"
-                      >
-                        <div className="flex items-start justify-between gap-3">
-                          <div>
-                            <p className="text-sm font-semibold text-gray-900 dark:text-white">
-                              {comment.author?.preferred_name ||
-                                comment.author?.name ||
-                                comment.author?.username ||
-                                "Traveler"}
-                            </p>
-                            <p className="text-xs text-gray-500 dark:text-gray-400">
-                              {formatDate(comment.created_at, {
-                                month: "short",
-                                day: "numeric",
-                                hour: "numeric",
-                                minute: "2-digit",
-                              }) || "Just now"}
+                      <div key={comment.id} className="px-6 py-4">
+                        <div className="flex gap-3">
+                          <div className="h-9 w-9 shrink-0 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-xs font-semibold text-gray-600 dark:text-gray-300">
+                            {avatarInitials(
+                              comment.author?.preferred_name ||
+                                comment.author?.name,
+                              comment.author?.username
+                            )}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2">
+                              <span className="text-sm font-semibold text-gray-900 dark:text-white">
+                                {comment.author?.preferred_name ||
+                                  comment.author?.name ||
+                                  comment.author?.username ||
+                                  "Anonymous"}
+                              </span>
+                              <span className="text-xs text-gray-400 dark:text-gray-500">
+                                ·
+                              </span>
+                              <span className="text-xs text-gray-400 dark:text-gray-500">
+                                {formatDate(comment.created_at, {
+                                  month: "short",
+                                  day: "numeric",
+                                  hour: "numeric",
+                                  minute: "2-digit",
+                                }) || "Just now"}
+                              </span>
+                            </div>
+                            <p className="mt-1 text-sm text-gray-700 dark:text-gray-200 whitespace-pre-wrap break-words">
+                              {comment.body}
                             </p>
                           </div>
                         </div>
-                        <p className="mt-3 text-sm text-gray-700 dark:text-gray-200 whitespace-pre-wrap">
-                          {comment.body}
-                        </p>
                       </div>
                     ))}
                   </div>
-                  <form
-                    onSubmit={handleCommentSubmit}
-                    className="mt-6 space-y-3"
-                  >
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-200">
-                        Add a new insight
-                      </label>
-                      <textarea
-                        value={commentInput}
-                        onChange={(event) =>
-                          setCommentInput(event.target.value)
-                        }
-                        className="mt-1 w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        rows={3}
-                        placeholder="Push an update, drop a concierge ask, or summarize feedback."
-                      />
-                    </div>
-                    <div className="flex justify-end">
-                      <button
-                        type="submit"
-                        className="rounded-xl bg-blue-600 text-white px-4 py-2 text-sm font-semibold shadow hover:bg-blue-700 transition disabled:cursor-not-allowed disabled:opacity-70"
-                        disabled={commentSubmitting || !commentInput.trim()}
-                      >
-                        {commentSubmitting ? "Sending..." : "Share update"}
-                      </button>
-                    </div>
-                  </form>
                 </div>
               </div>
             )}
