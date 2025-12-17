@@ -129,6 +129,7 @@ export type Database = {
           title: string;
           updated_at: string | null;
           visibility: string | null;
+          visibility_detail: string | null;
         };
         Insert: {
           cover_image_url?: string | null;
@@ -144,6 +145,7 @@ export type Database = {
           title: string;
           updated_at?: string | null;
           visibility?: string | null;
+          visibility_detail?: string | null;
         };
         Update: {
           cover_image_url?: string | null;
@@ -159,6 +161,7 @@ export type Database = {
           title?: string;
           updated_at?: string | null;
           visibility?: string | null;
+          visibility_detail?: string | null;
         };
         Relationships: [
           {
@@ -276,6 +279,58 @@ export type Database = {
             columns: ["segment_id"];
             isOneToOne: false;
             referencedRelation: "itinerary_segments";
+            referencedColumns: ["id"];
+          }
+        ];
+      };
+      itinerary_owner_invitations: {
+        Row: {
+          created_at: string | null;
+          id: string;
+          invitee_id: string;
+          inviter_id: string;
+          itinerary_id: string;
+          responded_at: string | null;
+          status: string;
+        };
+        Insert: {
+          created_at?: string | null;
+          id?: string;
+          invitee_id: string;
+          inviter_id: string;
+          itinerary_id: string;
+          responded_at?: string | null;
+          status?: string;
+        };
+        Update: {
+          created_at?: string | null;
+          id?: string;
+          invitee_id?: string;
+          inviter_id?: string;
+          itinerary_id?: string;
+          responded_at?: string | null;
+          status?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "itinerary_owner_invitations_invitee_id_fkey";
+            columns: ["invitee_id"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "itinerary_owner_invitations_inviter_id_fkey";
+            columns: ["inviter_id"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "itinerary_owner_invitations_itinerary_id_fkey";
+            columns: ["itinerary_id"];
+            isOneToOne: false;
+            referencedRelation: "itineraries";
             referencedColumns: ["id"];
           }
         ];

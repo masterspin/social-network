@@ -15,13 +15,60 @@ function getAdminClient() {
   });
 }
 
+async function resolveUserId(request: Request): Promise<string | null> {
+  const { searchParams } = new URL(request.url);
+  const headerCandidates = [
+    searchParams.get("user_id"),
+    request.headers.get("x-user-id"),
+    request.headers.get("X-User-Id"),
+    request.headers.get("X-USER-ID"),
+  ].filter((value): value is string =>
+    Boolean(value && value !== "undefined" && value !== "null")
+  );
+
+  if (headerCandidates.length > 0) {
+    return headerCandidates[0];
+  }
+
+  const authHeader = request.headers.get("authorization");
+  if (authHeader?.startsWith("Bearer ")) {
+    const accessToken = authHeader.slice("Bearer ".length);
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const anonKey =
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ??
+      process.env.SUPABASE_ANON_KEY ??
+      null;
+
+    if (url && anonKey && accessToken) {
+      try {
+        const authClient = createClient<Database>(url, anonKey, {
+          auth: { persistSession: false, autoRefreshToken: false },
+        });
+        const { data, error } = await authClient.auth.getUser(accessToken);
+        if (!error && data?.user?.id) {
+          return data.user.id;
+        }
+      } catch (reason) {
+        console.warn(
+          "[Itineraries List] Failed to resolve user from token",
+          reason
+        );
+      }
+    }
+  }
+
+  return null;
+}
+
 export async function GET(request: Request) {
   try {
-    const { searchParams } = new URL(request.url);
-    const userId =
-      searchParams.get("user_id") ?? request.headers.get("x-user-id");
+    const userId = await resolveUserId(request);
 
     if (!userId) {
+      console.warn("[Itineraries List] Missing user id", {
+        search: request.url,
+        headers: Object.fromEntries(request.headers.entries()),
+      });
       return NextResponse.json(
         { error: "Missing user_id parameter" },
         { status: 400 }
@@ -120,6 +167,7 @@ export async function POST(request: Request) {
       end_date: endDate,
       timezone,
       visibility,
+      visibility_detail: visibilityDetail,
       status,
       cover_image_url: coverImageUrl,
       travelers,
@@ -145,6 +193,7 @@ export async function POST(request: Request) {
         end_date: endDate,
         timezone,
         visibility,
+        visibility_detail: visibilityDetail,
         status,
         cover_image_url: coverImageUrl,
       })

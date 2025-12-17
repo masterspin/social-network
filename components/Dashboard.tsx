@@ -689,7 +689,7 @@ export default function Dashboard() {
         )}
 
         {activeTab === "itineraries" && (
-          <div className="max-w-7xl mx-auto px-4 py-8">
+          <div className="w-full px-4 pt-2 pb-8 lg:px-0 lg:pt-4">
             <ItineraryPlanner />
           </div>
         )}

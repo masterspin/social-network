@@ -5,13 +5,12 @@ import { Database } from "@/types/supabase";
 
 type TypedSupabaseClient = SupabaseClient<Database>;
 
-type Membership = {
-  isOwner: boolean;
-  isMember: boolean;
-};
-
 type RouteContext = {
   params: Promise<{ id: string }>;
+};
+
+type Membership = {
+  isOwner: boolean;
 };
 
 function getAdminClient(): TypedSupabaseClient {
@@ -29,7 +28,7 @@ function getAdminClient(): TypedSupabaseClient {
 
 async function resolveUserId(request: Request): Promise<string | null> {
   const { searchParams } = new URL(request.url);
-  const options = [
+  const candidates = [
     searchParams.get("user_id"),
     request.headers.get("x-user-id"),
     request.headers.get("X-User-Id"),
@@ -38,8 +37,8 @@ async function resolveUserId(request: Request): Promise<string | null> {
     Boolean(value && value !== "undefined" && value !== "null")
   );
 
-  if (options.length > 0) {
-    return options[0];
+  if (candidates.length > 0) {
+    return candidates[0];
   }
 
   const authHeader = request.headers.get("authorization");
@@ -62,7 +61,7 @@ async function resolveUserId(request: Request): Promise<string | null> {
         }
       } catch (reason) {
         console.warn(
-          "[Itinerary Comments] Failed to resolve user from token",
+          "[Owner Invitations] Failed to resolve user from token",
           reason
         );
       }
@@ -72,7 +71,7 @@ async function resolveUserId(request: Request): Promise<string | null> {
   return null;
 }
 
-async function checkMembership(
+async function getMembership(
   supabase: TypedSupabaseClient,
   itineraryId: string,
   userId: string
@@ -84,34 +83,31 @@ async function checkMembership(
     .single();
 
   if (!itinerary) {
-    return { isOwner: false, isMember: false };
+    return { isOwner: false };
   }
 
   if (itinerary.owner_id === userId) {
-    return { isOwner: true, isMember: true };
+    return { isOwner: true };
   }
 
   const { data: membership } = await supabase
     .from("itinerary_travelers")
-    .select("id, role, invitation_status")
+    .select("role, invitation_status")
     .eq("itinerary_id", itineraryId)
     .eq("user_id", userId)
-    .in("invitation_status", ["accepted", "pending"])
     .maybeSingle();
 
   const isCoOwner =
     membership?.role === "owner" &&
     membership?.invitation_status === "accepted";
 
-  return { isOwner: isCoOwner, isMember: Boolean(membership) };
+  return { isOwner: Boolean(isCoOwner) };
 }
 
 export async function GET(request: Request, context: RouteContext) {
   try {
     const { id: itineraryId } = await context.params;
     const userId = await resolveUserId(request);
-    const { searchParams } = new URL(request.url);
-    const segmentId = searchParams.get("segment_id");
 
     if (!itineraryId || !userId) {
       return NextResponse.json(
@@ -121,34 +117,29 @@ export async function GET(request: Request, context: RouteContext) {
     }
 
     const supabase = getAdminClient();
-    const membership = await checkMembership(supabase, itineraryId, userId);
+    const membership = await getMembership(supabase, itineraryId, userId);
 
-    if (!membership.isMember) {
+    if (!membership.isOwner) {
       return NextResponse.json({ error: "Not authorized" }, { status: 403 });
     }
 
-    let query = supabase
-      .from("itinerary_comments")
+    const { data, error } = await supabase
+      .from("itinerary_owner_invitations")
       .select(
         `
         *,
-        author:users!itinerary_comments_author_id_fkey(id, username, name, preferred_name, profile_image_url)
+        invitee:users!itinerary_owner_invitations_invitee_id_fkey(id, username, name, preferred_name, profile_image_url),
+        inviter:users!itinerary_owner_invitations_inviter_id_fkey(id, username, name, preferred_name, profile_image_url)
       `
       )
       .eq("itinerary_id", itineraryId)
-      .order("created_at", { ascending: true });
-
-    if (segmentId) {
-      query = query.eq("segment_id", segmentId);
-    }
-
-    const { data, error } = await query;
+      .order("created_at", { ascending: false });
 
     if (error) throw error;
 
     return NextResponse.json({ data }, { status: 200 });
   } catch (error) {
-    console.error("[Itinerary Comments GET]", error);
+    console.error("[Owner Invitations GET]", error);
     const isConfigError =
       (error as Error).message === "Missing Supabase configuration";
     return NextResponse.json(
@@ -162,54 +153,121 @@ export async function POST(request: Request, context: RouteContext) {
   try {
     const { id: itineraryId } = await context.params;
     const body = await request.json();
-    const authorId = body?.user_id as string | undefined;
+    const ownerId = body?.owner_id as string | undefined;
+    const inviteeId = body?.invitee_id as string | undefined;
 
-    if (!itineraryId || !authorId) {
+    if (!itineraryId || !ownerId || !inviteeId) {
       return NextResponse.json(
         { error: "Missing required fields" },
         { status: 400 }
       );
     }
 
-    if (typeof body.body !== "string" || body.body.trim().length === 0) {
+    const resolvedUserId = await resolveUserId(request);
+
+    if (!resolvedUserId || resolvedUserId !== ownerId) {
+      return NextResponse.json({ error: "Not authorized" }, { status: 403 });
+    }
+
+    const supabase = getAdminClient();
+    const membership = await getMembership(supabase, itineraryId, ownerId);
+
+    if (!membership.isOwner) {
+      return NextResponse.json({ error: "Not authorized" }, { status: 403 });
+    }
+
+    if (ownerId === inviteeId) {
       return NextResponse.json(
-        { error: "Comment body is required" },
+        { error: "You cannot invite yourself" },
         { status: 400 }
       );
     }
 
-    const supabase = getAdminClient();
-    const membership = await checkMembership(supabase, itineraryId, authorId);
+    const { data: itinerary } = await supabase
+      .from("itineraries")
+      .select("owner_id")
+      .eq("id", itineraryId)
+      .single();
 
-    if (!membership.isMember) {
-      return NextResponse.json({ error: "Not authorized" }, { status: 403 });
+    if (!itinerary) {
+      return NextResponse.json(
+        { error: "Itinerary not found" },
+        { status: 404 }
+      );
     }
 
-    const insertPayload: Database["public"]["Tables"]["itinerary_comments"]["Insert"] =
-      {
+    if (itinerary.owner_id === inviteeId) {
+      return NextResponse.json(
+        { error: "This user is already an owner" },
+        { status: 409 }
+      );
+    }
+
+    const { data: existingTraveler } = await supabase
+      .from("itinerary_travelers")
+      .select("id, role, invitation_status")
+      .eq("itinerary_id", itineraryId)
+      .eq("user_id", inviteeId)
+      .maybeSingle();
+
+    if (
+      existingTraveler?.role === "owner" &&
+      existingTraveler?.invitation_status === "accepted"
+    ) {
+      return NextResponse.json(
+        { error: "This user is already an owner" },
+        { status: 409 }
+      );
+    }
+
+    const { data: pendingInvite } = await supabase
+      .from("itinerary_owner_invitations")
+      .select("id, status")
+      .eq("itinerary_id", itineraryId)
+      .eq("invitee_id", inviteeId)
+      .eq("status", "pending")
+      .maybeSingle();
+
+    if (pendingInvite) {
+      return NextResponse.json(
+        { error: "An invitation is already pending" },
+        { status: 409 }
+      );
+    }
+
+    let upsertTravelerError = null;
+    if (existingTraveler) {
+      const { error } = await supabase
+        .from("itinerary_travelers")
+        .update({ role: "owner", invitation_status: "pending" })
+        .eq("id", existingTraveler.id);
+      upsertTravelerError = error;
+    } else {
+      const { error } = await supabase.from("itinerary_travelers").insert({
         itinerary_id: itineraryId,
-        segment_id:
-          typeof body.segment_id === "string" && body.segment_id.length > 0
-            ? body.segment_id
-            : null,
-        author_id: authorId,
-        body: body.body.trim(),
-        parent_comment_id:
-          typeof body.parent_comment_id === "string" &&
-          body.parent_comment_id.length > 0
-            ? body.parent_comment_id
-            : null,
-        is_private:
-          typeof body.is_private === "boolean" ? body.is_private : false,
-      };
+        user_id: inviteeId,
+        role: "owner",
+        invitation_status: "pending",
+        notifications_enabled: true,
+      });
+      upsertTravelerError = error;
+    }
+
+    if (upsertTravelerError) throw upsertTravelerError;
 
     const { data, error } = await supabase
-      .from("itinerary_comments")
-      .insert(insertPayload)
+      .from("itinerary_owner_invitations")
+      .insert({
+        itinerary_id: itineraryId,
+        inviter_id: ownerId,
+        invitee_id: inviteeId,
+        status: "pending",
+      })
       .select(
         `
         *,
-        author:users!itinerary_comments_author_id_fkey(id, username, name, preferred_name, profile_image_url)
+        invitee:users!itinerary_owner_invitations_invitee_id_fkey(id, username, name, preferred_name, profile_image_url),
+        inviter:users!itinerary_owner_invitations_inviter_id_fkey(id, username, name, preferred_name, profile_image_url)
       `
       )
       .single();
@@ -218,7 +276,7 @@ export async function POST(request: Request, context: RouteContext) {
 
     return NextResponse.json({ data }, { status: 201 });
   } catch (error) {
-    console.error("[Itinerary Comments POST]", error);
+    console.error("[Owner Invitations POST]", error);
     const isConfigError =
       (error as Error).message === "Missing Supabase configuration";
     return NextResponse.json(

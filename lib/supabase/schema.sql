@@ -252,6 +252,7 @@ CREATE TABLE IF NOT EXISTS itineraries (
   end_date TIMESTAMP WITH TIME ZONE,
   timezone TEXT,
   visibility TEXT DEFAULT 'private' CHECK (visibility IN ('private', 'shared', 'public')),
+  visibility_detail TEXT DEFAULT 'private' CHECK (visibility_detail IN ('private', 'first_connection', 'one_point_five', 'public')),
   status TEXT DEFAULT 'planning' CHECK (status IN ('planning', 'confirmed', 'completed', 'cancelled')),
   cover_image_url TEXT,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
@@ -337,3 +338,31 @@ CREATE TABLE IF NOT EXISTS itinerary_comments (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
+
+CREATE TABLE IF NOT EXISTS itinerary_owner_invitations (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  itinerary_id UUID NOT NULL REFERENCES itineraries(id) ON DELETE CASCADE,
+  inviter_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  invitee_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'accepted', 'declined', 'cancelled')),
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  responded_at TIMESTAMP WITH TIME ZONE
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_owner_invites_unique_pending
+  ON itinerary_owner_invitations(itinerary_id, invitee_id)
+  WHERE status = 'pending';
+
+CREATE INDEX IF NOT EXISTS idx_owner_invites_invitee
+  ON itinerary_owner_invitations(invitee_id)
+  WHERE status = 'pending';
+
+CREATE OR REPLACE VIEW itinerary_owners AS
+SELECT i.id AS itinerary_id, i.owner_id AS user_id
+FROM itineraries i
+UNION
+SELECT t.itinerary_id, t.user_id
+FROM itinerary_travelers t
+WHERE t.role = 'owner'
+  AND t.user_id IS NOT NULL
+  AND t.invitation_status = 'accepted';

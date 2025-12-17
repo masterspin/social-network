@@ -177,6 +177,7 @@ export default function ItineraryPlanner() {
     getInitialForm()
   );
   const [creating, setCreating] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
   const [feedback, setFeedback] = useState<{
     type: "success" | "error";
     text: string;
@@ -382,6 +383,19 @@ export default function ItineraryPlanner() {
     return itineraries.find((itinerary) => itinerary.id === selectedId) ?? null;
   }, [itineraries, selectedId]);
 
+  const handleSelectItinerary = useCallback(
+    (itineraryId: string) => {
+      setSelectedId(itineraryId);
+      if (typeof window !== "undefined") {
+        const isDesktop = window.matchMedia("(min-width: 1024px)").matches;
+        if (!isDesktop) {
+          setSidebarOpen(false);
+        }
+      }
+    },
+    [setSelectedId, setSidebarOpen]
+  );
+
   const handleCreateItinerary = async (
     event: React.FormEvent<HTMLFormElement>
   ) => {
@@ -500,184 +514,242 @@ export default function ItineraryPlanner() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        <aside className="lg:col-span-4 space-y-4">
-          <div className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm">
-            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200 dark:border-gray-800">
+      <div className="relative min-h-[32rem]">
+        {sidebarOpen && (
+          <div
+            className="absolute inset-0 z-10 bg-gray-900/40 backdrop-blur-sm transition-opacity duration-300 lg:hidden"
+            onClick={() => setSidebarOpen(false)}
+            aria-hidden="true"
+          />
+        )}
+
+        {!sidebarOpen && (
+          <button
+            type="button"
+            onClick={() => setSidebarOpen(true)}
+            className="absolute top-3 left-3 z-20 inline-flex h-10 w-10 items-center justify-center rounded-xl border border-gray-200 bg-white text-gray-600 shadow-sm transition hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 dark:hover:bg-gray-800"
+            aria-controls="itinerary-sidebar"
+            aria-label="Expand itinerary list"
+          >
+            <svg
+              className="h-4 w-4"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth={1.5}
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M9 6l6 6-6 6"
+              />
+            </svg>
+          </button>
+        )}
+
+        <aside
+          id="itinerary-sidebar"
+          className={`absolute inset-y-0 left-0 z-30 w-full sm:w-[18rem] lg:w-[19rem] transition-transform duration-300 ease-in-out ${
+            sidebarOpen ? "translate-x-0" : "-translate-x-full"
+          }`}
+        >
+          <div className="flex h-full flex-col rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-2xl">
+            <div className="flex items-center justify-between gap-3 border-b border-gray-200 dark:border-gray-800 px-5 py-4">
               <div>
                 <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
-                  Your Itineraries
+                  Your itineraries
                 </p>
                 <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
                   {itineraries.length} total
                 </h2>
               </div>
-              <button
-                onClick={() => setShowCreateForm((open) => !open)}
-                className="rounded-full bg-blue-600 text-white px-4 py-2 text-sm font-medium shadow hover:bg-blue-700 transition"
-                disabled={loadingUser || listLoading}
-              >
-                {showCreateForm ? "Close" : "New"}
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setShowCreateForm((open) => !open)}
+                  className="rounded-full bg-blue-600 text-white px-4 py-2 text-sm font-medium shadow hover:bg-blue-700 transition disabled:cursor-not-allowed disabled:opacity-70"
+                  disabled={loadingUser || listLoading}
+                >
+                  {showCreateForm ? "Close" : "New"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSidebarOpen(false)}
+                  className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-gray-200 bg-white text-gray-500 shadow-sm transition hover:text-gray-900 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-400 dark:hover:text-gray-200"
+                  aria-label="Collapse itinerary list"
+                >
+                  <svg
+                    className="h-4 w-4"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth={1.5}
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M15 6l-6 6 6 6"
+                    />
+                  </svg>
+                </button>
+              </div>
             </div>
-
-            {showCreateForm && (
-              <form
-                onSubmit={handleCreateItinerary}
-                className="px-5 py-4 border-b border-gray-200 dark:border-gray-800 space-y-4"
-              >
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-200">
-                    Title
-                  </label>
-                  <input
-                    type="text"
-                    value={createForm.title}
-                    onChange={(event) =>
-                      setCreateForm((prev) => ({
-                        ...prev,
-                        title: event.target.value,
-                      }))
-                    }
-                    className="mt-1 w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="Tokyo R&D Summit"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-200">
-                    Summary
-                  </label>
-                  <input
-                    type="text"
-                    value={createForm.summary}
-                    onChange={(event) =>
-                      setCreateForm((prev) => ({
-                        ...prev,
-                        summary: event.target.value,
-                      }))
-                    }
-                    className="mt-1 w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="Investor roadshow & lab visits"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-200">
-                    Description
-                  </label>
-                  <textarea
-                    value={createForm.description}
-                    onChange={(event) =>
-                      setCreateForm((prev) => ({
-                        ...prev,
-                        description: event.target.value,
-                      }))
-                    }
-                    className="mt-1 w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    rows={3}
-                    placeholder="Outline objectives, concierge notes, travel preferences..."
-                  />
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="flex-1 overflow-y-auto">
+              {showCreateForm && (
+                <form
+                  onSubmit={handleCreateItinerary}
+                  className="space-y-4 border-b border-gray-200 px-5 py-4 dark:border-gray-800"
+                >
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-200">
-                      Start date
-                    </label>
-                    <input
-                      type="date"
-                      value={createForm.startDate}
-                      onChange={(event) =>
-                        setCreateForm((prev) => ({
-                          ...prev,
-                          startDate: event.target.value,
-                        }))
-                      }
-                      className="mt-1 w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-200">
-                      End date
-                    </label>
-                    <input
-                      type="date"
-                      value={createForm.endDate}
-                      onChange={(event) =>
-                        setCreateForm((prev) => ({
-                          ...prev,
-                          endDate: event.target.value,
-                        }))
-                      }
-                      className="mt-1 w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-200">
-                      Timezone
+                      Title
                     </label>
                     <input
                       type="text"
-                      value={createForm.timezone}
+                      value={createForm.title}
                       onChange={(event) =>
                         setCreateForm((prev) => ({
                           ...prev,
-                          timezone: event.target.value,
+                          title: event.target.value,
                         }))
                       }
                       className="mt-1 w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      placeholder="e.g. America/Los_Angeles"
+                      placeholder="Tokyo R&D Summit"
+                      required
                     />
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-200">
-                      Visibility
+                      Summary
                     </label>
-                    <select
-                      value={createForm.visibility}
+                    <input
+                      type="text"
+                      value={createForm.summary}
                       onChange={(event) =>
                         setCreateForm((prev) => ({
                           ...prev,
-                          visibility: event.target.value,
+                          summary: event.target.value,
                         }))
                       }
                       className="mt-1 w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    >
-                      <option value="private">Private</option>
-                      <option value="shared">Shared</option>
-                      <option value="public">Public</option>
-                    </select>
+                      placeholder="Investor roadshow & lab visits"
+                    />
                   </div>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-200">
-                    Cover image URL
-                  </label>
-                  <input
-                    type="url"
-                    value={createForm.coverImageUrl}
-                    onChange={(event) =>
-                      setCreateForm((prev) => ({
-                        ...prev,
-                        coverImageUrl: event.target.value,
-                      }))
-                    }
-                    className="mt-1 w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="https://"
-                  />
-                </div>
-                <button
-                  type="submit"
-                  className="w-full rounded-xl bg-blue-600 text-white px-4 py-2 text-sm font-semibold shadow hover:bg-blue-700 transition disabled:cursor-not-allowed disabled:opacity-70"
-                  disabled={creating}
-                >
-                  {creating ? "Creating..." : "Create itinerary"}
-                </button>
-              </form>
-            )}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-200">
+                      Description
+                    </label>
+                    <textarea
+                      value={createForm.description}
+                      onChange={(event) =>
+                        setCreateForm((prev) => ({
+                          ...prev,
+                          description: event.target.value,
+                        }))
+                      }
+                      className="mt-1 w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      rows={3}
+                      placeholder="Outline objectives, concierge notes, travel preferences..."
+                    />
+                  </div>
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-200">
+                        Start date
+                      </label>
+                      <input
+                        type="date"
+                        value={createForm.startDate}
+                        onChange={(event) =>
+                          setCreateForm((prev) => ({
+                            ...prev,
+                            startDate: event.target.value,
+                          }))
+                        }
+                        className="mt-1 w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-200">
+                        End date
+                      </label>
+                      <input
+                        type="date"
+                        value={createForm.endDate}
+                        onChange={(event) =>
+                          setCreateForm((prev) => ({
+                            ...prev,
+                            endDate: event.target.value,
+                          }))
+                        }
+                        className="mt-1 w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-200">
+                        Timezone
+                      </label>
+                      <input
+                        type="text"
+                        value={createForm.timezone}
+                        onChange={(event) =>
+                          setCreateForm((prev) => ({
+                            ...prev,
+                            timezone: event.target.value,
+                          }))
+                        }
+                        className="mt-1 w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="e.g. America/Los_Angeles"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-200">
+                        Visibility
+                      </label>
+                      <select
+                        value={createForm.visibility}
+                        onChange={(event) =>
+                          setCreateForm((prev) => ({
+                            ...prev,
+                            visibility: event.target.value,
+                          }))
+                        }
+                        className="mt-1 w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      >
+                        <option value="private">Private</option>
+                        <option value="shared">Shared</option>
+                        <option value="public">Public</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-200">
+                      Cover image URL
+                    </label>
+                    <input
+                      type="url"
+                      value={createForm.coverImageUrl}
+                      onChange={(event) =>
+                        setCreateForm((prev) => ({
+                          ...prev,
+                          coverImageUrl: event.target.value,
+                        }))
+                      }
+                      className="mt-1 w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="https://"
+                    />
+                  </div>
+                  <button
+                    type="submit"
+                    className="w-full rounded-xl bg-blue-600 text-white px-4 py-2 text-sm font-semibold shadow hover:bg-blue-700 transition disabled:cursor-not-allowed disabled:opacity-70"
+                    disabled={creating}
+                  >
+                    {creating ? "Creating..." : "Create itinerary"}
+                  </button>
+                </form>
+              )}
 
-            <div className="max-h-[32rem] overflow-y-auto">
               {listLoading ? (
                 <div className="px-5 py-10 text-center text-sm text-gray-500 dark:text-gray-400">
                   Loading itineraries...
@@ -698,7 +770,7 @@ export default function ItineraryPlanner() {
                     return (
                       <li key={itinerary.id}>
                         <button
-                          onClick={() => setSelectedId(itinerary.id)}
+                          onClick={() => handleSelectItinerary(itinerary.id)}
                           className={`w-full px-5 py-4 text-left transition ${
                             selectedId === itinerary.id
                               ? "bg-blue-50/80 dark:bg-blue-900/20"
@@ -749,362 +821,396 @@ export default function ItineraryPlanner() {
           </div>
         </aside>
 
-        <section className="lg:col-span-8 space-y-6">
-          {detailLoading && (
-            <div className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm p-6 text-sm text-gray-500 dark:text-gray-400">
-              Syncing the itinerary workspace...
-            </div>
-          )}
-
-          {!detailLoading && !detail && (
-            <div className="rounded-2xl border border-dashed border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-sm p-10 text-center text-sm text-gray-500 dark:text-gray-400">
-              {selectedSummary
-                ? "We couldn’t load the itinerary details. Try refreshing."
-                : "Select an itinerary to see the collaboration workspace."}
-            </div>
-          )}
-
-          {detail && (
-            <div className="space-y-6">
-              <div className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm overflow-hidden">
-                {detail.cover_image_url && (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={detail.cover_image_url}
-                    alt="Itinerary cover"
-                    className="w-full h-48 object-cover"
-                  />
+        <div
+          className={`relative z-0 transition-[margin,padding] duration-300 ease-in-out ${
+            sidebarOpen ? "lg:pl-[21rem]" : "lg:pl-0"
+          }`}
+        >
+          {selectedSummary && (
+            <div className="mb-6 text-sm text-gray-500 dark:text-gray-400">
+              <p className="font-semibold text-gray-900 dark:text-white">
+                {selectedSummary.title}
+              </p>
+              <p>
+                {formatDateRange(
+                  selectedSummary.start_date,
+                  selectedSummary.end_date
                 )}
-                <div className="p-6">
-                  <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-                    <div>
-                      <h2 className="text-2xl font-semibold text-gray-900 dark:text-white">
-                        {detail.title}
-                      </h2>
-                      <p className="text-sm text-gray-500 dark:text-gray-400">
-                        {formatDateRange(detail.start_date, detail.end_date)}
-                        {detail.timezone ? ` · ${detail.timezone}` : ""}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-3 text-sm text-gray-600 dark:text-gray-300">
-                      <div className="flex items-center gap-2">
-                        <div className="h-9 w-9 rounded-full bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-200 flex items-center justify-center font-semibold">
-                          {avatarInitials(
-                            detail.owner?.preferred_name || detail.owner?.name,
-                            detail.owner?.username
-                          )}
+              </p>
+            </div>
+          )}
+
+          <div className="space-y-6">
+            {detailLoading && (
+              <div className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm p-6 text-sm text-gray-500 dark:text-gray-400">
+                Syncing the itinerary workspace...
+              </div>
+            )}
+
+            {!detailLoading && !detail && (
+              <div className="rounded-2xl border border-dashed border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-sm p-10 text-center text-sm text-gray-500 dark:text-gray-400">
+                {selectedSummary
+                  ? "We couldn’t load the itinerary details. Try refreshing."
+                  : "Select an itinerary to see the collaboration workspace."}
+              </div>
+            )}
+
+            {detail && (
+              <div className="space-y-6">
+                <div className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm overflow-hidden">
+                  {detail.cover_image_url && (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={detail.cover_image_url}
+                      alt="Itinerary cover"
+                      className="w-full h-48 object-cover"
+                    />
+                  )}
+                  <div className="p-6">
+                    <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                      <div>
+                        <h2 className="text-2xl font-semibold text-gray-900 dark:text-white">
+                          {detail.title}
+                        </h2>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">
+                          {formatDateRange(detail.start_date, detail.end_date)}
+                          {detail.timezone ? ` · ${detail.timezone}` : ""}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-3 text-sm text-gray-600 dark:text-gray-300">
+                        <div className="flex items-center gap-2">
+                          <div className="h-9 w-9 rounded-full bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-200 flex items-center justify-center font-semibold">
+                            {avatarInitials(
+                              detail.owner?.preferred_name ||
+                                detail.owner?.name,
+                              detail.owner?.username
+                            )}
+                          </div>
+                          <div>
+                            <p className="font-medium text-gray-900 dark:text-white">
+                              {detail.owner?.preferred_name ||
+                                detail.owner?.name ||
+                                detail.owner?.username ||
+                                "Owner"}
+                            </p>
+                            <p className="text-xs text-gray-500 dark:text-gray-400">
+                              Host & orchestrator
+                            </p>
+                          </div>
                         </div>
+                        <div className="h-10 border-l border-gray-200 dark:border-gray-700" />
                         <div>
-                          <p className="font-medium text-gray-900 dark:text-white">
-                            {detail.owner?.preferred_name ||
-                              detail.owner?.name ||
-                              detail.owner?.username ||
-                              "Owner"}
+                          <p className="font-semibold text-gray-900 dark:text-white text-center">
+                            {travelerCount}
                           </p>
                           <p className="text-xs text-gray-500 dark:text-gray-400">
-                            Host & orchestrator
+                            Traveler{travelerCount === 1 ? "" : "s"}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="font-semibold text-gray-900 dark:text-white text-center">
+                            {segmentCount}
+                          </p>
+                          <p className="text-xs text-gray-500 dark:text-gray-400">
+                            Segments
                           </p>
                         </div>
                       </div>
-                      <div className="h-10 border-l border-gray-200 dark:border-gray-700" />
-                      <div>
-                        <p className="font-semibold text-gray-900 dark:text-white text-center">
-                          {travelerCount}
-                        </p>
-                        <p className="text-xs text-gray-500 dark:text-gray-400">
-                          Traveler{travelerCount === 1 ? "" : "s"}
-                        </p>
+                    </div>
+                    {detail.summary && (
+                      <p className="mt-4 text-base text-gray-700 dark:text-gray-200">
+                        {detail.summary}
+                      </p>
+                    )}
+                    {detail.description && (
+                      <p className="mt-4 text-sm text-gray-600 dark:text-gray-300 whitespace-pre-wrap">
+                        {detail.description}
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+                  <div className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm p-6">
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                        Segments timeline
+                      </h3>
+                      <span className="text-sm text-gray-500 dark:text-gray-400">
+                        {segmentCount} scheduled
+                      </span>
+                    </div>
+                    <div className="mt-4 space-y-4">
+                      {!segmentCount && (
+                        <div className="rounded-xl border border-dashed border-gray-300 dark:border-gray-700 px-4 py-6 text-center text-sm text-gray-500 dark:text-gray-400">
+                          No segments yet. Add your flights, hotel blocks, and
+                          experiences next.
+                        </div>
+                      )}
+                      {detail.segments?.map((segment) => (
+                        <div
+                          key={segment.id}
+                          className="rounded-xl border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-950/40 px-4 py-3"
+                        >
+                          <div className="flex items-start justify-between gap-3">
+                            <div>
+                              <p className="text-sm font-semibold text-gray-900 dark:text-white">
+                                {segment.title}
+                              </p>
+                              <p className="text-xs uppercase tracking-wide text-blue-600 dark:text-blue-300">
+                                {segment.type}
+                              </p>
+                              <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
+                                {formatSegmentTime(segment)}
+                              </p>
+                              {segment.location_name && (
+                                <p className="text-sm text-gray-500 dark:text-gray-400">
+                                  {segment.location_name}
+                                </p>
+                              )}
+                            </div>
+                            <div className="text-right text-xs text-gray-500 dark:text-gray-400 space-y-1">
+                              {segment.provider_name && (
+                                <p>{segment.provider_name}</p>
+                              )}
+                              {segment.confirmation_code && (
+                                <p>Ref#: {segment.confirmation_code}</p>
+                              )}
+                              {segment.transport_number && (
+                                <p>Route: {segment.transport_number}</p>
+                              )}
+                              {segment.cost_amount && segment.cost_currency && (
+                                <p>
+                                  {segment.cost_currency} {segment.cost_amount}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                          {segment.description && (
+                            <p className="mt-3 text-sm text-gray-600 dark:text-gray-300">
+                              {segment.description}
+                            </p>
+                          )}
+                          {segment.metadata && (
+                            <details className="mt-3 text-sm text-gray-600 dark:text-gray-300">
+                              <summary className="cursor-pointer font-medium text-gray-700 dark:text-gray-200">
+                                Metadata
+                              </summary>
+                              <pre className="mt-2 whitespace-pre-wrap break-words text-xs bg-black/5 dark:bg-white/5 rounded-lg px-3 py-2">
+                                {JSON.stringify(segment.metadata, null, 2)}
+                              </pre>
+                            </details>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="space-y-6">
+                    <div className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm p-6">
+                      <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                        Travelers & roles
+                      </h3>
+                      <div className="mt-4 grid grid-cols-1 gap-3">
+                        {detail.travelers?.map((traveler, index) => {
+                          const displayName = travelerDisplayName(
+                            traveler,
+                            usersById
+                          );
+                          const key =
+                            traveler.id ||
+                            traveler.user_id ||
+                            `${traveler.itinerary_id || "traveler"}-${index}`;
+                          return (
+                            <div
+                              key={key}
+                              className="flex items-center justify-between rounded-xl border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-950/40 px-4 py-3"
+                            >
+                              <div className="flex items-center gap-3">
+                                <div
+                                  className="h-9 w-9 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-xs font-semibold text-gray-700 dark:text-gray-200"
+                                  style={{
+                                    backgroundColor:
+                                      traveler.color_hex || undefined,
+                                  }}
+                                >
+                                  {avatarInitials(displayName)}
+                                </div>
+                                <div>
+                                  <p className="text-sm font-medium text-gray-900 dark:text-white">
+                                    {displayName}
+                                  </p>
+                                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                                    {traveler.role || "Traveler"}
+                                  </p>
+                                </div>
+                              </div>
+                              <div className="text-right text-xs text-gray-500 dark:text-gray-400 space-y-1">
+                                {traveler.email && <p>{traveler.email}</p>}
+                                <p>
+                                  {traveler.invitation_status
+                                    ? traveler.invitation_status
+                                    : "pending"}
+                                </p>
+                                <p>
+                                  Alerts:{" "}
+                                  {traveler.notifications_enabled
+                                    ? "on"
+                                    : "off"}
+                                </p>
+                              </div>
+                            </div>
+                          );
+                        })}
+                        {!detail.travelers?.length && (
+                          <div className="rounded-xl border border-dashed border-gray-300 dark:border-gray-700 px-4 py-6 text-center text-sm text-gray-500 dark:text-gray-400">
+                            Only you have access for now.
+                          </div>
+                        )}
                       </div>
-                      <div>
-                        <p className="font-semibold text-gray-900 dark:text-white text-center">
-                          {segmentCount}
-                        </p>
-                        <p className="text-xs text-gray-500 dark:text-gray-400">
-                          Segments
-                        </p>
+                    </div>
+
+                    <div className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm p-6">
+                      <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                        Checklists
+                      </h3>
+                      <div className="mt-4 space-y-4">
+                        {!detail.checklists?.length && (
+                          <div className="rounded-xl border border-dashed border-gray-300 dark:border-gray-700 px-4 py-6 text-center text-sm text-gray-500 dark:text-gray-400">
+                            Build mission checklists to coordinate sourcing,
+                            tickets, and concierge requests.
+                          </div>
+                        )}
+                        {detail.checklists?.map((checklist) => (
+                          <div
+                            key={checklist.id}
+                            className="rounded-xl border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-950/40 px-4 py-3"
+                          >
+                            <div className="flex items-center justify-between">
+                              <p className="text-sm font-semibold text-gray-900 dark:text-white">
+                                {checklist.title}
+                              </p>
+                              <span className="text-xs text-gray-500 dark:text-gray-400">
+                                {checklist.tasks?.length ?? 0} task
+                                {(checklist.tasks?.length ?? 0) === 1
+                                  ? ""
+                                  : "s"}
+                              </span>
+                            </div>
+                            <ul className="mt-3 space-y-2">
+                              {checklist.tasks?.map((task) => (
+                                <li
+                                  key={task.id}
+                                  className="flex items-start justify-between text-sm text-gray-600 dark:text-gray-300"
+                                >
+                                  <div>
+                                    <p className="font-medium text-gray-900 dark:text-white">
+                                      {task.title}
+                                    </p>
+                                    {task.notes && (
+                                      <p className="text-xs text-gray-500 dark:text-gray-400">
+                                        {task.notes}
+                                      </p>
+                                    )}
+                                  </div>
+                                  <div className="text-right text-xs text-gray-500 dark:text-gray-400 space-y-1">
+                                    {task.assignee?.preferred_name ||
+                                    task.assignee?.name ||
+                                    task.assignee?.username ? (
+                                      <p>
+                                        Owner:{" "}
+                                        {task.assignee?.preferred_name ||
+                                          task.assignee?.name ||
+                                          task.assignee?.username}
+                                      </p>
+                                    ) : null}
+                                    {task.due_at && (
+                                      <p>Due {formatDate(task.due_at)}</p>
+                                    )}
+                                    {task.status && <p>{task.status}</p>}
+                                  </div>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        ))}
                       </div>
                     </div>
                   </div>
-                  {detail.summary && (
-                    <p className="mt-4 text-base text-gray-700 dark:text-gray-200">
-                      {detail.summary}
-                    </p>
-                  )}
-                  {detail.description && (
-                    <p className="mt-4 text-sm text-gray-600 dark:text-gray-300 whitespace-pre-wrap">
-                      {detail.description}
-                    </p>
-                  )}
                 </div>
-              </div>
 
-              <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
                 <div className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm p-6">
-                  <div className="flex items-center justify-between">
-                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-                      Segments timeline
-                    </h3>
-                    <span className="text-sm text-gray-500 dark:text-gray-400">
-                      {segmentCount} scheduled
-                    </span>
-                  </div>
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                    Mission thread
+                  </h3>
                   <div className="mt-4 space-y-4">
-                    {!segmentCount && (
+                    {!comments.length && (
                       <div className="rounded-xl border border-dashed border-gray-300 dark:border-gray-700 px-4 py-6 text-center text-sm text-gray-500 dark:text-gray-400">
-                        No segments yet. Add your flights, hotel blocks, and
-                        experiences next.
+                        No commentary yet. Drop the first insight for the team.
                       </div>
                     )}
-                    {detail.segments?.map((segment) => (
+                    {comments.map((comment) => (
                       <div
-                        key={segment.id}
+                        key={comment.id}
                         className="rounded-xl border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-950/40 px-4 py-3"
                       >
                         <div className="flex items-start justify-between gap-3">
                           <div>
                             <p className="text-sm font-semibold text-gray-900 dark:text-white">
-                              {segment.title}
+                              {comment.author?.preferred_name ||
+                                comment.author?.name ||
+                                comment.author?.username ||
+                                "Traveler"}
                             </p>
-                            <p className="text-xs uppercase tracking-wide text-blue-600 dark:text-blue-300">
-                              {segment.type}
+                            <p className="text-xs text-gray-500 dark:text-gray-400">
+                              {formatDate(comment.created_at, {
+                                month: "short",
+                                day: "numeric",
+                                hour: "numeric",
+                                minute: "2-digit",
+                              }) || "Just now"}
                             </p>
-                            <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
-                              {formatSegmentTime(segment)}
-                            </p>
-                            {segment.location_name && (
-                              <p className="text-sm text-gray-500 dark:text-gray-400">
-                                {segment.location_name}
-                              </p>
-                            )}
-                          </div>
-                          <div className="text-right text-xs text-gray-500 dark:text-gray-400 space-y-1">
-                            {segment.provider_name && (
-                              <p>{segment.provider_name}</p>
-                            )}
-                            {segment.confirmation_code && (
-                              <p>Ref#: {segment.confirmation_code}</p>
-                            )}
-                            {segment.transport_number && (
-                              <p>Route: {segment.transport_number}</p>
-                            )}
-                            {segment.cost_amount && segment.cost_currency && (
-                              <p>
-                                {segment.cost_currency} {segment.cost_amount}
-                              </p>
-                            )}
                           </div>
                         </div>
-                        {segment.description && (
-                          <p className="mt-3 text-sm text-gray-600 dark:text-gray-300">
-                            {segment.description}
-                          </p>
-                        )}
-                        {segment.metadata && (
-                          <details className="mt-3 text-sm text-gray-600 dark:text-gray-300">
-                            <summary className="cursor-pointer font-medium text-gray-700 dark:text-gray-200">
-                              Metadata
-                            </summary>
-                            <pre className="mt-2 whitespace-pre-wrap break-words text-xs bg-black/5 dark:bg-white/5 rounded-lg px-3 py-2">
-                              {JSON.stringify(segment.metadata, null, 2)}
-                            </pre>
-                          </details>
-                        )}
+                        <p className="mt-3 text-sm text-gray-700 dark:text-gray-200 whitespace-pre-wrap">
+                          {comment.body}
+                        </p>
                       </div>
                     ))}
                   </div>
-                </div>
-
-                <div className="space-y-6">
-                  <div className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm p-6">
-                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-                      Travelers & roles
-                    </h3>
-                    <div className="mt-4 grid grid-cols-1 gap-3">
-                      {detail.travelers?.map((traveler) => {
-                        const displayName = travelerDisplayName(
-                          traveler,
-                          usersById
-                        );
-                        return (
-                          <div
-                            key={traveler.id}
-                            className="flex items-center justify-between rounded-xl border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-950/40 px-4 py-3"
-                          >
-                            <div className="flex items-center gap-3">
-                              <div
-                                className="h-9 w-9 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-xs font-semibold text-gray-700 dark:text-gray-200"
-                                style={{
-                                  backgroundColor:
-                                    traveler.color_hex || undefined,
-                                }}
-                              >
-                                {avatarInitials(displayName)}
-                              </div>
-                              <div>
-                                <p className="text-sm font-medium text-gray-900 dark:text-white">
-                                  {displayName}
-                                </p>
-                                <p className="text-xs text-gray-500 dark:text-gray-400">
-                                  {traveler.role || "Traveler"}
-                                </p>
-                              </div>
-                            </div>
-                            <div className="text-right text-xs text-gray-500 dark:text-gray-400 space-y-1">
-                              {traveler.email && <p>{traveler.email}</p>}
-                              <p>
-                                {traveler.invitation_status
-                                  ? traveler.invitation_status
-                                  : "pending"}
-                              </p>
-                              <p>
-                                Alerts:{" "}
-                                {traveler.notifications_enabled ? "on" : "off"}
-                              </p>
-                            </div>
-                          </div>
-                        );
-                      })}
-                      {!detail.travelers?.length && (
-                        <div className="rounded-xl border border-dashed border-gray-300 dark:border-gray-700 px-4 py-6 text-center text-sm text-gray-500 dark:text-gray-400">
-                          Only you have access for now.
-                        </div>
-                      )}
+                  <form
+                    onSubmit={handleCommentSubmit}
+                    className="mt-6 space-y-3"
+                  >
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-200">
+                        Add a new insight
+                      </label>
+                      <textarea
+                        value={commentInput}
+                        onChange={(event) =>
+                          setCommentInput(event.target.value)
+                        }
+                        className="mt-1 w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        rows={3}
+                        placeholder="Push an update, drop a concierge ask, or summarize feedback."
+                      />
                     </div>
-                  </div>
-
-                  <div className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm p-6">
-                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-                      Checklists
-                    </h3>
-                    <div className="mt-4 space-y-4">
-                      {!detail.checklists?.length && (
-                        <div className="rounded-xl border border-dashed border-gray-300 dark:border-gray-700 px-4 py-6 text-center text-sm text-gray-500 dark:text-gray-400">
-                          Build mission checklists to coordinate sourcing,
-                          tickets, and concierge requests.
-                        </div>
-                      )}
-                      {detail.checklists?.map((checklist) => (
-                        <div
-                          key={checklist.id}
-                          className="rounded-xl border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-950/40 px-4 py-3"
-                        >
-                          <div className="flex items-center justify-between">
-                            <p className="text-sm font-semibold text-gray-900 dark:text-white">
-                              {checklist.title}
-                            </p>
-                            <span className="text-xs text-gray-500 dark:text-gray-400">
-                              {checklist.tasks?.length ?? 0} task
-                              {(checklist.tasks?.length ?? 0) === 1 ? "" : "s"}
-                            </span>
-                          </div>
-                          <ul className="mt-3 space-y-2">
-                            {checklist.tasks?.map((task) => (
-                              <li
-                                key={task.id}
-                                className="flex items-start justify-between text-sm text-gray-600 dark:text-gray-300"
-                              >
-                                <div>
-                                  <p className="font-medium text-gray-900 dark:text-white">
-                                    {task.title}
-                                  </p>
-                                  {task.notes && (
-                                    <p className="text-xs text-gray-500 dark:text-gray-400">
-                                      {task.notes}
-                                    </p>
-                                  )}
-                                </div>
-                                <div className="text-right text-xs text-gray-500 dark:text-gray-400 space-y-1">
-                                  {task.assignee?.preferred_name ||
-                                  task.assignee?.name ||
-                                  task.assignee?.username ? (
-                                    <p>
-                                      Owner:{" "}
-                                      {task.assignee?.preferred_name ||
-                                        task.assignee?.name ||
-                                        task.assignee?.username}
-                                    </p>
-                                  ) : null}
-                                  {task.due_at && (
-                                    <p>Due {formatDate(task.due_at)}</p>
-                                  )}
-                                  {task.status && <p>{task.status}</p>}
-                                </div>
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-                      ))}
+                    <div className="flex justify-end">
+                      <button
+                        type="submit"
+                        className="rounded-xl bg-blue-600 text-white px-4 py-2 text-sm font-semibold shadow hover:bg-blue-700 transition disabled:cursor-not-allowed disabled:opacity-70"
+                        disabled={commentSubmitting || !commentInput.trim()}
+                      >
+                        {commentSubmitting ? "Sending..." : "Share update"}
+                      </button>
                     </div>
-                  </div>
+                  </form>
                 </div>
               </div>
-
-              <div className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm p-6">
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-                  Mission thread
-                </h3>
-                <div className="mt-4 space-y-4">
-                  {!comments.length && (
-                    <div className="rounded-xl border border-dashed border-gray-300 dark:border-gray-700 px-4 py-6 text-center text-sm text-gray-500 dark:text-gray-400">
-                      No commentary yet. Drop the first insight for the team.
-                    </div>
-                  )}
-                  {comments.map((comment) => (
-                    <div
-                      key={comment.id}
-                      className="rounded-xl border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-950/40 px-4 py-3"
-                    >
-                      <div className="flex items-start justify-between gap-3">
-                        <div>
-                          <p className="text-sm font-semibold text-gray-900 dark:text-white">
-                            {comment.author?.preferred_name ||
-                              comment.author?.name ||
-                              comment.author?.username ||
-                              "Traveler"}
-                          </p>
-                          <p className="text-xs text-gray-500 dark:text-gray-400">
-                            {formatDate(comment.created_at, {
-                              month: "short",
-                              day: "numeric",
-                              hour: "numeric",
-                              minute: "2-digit",
-                            }) || "Just now"}
-                          </p>
-                        </div>
-                      </div>
-                      <p className="mt-3 text-sm text-gray-700 dark:text-gray-200 whitespace-pre-wrap">
-                        {comment.body}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-                <form onSubmit={handleCommentSubmit} className="mt-6 space-y-3">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-200">
-                      Add a new insight
-                    </label>
-                    <textarea
-                      value={commentInput}
-                      onChange={(event) => setCommentInput(event.target.value)}
-                      className="mt-1 w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      rows={3}
-                      placeholder="Push an update, drop a concierge ask, or summarize feedback."
-                    />
-                  </div>
-                  <div className="flex justify-end">
-                    <button
-                      type="submit"
-                      className="rounded-xl bg-blue-600 text-white px-4 py-2 text-sm font-semibold shadow hover:bg-blue-700 transition disabled:cursor-not-allowed disabled:opacity-70"
-                      disabled={commentSubmitting || !commentInput.trim()}
-                    >
-                      {commentSubmitting ? "Sending..." : "Share update"}
-                    </button>
-                  </div>
-                </form>
-              </div>
-            </div>
-          )}
-        </section>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );

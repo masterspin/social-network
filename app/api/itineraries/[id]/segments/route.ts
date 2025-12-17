@@ -10,6 +10,10 @@ type Membership = {
   isMember: boolean;
 };
 
+type RouteContext = {
+  params: Promise<{ id: string }>;
+};
+
 function getAdminClient(): TypedSupabaseClient {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE;
@@ -21,6 +25,51 @@ function getAdminClient(): TypedSupabaseClient {
   return createClient<Database>(url, serviceKey, {
     auth: { persistSession: false },
   });
+}
+
+async function resolveUserId(request: Request): Promise<string | null> {
+  const { searchParams } = new URL(request.url);
+  const candidates = [
+    searchParams.get("user_id"),
+    request.headers.get("x-user-id"),
+    request.headers.get("X-User-Id"),
+    request.headers.get("X-USER-ID"),
+  ].filter((value): value is string =>
+    Boolean(value && value !== "undefined" && value !== "null")
+  );
+
+  if (candidates.length > 0) {
+    return candidates[0];
+  }
+
+  const authHeader = request.headers.get("authorization");
+  if (authHeader?.startsWith("Bearer ")) {
+    const token = authHeader.slice("Bearer ".length);
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const anonKey =
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ??
+      process.env.SUPABASE_ANON_KEY ??
+      null;
+
+    if (url && anonKey && token) {
+      try {
+        const authClient = createClient<Database>(url, anonKey, {
+          auth: { persistSession: false, autoRefreshToken: false },
+        });
+        const { data, error } = await authClient.auth.getUser(token);
+        if (!error && data?.user?.id) {
+          return data.user.id;
+        }
+      } catch (reason) {
+        console.warn(
+          "[Itinerary Segments] Failed to resolve user from token",
+          reason
+        );
+      }
+    }
+  }
+
+  return null;
 }
 
 async function checkMembership(
@@ -44,24 +93,24 @@ async function checkMembership(
 
   const { data: membership } = await supabase
     .from("itinerary_travelers")
-    .select("id")
+    .select("id, role, invitation_status")
     .eq("itinerary_id", itineraryId)
     .eq("user_id", userId)
     .in("invitation_status", ["accepted", "pending"])
     .maybeSingle();
 
-  return { isOwner: false, isMember: Boolean(membership) };
+  const isCoOwner =
+    membership?.role === "owner" &&
+    membership?.invitation_status === "accepted";
+  const isMember = Boolean(membership);
+
+  return { isOwner: isCoOwner, isMember };
 }
 
-export async function GET(
-  request: Request,
-  { params }: { params: { id: string } }
-) {
+export async function GET(request: Request, context: RouteContext) {
   try {
-    const itineraryId = params.id;
-    const { searchParams } = new URL(request.url);
-    const userId =
-      searchParams.get("user_id") ?? request.headers.get("x-user-id");
+    const { id: itineraryId } = await context.params;
+    const userId = await resolveUserId(request);
 
     if (!itineraryId || !userId) {
       return NextResponse.json(
@@ -103,12 +152,9 @@ export async function GET(
   }
 }
 
-export async function POST(
-  request: Request,
-  { params }: { params: { id: string } }
-) {
+export async function POST(request: Request, context: RouteContext) {
   try {
-    const itineraryId = params.id;
+    const { id: itineraryId } = await context.params;
     const body = await request.json();
     const creatorId = body?.user_id as string | undefined;
 

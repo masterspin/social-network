@@ -10,6 +10,10 @@ type MembershipCheck = {
   isMember: boolean;
 };
 
+type RouteContext = {
+  params: Promise<{ id: string }>;
+};
+
 function getAdminClient(): TypedSupabaseClient {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE;
@@ -21,6 +25,51 @@ function getAdminClient(): TypedSupabaseClient {
   return createClient<Database>(url, serviceKey, {
     auth: { persistSession: false },
   });
+}
+
+async function resolveUserId(request: Request): Promise<string | null> {
+  const { searchParams } = new URL(request.url);
+  const direct = [
+    searchParams.get("user_id"),
+    request.headers.get("x-user-id"),
+    request.headers.get("X-User-Id"),
+    request.headers.get("X-USER-ID"),
+  ].filter((value): value is string =>
+    Boolean(value && value !== "undefined" && value !== "null")
+  );
+
+  if (direct.length > 0) {
+    return direct[0];
+  }
+
+  const authHeader = request.headers.get("authorization");
+  if (authHeader?.startsWith("Bearer ")) {
+    const token = authHeader.slice("Bearer ".length);
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const anonKey =
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ??
+      process.env.SUPABASE_ANON_KEY ??
+      null;
+
+    if (url && anonKey && token) {
+      try {
+        const authClient = createClient<Database>(url, anonKey, {
+          auth: { persistSession: false, autoRefreshToken: false },
+        });
+        const { data, error } = await authClient.auth.getUser(token);
+        if (!error && data?.user?.id) {
+          return data.user.id;
+        }
+      } catch (reason) {
+        console.warn(
+          "[Itinerary Detail] Failed to resolve user from token",
+          reason
+        );
+      }
+    }
+  }
+
+  return null;
 }
 
 async function getMembership(
@@ -44,26 +93,31 @@ async function getMembership(
 
   const { data: membership } = await supabase
     .from("itinerary_travelers")
-    .select("id")
+    .select("id, role, invitation_status")
     .eq("itinerary_id", itineraryId)
     .eq("user_id", userId)
     .in("invitation_status", ["accepted", "pending"])
     .maybeSingle();
 
-  return { isOwner: false, isMember: Boolean(membership) };
+  const isCoOwner =
+    membership?.role === "owner" &&
+    membership?.invitation_status === "accepted";
+  const isMember = Boolean(membership);
+
+  return { isOwner: isCoOwner, isMember };
 }
 
-export async function GET(
-  request: Request,
-  { params }: { params: { id: string } }
-) {
+export async function GET(request: Request, context: RouteContext) {
   try {
-    const itineraryId = params.id;
-    const { searchParams } = new URL(request.url);
-    const userId =
-      searchParams.get("user_id") ?? request.headers.get("x-user-id");
+    const { id: itineraryId } = await context.params;
+    const userId = await resolveUserId(request);
 
     if (!itineraryId || !userId) {
+      console.warn("[Itinerary Detail] Missing parameters", {
+        itineraryId,
+        userId,
+        headers: Object.fromEntries(request.headers.entries()),
+      });
       return NextResponse.json(
         { error: "Missing required parameters" },
         { status: 400 }
@@ -126,12 +180,9 @@ export async function GET(
   }
 }
 
-export async function PUT(
-  request: Request,
-  { params }: { params: { id: string } }
-) {
+export async function PUT(request: Request, context: RouteContext) {
   try {
-    const itineraryId = params.id;
+    const { id: itineraryId } = await context.params;
     const body = await request.json();
     const ownerId = body?.owner_id as string | undefined;
 
@@ -160,6 +211,10 @@ export async function PUT(
         timezone: typeof body.timezone === "string" ? body.timezone : undefined,
         visibility:
           typeof body.visibility === "string" ? body.visibility : undefined,
+        visibility_detail:
+          typeof body.visibility_detail === "string"
+            ? body.visibility_detail
+            : undefined,
         status: typeof body.status === "string" ? body.status : undefined,
         cover_image_url:
           typeof body.cover_image_url === "string"
@@ -186,12 +241,9 @@ export async function PUT(
   }
 }
 
-export async function DELETE(
-  request: Request,
-  { params }: { params: { id: string } }
-) {
+export async function DELETE(request: Request, context: RouteContext) {
   try {
-    const itineraryId = params.id;
+    const { id: itineraryId } = await context.params;
     const { searchParams } = new URL(request.url);
     const requesterId = searchParams.get("user_id");
 
