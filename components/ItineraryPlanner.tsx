@@ -88,7 +88,6 @@ type SegmentFormState = {
   transportNumber: string;
   seatInfo: string;
   costAmount: string;
-  costCurrency: string;
   legs: SegmentLegForm[];
   metadata: Record<string, unknown>;
 };
@@ -531,6 +530,38 @@ function serializeLegs(
   return serialized.length ? serialized : undefined;
 }
 
+function parseUsdCostInput(value: string): number | null {
+  if (!value) return null;
+  const normalized = value
+    .replace(/[^0-9.,-]/g, "")
+    .replace(/,/g, "")
+    .trim();
+  if (!normalized) return null;
+  const parsed = Number.parseFloat(normalized);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function formatUsd(value: number): string {
+  try {
+    return new Intl.NumberFormat(undefined, {
+      style: "currency",
+      currency: "USD",
+      currencyDisplay: "symbol",
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 2,
+    }).format(value);
+  } catch {
+    return `$${value}`;
+  }
+}
+
+function getSegmentCostDisplay(segment: SegmentRow): string | null {
+  if (segment.cost_amount === null || segment.cost_amount === undefined) {
+    return null;
+  }
+  return formatUsd(Number(segment.cost_amount));
+}
+
 function extractLegsFromSuggestion(
   suggestion: SegmentAutofillSuggestion
 ): SegmentLegForm[] | null {
@@ -719,7 +750,6 @@ function getInitialSegmentForm(): SegmentFormState {
     transportNumber: "",
     seatInfo: "",
     costAmount: "",
-    costCurrency: "USD",
     legs: [],
     metadata: {},
   };
@@ -1256,6 +1286,7 @@ export default function ItineraryPlanner() {
       const latValue = Number.parseFloat(segmentForm.locationLat);
       const lngValue = Number.parseFloat(segmentForm.locationLng);
       const metadataPayload = buildMetadataPayload(segmentForm);
+      const costAmountValue = parseUsdCostInput(segmentForm.costAmount);
 
       const response = await fetch(
         `/api/itineraries/${encodeURIComponent(selectedId)}/segments`,
@@ -1281,10 +1312,8 @@ export default function ItineraryPlanner() {
             transport_number: segmentForm.transportNumber.trim() || null,
             seat_info: segmentForm.seatInfo.trim() || null,
             timezone: segmentForm.timezone,
-            cost_amount: segmentForm.costAmount
-              ? parseFloat(segmentForm.costAmount)
-              : null,
-            cost_currency: segmentForm.costCurrency || null,
+            cost_amount: costAmountValue,
+            cost_currency: costAmountValue !== null ? "USD" : null,
             metadata: metadataPayload,
           }),
         }
@@ -1435,6 +1464,7 @@ export default function ItineraryPlanner() {
       const latValue = Number.parseFloat(editSegmentForm.locationLat);
       const lngValue = Number.parseFloat(editSegmentForm.locationLng);
       const metadataPayload = buildMetadataPayload(editSegmentForm);
+      const costAmountValue = parseUsdCostInput(editSegmentForm.costAmount);
 
       const response = await fetch(
         `/api/itineraries/${encodeURIComponent(
@@ -1462,10 +1492,8 @@ export default function ItineraryPlanner() {
               ? editSegmentForm.seatInfo.trim()
               : null,
             timezone: editSegmentForm.timezone,
-            cost_amount: editSegmentForm.costAmount
-              ? parseFloat(editSegmentForm.costAmount)
-              : null,
-            cost_currency: editSegmentForm.costCurrency,
+            cost_amount: costAmountValue,
+            cost_currency: costAmountValue !== null ? "USD" : null,
             metadata: metadataPayload,
           }),
         }
@@ -1570,8 +1598,10 @@ export default function ItineraryPlanner() {
       providerName: segment.provider_name || "",
       confirmationCode: segment.confirmation_code || "",
       transportNumber: segment.transport_number || "",
-      costAmount: segment.cost_amount ? segment.cost_amount.toString() : "",
-      costCurrency: segment.cost_currency || "USD",
+      costAmount:
+        segment.cost_amount !== null && segment.cost_amount !== undefined
+          ? segment.cost_amount.toString()
+          : "",
       timezone: timezoneFromMetadata,
       seatInfo: segment.seat_info || "",
       legs: parseLegsFromMetadata(segmentMetadata),
@@ -2824,14 +2854,18 @@ export default function ItineraryPlanner() {
                                     Budget & tracking
                                   </p>
                                 </div>
-                                <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-                                  <div className="sm:col-span-2">
-                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                                      Cost
-                                    </label>
+                                <div>
+                                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                    Cost (USD)
+                                  </label>
+                                  <div className="relative">
+                                    <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-sm font-semibold text-gray-500 dark:text-gray-400">
+                                      $
+                                    </span>
                                     <input
                                       type="number"
                                       step="0.01"
+                                      min="0"
                                       value={segmentForm.costAmount}
                                       onChange={(e) =>
                                         setSegmentForm((prev) => ({
@@ -2839,37 +2873,11 @@ export default function ItineraryPlanner() {
                                           costAmount: e.target.value,
                                         }))
                                       }
-                                      className="w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                      className="w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 pl-7 pr-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
                                       placeholder="0.00"
                                     />
                                   </div>
-                                  <div>
-                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                                      Currency
-                                    </label>
-                                    <select
-                                      value={segmentForm.costCurrency}
-                                      onChange={(e) =>
-                                        setSegmentForm((prev) => ({
-                                          ...prev,
-                                          costCurrency: e.target.value,
-                                        }))
-                                      }
-                                      className="w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                    >
-                                      <option value="USD">USD</option>
-                                      <option value="EUR">EUR</option>
-                                      <option value="GBP">GBP</option>
-                                      <option value="JPY">JPY</option>
-                                      <option value="CAD">CAD</option>
-                                      <option value="AUD">AUD</option>
-                                    </select>
-                                  </div>
                                 </div>
-                                <p className="text-xs text-gray-500 dark:text-gray-400">
-                                  Cost is optional—use it if you want quick
-                                  rollups in the itinerary summary.
-                                </p>
                               </section>
                             </div>
 
@@ -3264,6 +3272,8 @@ export default function ItineraryPlanner() {
                               bgColor: "bg-blue-100 dark:bg-blue-900/40",
                             };
 
+                            const costDisplay = getSegmentCostDisplay(segment);
+
                             return (
                               <div
                                 key={segment.id}
@@ -3330,13 +3340,11 @@ export default function ItineraryPlanner() {
                                       )}
                                     </div>
                                     <div className="flex items-center gap-1">
-                                      {segment.cost_amount &&
-                                        segment.cost_currency && (
-                                          <span className="text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 rounded-lg px-2 py-1">
-                                            {segment.cost_currency}{" "}
-                                            {segment.cost_amount}
-                                          </span>
-                                        )}
+                                      {costDisplay && (
+                                        <span className="text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 rounded-lg px-2 py-1">
+                                          {costDisplay}
+                                        </span>
+                                      )}
                                       <div className="flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
                                         {detail.owner_id === userId && (
                                           <>
