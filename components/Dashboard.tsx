@@ -257,8 +257,8 @@ export default function Dashboard() {
       const other = conn.other_user
         ? conn.other_user
         : conn.requester?.id === meId
-        ? conn.recipient
-        : conn.requester;
+          ? conn.recipient
+          : conn.requester;
       if (!other) return [];
       return [
         {
@@ -288,9 +288,8 @@ export default function Dashboard() {
     // Filter by search
     const q = connectionsSearch.trim().toLowerCase();
     if (!q) return true;
-    const display = `${u.username} ${u.name} ${
-      u.preferred_name ?? ""
-    }`.toLowerCase();
+    const display = `${u.username} ${u.name} ${u.preferred_name ?? ""
+      }`.toLowerCase();
     return display.includes(q);
   });
 
@@ -409,9 +408,8 @@ export default function Dashboard() {
 
   return (
     <div
-      className={`flex flex-col min-h-screen bg-gray-50 dark:bg-gray-950 transition-[margin] duration-300 ${
-        panelOpen ? "sm:mr-[480px]" : ""
-      }`}
+      className={`flex flex-col min-h-screen bg-gray-50 dark:bg-gray-950 transition-[margin] duration-300 ${panelOpen ? "sm:mr-[480px]" : ""
+        }`}
     >
       {/* Header */}
       <header className="sticky top-0 z-50 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 shadow-sm">
@@ -497,11 +495,10 @@ export default function Dashboard() {
           <div className="flex space-x-1">
             <button
               onClick={() => setActiveTab("network")}
-              className={`group relative py-4 px-6 font-medium text-sm transition-colors ${
-                activeTab === "network"
-                  ? "text-gray-900 dark:text-white"
-                  : "text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
-              }`}
+              className={`group relative py-4 px-6 font-medium text-sm transition-colors ${activeTab === "network"
+                ? "text-gray-900 dark:text-white"
+                : "text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
+                }`}
             >
               <span className="flex items-center gap-2">
                 <svg
@@ -526,11 +523,10 @@ export default function Dashboard() {
 
             <button
               onClick={() => setActiveTab("inbox")}
-              className={`group relative py-4 px-6 font-medium text-sm transition-colors ${
-                activeTab === "inbox"
-                  ? "text-gray-900 dark:text-white"
-                  : "text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
-              }`}
+              className={`group relative py-4 px-6 font-medium text-sm transition-colors ${activeTab === "inbox"
+                ? "text-gray-900 dark:text-white"
+                : "text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
+                }`}
             >
               <span className="flex items-center gap-2">
                 <svg
@@ -555,11 +551,10 @@ export default function Dashboard() {
 
             <button
               onClick={() => setActiveTab("matches")}
-              className={`group relative py-4 px-6 font-medium text-sm transition-colors ${
-                activeTab === "matches"
-                  ? "text-gray-900 dark:text-white"
-                  : "text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
-              }`}
+              className={`group relative py-4 px-6 font-medium text-sm transition-colors ${activeTab === "matches"
+                ? "text-gray-900 dark:text-white"
+                : "text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
+                }`}
             >
               <span className="flex items-center gap-2">
                 <svg
@@ -584,11 +579,10 @@ export default function Dashboard() {
 
             <button
               onClick={() => setActiveTab("itineraries")}
-              className={`group relative py-4 px-6 font-medium text-sm transition-colors ${
-                activeTab === "itineraries"
-                  ? "text-gray-900 dark:text-white"
-                  : "text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
-              }`}
+              className={`group relative py-4 px-6 font-medium text-sm transition-colors ${activeTab === "itineraries"
+                ? "text-gray-900 dark:text-white"
+                : "text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
+                }`}
             >
               <span className="flex items-center gap-2">
                 <svg
@@ -613,11 +607,10 @@ export default function Dashboard() {
 
             <button
               onClick={() => setActiveTab("profile")}
-              className={`group relative py-4 px-6 font-medium text-sm transition-colors ${
-                activeTab === "profile"
-                  ? "text-gray-900 dark:text-white"
-                  : "text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
-              }`}
+              className={`group relative py-4 px-6 font-medium text-sm transition-colors ${activeTab === "profile"
+                ? "text-gray-900 dark:text-white"
+                : "text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
+                }`}
             >
               <span className="flex items-center gap-2">
                 <svg
@@ -644,7 +637,7 @@ export default function Dashboard() {
       </nav>
 
       {/* Content */}
-      <main className="flex-1 overflow-hidden">
+      <main className="flex-1 overflow-hidden flex flex-col">
         {activeTab === "network" && (
           <NetworkGraph
             onOpenUser={(u) =>
@@ -689,7 +682,7 @@ export default function Dashboard() {
         )}
 
         {activeTab === "itineraries" && (
-          <div className="w-full px-4 pt-2 pb-8 lg:px-0 lg:pt-4">
+          <div className="flex-1 relative">
             <ItineraryPlanner />
           </div>
         )}
@@ -1057,11 +1050,10 @@ export default function Dashboard() {
                                 className="relative flex items-center border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700/50 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors group"
                               >
                                 <span
-                                  className={`px-3 py-2.5 text-sm text-gray-500 dark:text-gray-400 font-medium ${
-                                    key !== "Discord"
-                                      ? "border-r border-gray-300 dark:border-gray-600"
-                                      : ""
-                                  }`}
+                                  className={`px-3 py-2.5 text-sm text-gray-500 dark:text-gray-400 font-medium ${key !== "Discord"
+                                    ? "border-r border-gray-300 dark:border-gray-600"
+                                    : ""
+                                    }`}
                                 >
                                   {config.prefix}
                                 </span>
@@ -1094,11 +1086,10 @@ export default function Dashboard() {
                             ) : (
                               <div className="relative flex items-center border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700/30">
                                 <span
-                                  className={`px-3 py-2.5 text-sm text-gray-500 dark:text-gray-400 font-medium ${
-                                    key !== "Discord"
-                                      ? "border-r border-gray-300 dark:border-gray-600"
-                                      : ""
-                                  }`}
+                                  className={`px-3 py-2.5 text-sm text-gray-500 dark:text-gray-400 font-medium ${key !== "Discord"
+                                    ? "border-r border-gray-300 dark:border-gray-600"
+                                    : ""
+                                    }`}
                                 >
                                   {config.prefix}
                                 </span>
@@ -1108,11 +1099,10 @@ export default function Dashboard() {
                           ) : (
                             <div className="relative flex items-center border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 focus-within:ring-2 focus-within:ring-teal-500 focus-within:border-transparent">
                               <span
-                                className={`px-3 py-2.5 text-sm text-gray-500 dark:text-gray-400 font-medium ${
-                                  key !== "Discord"
-                                    ? "border-r border-gray-300 dark:border-gray-600"
-                                    : ""
-                                }`}
+                                className={`px-3 py-2.5 text-sm text-gray-500 dark:text-gray-400 font-medium ${key !== "Discord"
+                                  ? "border-r border-gray-300 dark:border-gray-600"
+                                  : ""
+                                  }`}
                               >
                                 {config.prefix}
                               </span>
@@ -1157,83 +1147,83 @@ export default function Dashboard() {
                     </label>
                     {!isEditingProfile
                       ? (() => {
-                          const existingLink = socialLinks.find(
-                            (link) => link.platform === "LinkedIn"
-                          );
-                          return existingLink ? (
-                            <a
-                              href={existingLink.url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="relative flex items-center border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700/50 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors group"
+                        const existingLink = socialLinks.find(
+                          (link) => link.platform === "LinkedIn"
+                        );
+                        return existingLink ? (
+                          <a
+                            href={existingLink.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="relative flex items-center border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700/50 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors group"
+                          >
+                            <span className="px-3 py-2.5 text-sm text-gray-500 dark:text-gray-400 font-medium border-r border-gray-300 dark:border-gray-600">
+                              {SOCIAL_PLATFORMS.LinkedIn.prefix}
+                            </span>
+                            <span className="flex-1 px-3 py-2.5 text-sm truncate">
+                              {existingLink.url
+                                .replace(/^https?:\/\//, "")
+                                .replace(
+                                  SOCIAL_PLATFORMS.LinkedIn.prefix,
+                                  ""
+                                )}
+                            </span>
+                            <svg
+                              className="w-4 h-4 text-gray-400 mr-3 opacity-0 group-hover:opacity-100 transition-opacity"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
                             >
-                              <span className="px-3 py-2.5 text-sm text-gray-500 dark:text-gray-400 font-medium border-r border-gray-300 dark:border-gray-600">
-                                {SOCIAL_PLATFORMS.LinkedIn.prefix}
-                              </span>
-                              <span className="flex-1 px-3 py-2.5 text-sm truncate">
-                                {existingLink.url
-                                  .replace(/^https?:\/\//, "")
-                                  .replace(
-                                    SOCIAL_PLATFORMS.LinkedIn.prefix,
-                                    ""
-                                  )}
-                              </span>
-                              <svg
-                                className="w-4 h-4 text-gray-400 mr-3 opacity-0 group-hover:opacity-100 transition-opacity"
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24"
-                              >
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  strokeWidth={2}
-                                  d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
-                                />
-                              </svg>
-                            </a>
-                          ) : (
-                            <div className="relative flex items-center border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700/30">
-                              <span className="px-3 py-2.5 text-sm text-gray-500 dark:text-gray-400 font-medium border-r border-gray-300 dark:border-gray-600">
-                                {SOCIAL_PLATFORMS.LinkedIn.prefix}
-                              </span>
-                              <span className="flex-1 px-3 py-2.5 text-sm text-gray-400 dark:text-gray-500"></span>
-                            </div>
-                          );
-                        })()
-                      : (() => {
-                          const existingLink = socialLinks.find(
-                            (link) => link.platform === "LinkedIn"
-                          );
-                          return (
-                            <div className="relative flex items-center border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 focus-within:ring-2 focus-within:ring-teal-500 focus-within:border-transparent">
-                              <span className="px-3 py-2.5 text-sm text-gray-500 dark:text-gray-400 font-medium border-r border-gray-300 dark:border-gray-600">
-                                {SOCIAL_PLATFORMS.LinkedIn.prefix}
-                              </span>
-                              <input
-                                type="text"
-                                value={socialInputs.LinkedIn || ""}
-                                onChange={(e) =>
-                                  setSocialInputs({
-                                    ...socialInputs,
-                                    LinkedIn: e.target.value,
-                                  })
-                                }
-                                onBlur={(e) => {
-                                  const value = e.target.value.trim();
-                                  if (value) {
-                                    // Save/update the link
-                                    handleAddSocialLink("LinkedIn", value);
-                                  } else if (existingLink) {
-                                    // Delete the link if field is cleared
-                                    handleDeleteSocialLink(existingLink.id);
-                                  }
-                                }}
-                                className="flex-1 px-3 py-2.5 text-sm bg-transparent border-0 focus:outline-none focus:ring-0"
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
                               />
-                            </div>
-                          );
-                        })()}
+                            </svg>
+                          </a>
+                        ) : (
+                          <div className="relative flex items-center border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700/30">
+                            <span className="px-3 py-2.5 text-sm text-gray-500 dark:text-gray-400 font-medium border-r border-gray-300 dark:border-gray-600">
+                              {SOCIAL_PLATFORMS.LinkedIn.prefix}
+                            </span>
+                            <span className="flex-1 px-3 py-2.5 text-sm text-gray-400 dark:text-gray-500"></span>
+                          </div>
+                        );
+                      })()
+                      : (() => {
+                        const existingLink = socialLinks.find(
+                          (link) => link.platform === "LinkedIn"
+                        );
+                        return (
+                          <div className="relative flex items-center border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 focus-within:ring-2 focus-within:ring-teal-500 focus-within:border-transparent">
+                            <span className="px-3 py-2.5 text-sm text-gray-500 dark:text-gray-400 font-medium border-r border-gray-300 dark:border-gray-600">
+                              {SOCIAL_PLATFORMS.LinkedIn.prefix}
+                            </span>
+                            <input
+                              type="text"
+                              value={socialInputs.LinkedIn || ""}
+                              onChange={(e) =>
+                                setSocialInputs({
+                                  ...socialInputs,
+                                  LinkedIn: e.target.value,
+                                })
+                              }
+                              onBlur={(e) => {
+                                const value = e.target.value.trim();
+                                if (value) {
+                                  // Save/update the link
+                                  handleAddSocialLink("LinkedIn", value);
+                                } else if (existingLink) {
+                                  // Delete the link if field is cleared
+                                  handleDeleteSocialLink(existingLink.id);
+                                }
+                              }}
+                              className="flex-1 px-3 py-2.5 text-sm bg-transparent border-0 focus:outline-none focus:ring-0"
+                            />
+                          </div>
+                        );
+                      })()}
                   </div>
                 )}
               </div>
@@ -1478,21 +1468,19 @@ export default function Dashboard() {
               <div className="flex gap-2">
                 <button
                   onClick={() => setConnectionTypeFilter("all")}
-                  className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                    connectionTypeFilter === "all"
-                      ? "bg-blue-600 text-white"
-                      : "bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700"
-                  }`}
+                  className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${connectionTypeFilter === "all"
+                    ? "bg-blue-600 text-white"
+                    : "bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700"
+                    }`}
                 >
                   All ({connectionUsers.length})
                 </button>
                 <button
                   onClick={() => setConnectionTypeFilter("first")}
-                  className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                    connectionTypeFilter === "first"
-                      ? "bg-green-600 text-white"
-                      : "bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700"
-                  }`}
+                  className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${connectionTypeFilter === "first"
+                    ? "bg-green-600 text-white"
+                    : "bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700"
+                    }`}
                 >
                   1st (
                   {
@@ -1503,11 +1491,10 @@ export default function Dashboard() {
                 </button>
                 <button
                   onClick={() => setConnectionTypeFilter("one_point_five")}
-                  className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                    connectionTypeFilter === "one_point_five"
-                      ? "bg-purple-600 text-white"
-                      : "bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700"
-                  }`}
+                  className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${connectionTypeFilter === "one_point_five"
+                    ? "bg-purple-600 text-white"
+                    : "bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700"
+                    }`}
                 >
                   1.5 (
                   {
@@ -1557,11 +1544,10 @@ export default function Dashboard() {
                           </span>
                         </p>
                         <span
-                          className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
-                            u.connection_type === "first"
-                              ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300"
-                              : "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300"
-                          }`}
+                          className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${u.connection_type === "first"
+                            ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300"
+                            : "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300"
+                            }`}
                         >
                           {u.connection_type === "first" ? "1st" : "1.5"}
                         </span>
