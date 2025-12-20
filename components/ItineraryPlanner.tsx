@@ -24,19 +24,19 @@ type DetailedItinerary = ItineraryRow & {
   owner?: UserSummary | null;
   travelers?: (TravelerRow & { user?: UserSummary | null })[] | null;
   segments?:
-  | (SegmentRow & {
-    created_by_user?: UserSummary | null;
-  })[]
-  | null;
-  checklists?:
-  | (ChecklistRow & {
-    tasks?:
-    | (TaskRow & {
-      assignee?: UserSummary | null;
-    })[]
+    | (SegmentRow & {
+        created_by_user?: UserSummary | null;
+      })[]
     | null;
-  })[]
-  | null;
+  checklists?:
+    | (ChecklistRow & {
+        tasks?:
+          | (TaskRow & {
+              assignee?: UserSummary | null;
+            })[]
+          | null;
+      })[]
+    | null;
 };
 
 type CommentWithAuthor = CommentRow & {
@@ -218,11 +218,15 @@ export default function ItineraryPlanner() {
   );
   const [creatingSegment, setCreatingSegment] = useState(false);
   const [isEditingHeader, setIsEditingHeader] = useState(false);
-  const [editHeaderForm, setEditHeaderForm] = useState<CreateFormState>(getInitialForm());
+  const [editHeaderForm, setEditHeaderForm] = useState<CreateFormState>(
+    getInitialForm()
+  );
   const [updatingHeader, setUpdatingHeader] = useState(false);
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [editingSegmentId, setEditingSegmentId] = useState<string | null>(null);
-  const [editSegmentForm, setEditSegmentForm] = useState<SegmentFormState>(getInitialSegmentForm());
+  const [editSegmentForm, setEditSegmentForm] = useState<SegmentFormState>(
+    getInitialSegmentForm()
+  );
   const [updatingSegment, setUpdatingSegment] = useState(false);
   const [feedback, setFeedback] = useState<{
     type: "success" | "error";
@@ -610,15 +614,18 @@ export default function ItineraryPlanner() {
     if (!userId || !selectedId || !detail) return;
     setUpdatingHeader(true);
     try {
-      const response = await fetch(`/api/itineraries/${encodeURIComponent(selectedId)}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          owner_id: userId,
-          title: editHeaderForm.title,
-          visibility: editHeaderForm.visibility,
-        }),
-      });
+      const response = await fetch(
+        `/api/itineraries/${encodeURIComponent(selectedId)}`,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            owner_id: userId,
+            title: editHeaderForm.title,
+            visibility: editHeaderForm.visibility,
+          }),
+        }
+      );
       if (!response.ok) throw new Error("Failed to update itinerary");
       setFeedback({ type: "success", text: "Itinerary updated!" });
       setIsEditingHeader(false);
@@ -638,7 +645,9 @@ export default function ItineraryPlanner() {
     setUpdatingSegment(true);
     try {
       const response = await fetch(
-        `/api/itineraries/${encodeURIComponent(selectedId)}/segments/${encodeURIComponent(editingSegmentId)}`,
+        `/api/itineraries/${encodeURIComponent(
+          selectedId
+        )}/segments/${encodeURIComponent(editingSegmentId)}`,
         {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
@@ -655,7 +664,9 @@ export default function ItineraryPlanner() {
             confirmation_code: editSegmentForm.confirmationCode,
             transport_number: editSegmentForm.transportNumber,
             timezone: editSegmentForm.timezone,
-            cost_amount: editSegmentForm.costAmount ? parseFloat(editSegmentForm.costAmount) : null,
+            cost_amount: editSegmentForm.costAmount
+              ? parseFloat(editSegmentForm.costAmount)
+              : null,
             cost_currency: editSegmentForm.costCurrency,
           }),
         }
@@ -672,10 +683,19 @@ export default function ItineraryPlanner() {
   };
 
   const handleDeleteSegment = async (segmentId: string) => {
-    if (!userId || !selectedId || !window.confirm("Are you sure you want to delete this segment?")) return;
+    if (
+      !userId ||
+      !selectedId ||
+      !window.confirm("Are you sure you want to delete this segment?")
+    )
+      return;
     try {
       const response = await fetch(
-        `/api/itineraries/${encodeURIComponent(selectedId)}/segments/${encodeURIComponent(segmentId)}?user_id=${encodeURIComponent(userId)}`,
+        `/api/itineraries/${encodeURIComponent(
+          selectedId
+        )}/segments/${encodeURIComponent(
+          segmentId
+        )}?user_id=${encodeURIComponent(userId)}`,
         { method: "DELETE" }
       );
       if (!response.ok) throw new Error("Failed to delete segment");
@@ -709,7 +729,10 @@ export default function ItineraryPlanner() {
       transportNumber: segment.transport_number || "",
       costAmount: segment.cost_amount ? segment.cost_amount.toString() : "",
       costCurrency: segment.cost_currency || "USD",
-      timezone: (segment as any).timezone || (segment as any).metadata?.timezone || DEFAULT_TIMEZONE,
+      timezone:
+        (segment as any).timezone ||
+        (segment as any).metadata?.timezone ||
+        DEFAULT_TIMEZONE,
     });
     setEditingSegmentId(segment.id);
   };
@@ -759,10 +782,11 @@ export default function ItineraryPlanner() {
       {feedback && (
         <div className="px-6 py-4">
           <div
-            className={`rounded-xl border px-4 py-3 text-sm font-medium shadow-sm ${feedback.type === "success"
-              ? "border-green-200 bg-green-50 text-green-700 dark:border-green-900/40 dark:bg-green-950/40 dark:text-green-200"
-              : "border-red-200 bg-red-50 text-red-700 dark:border-red-900/40 dark:bg-red-950/40 dark:text-red-200"
-              }`}
+            className={`rounded-xl border px-4 py-3 text-sm font-medium shadow-sm ${
+              feedback.type === "success"
+                ? "border-green-200 bg-green-50 text-green-700 dark:border-green-900/40 dark:bg-green-950/40 dark:text-green-200"
+                : "border-red-200 bg-red-50 text-red-700 dark:border-red-900/40 dark:bg-red-950/40 dark:text-red-200"
+            }`}
           >
             {feedback.text}
           </div>
@@ -770,8 +794,9 @@ export default function ItineraryPlanner() {
       )}
 
       <div
-        className={`relative z-0 flex-1 transition-[padding] duration-300 ease-in-out h-full ${sidebarOpen ? "lg:pl-[19rem]" : "px-4 sm:px-6 lg:px-10 lg:pl-16"
-          }`}
+        className={`relative z-0 flex-1 h-full transition-[padding] duration-300 ease-in-out px-4 sm:px-6 ${
+          sidebarOpen ? "lg:pl-[21rem] lg:pr-10" : "lg:px-10 lg:pl-16"
+        }`}
       >
         {sidebarOpen && (
           <div
@@ -807,8 +832,9 @@ export default function ItineraryPlanner() {
 
         <aside
           id="itinerary-sidebar"
-          className={`absolute inset-y-0 left-0 z-30 w-full sm:w-[18rem] lg:w-[19rem] transition-transform duration-300 ease-in-out border-r border-gray-100 dark:border-gray-800 ${sidebarOpen ? "translate-x-0" : "-translate-x-full"
-            }`}
+          className={`absolute inset-y-0 left-0 z-30 w-full sm:w-[18rem] lg:w-[19rem] transition-transform duration-300 ease-in-out border-r border-gray-100 dark:border-gray-800 ${
+            sidebarOpen ? "translate-x-0" : "-translate-x-full"
+          }`}
         >
           <div className="flex h-full flex-col bg-white dark:bg-gray-900 shadow-xl">
             <div className="flex items-center justify-between gap-3 border-b border-gray-100 dark:border-gray-800 px-6 py-5">
@@ -823,19 +849,40 @@ export default function ItineraryPlanner() {
               <div className="flex items-center gap-2.5">
                 <button
                   onClick={() => setShowCreateForm((open) => !open)}
-                  className={`flex h-10 items-center gap-2 rounded-full px-5 py-2 text-sm font-semibold shadow-sm transition-all duration-200 active:scale-95 ${showCreateForm
-                    ? "bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200"
-                    : "bg-blue-600 text-white hover:bg-blue-700 hover:shadow-blue-500/20"
-                    }`}
+                  className={`flex h-10 items-center gap-2 rounded-full px-5 py-2 text-sm font-semibold shadow-sm transition-all duration-200 active:scale-95 ${
+                    showCreateForm
+                      ? "bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200"
+                      : "bg-blue-600 text-white hover:bg-blue-700 hover:shadow-blue-500/20"
+                  }`}
                   disabled={loadingUser || listLoading}
                 >
                   {showCreateForm ? (
-                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    <svg
+                      className="h-4 w-4"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                      strokeWidth={2.5}
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M6 18L18 6M6 6l12 12"
+                      />
                     </svg>
                   ) : (
-                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+                    <svg
+                      className="h-4 w-4"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                      strokeWidth={2.5}
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M12 4v16m8-8H4"
+                      />
                     </svg>
                   )}
                   <span>{showCreateForm ? "Close" : "New"}</span>
@@ -846,8 +893,18 @@ export default function ItineraryPlanner() {
                   className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-gray-100 bg-white text-gray-400 shadow-sm transition-all hover:text-gray-900 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-500 @lg:hidden"
                   aria-label="Collapse itinerary list"
                 >
-                  <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+                  <svg
+                    className="h-5 w-5"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth={2}
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M15 19l-7-7 7-7"
+                    />
                   </svg>
                 </button>
               </div>
@@ -881,9 +938,7 @@ export default function ItineraryPlanner() {
                       <label className="block text-sm font-medium text-gray-700 dark:text-gray-200">
                         Visibility
                       </label>
-                      <select
-                        className="mt-1 w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      >
+                      <select className="mt-1 w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500">
                         <option value="private">Private</option>
                         <option value="shared">Shared</option>
                         <option value="public">Public</option>
@@ -919,33 +974,46 @@ export default function ItineraryPlanner() {
                     );
                     const isSelected = selectedId === itinerary.id;
 
-
                     return (
                       <div key={itinerary.id} className="p-2">
                         <button
                           onClick={() => handleSelectItinerary(itinerary.id)}
-                          className={`group relative w-full rounded-2xl p-4 text-left transition-all duration-300 ${isSelected
-                            ? "bg-blue-50 dark:bg-blue-900/20 shadow-sm ring-1 ring-blue-100 dark:ring-blue-800/50"
-                            : "hover:bg-gray-50 dark:hover:bg-gray-800/40"
-                            }`}
+                          className={`group relative w-full rounded-2xl p-4 text-left transition-all duration-300 ${
+                            isSelected
+                              ? "bg-blue-50 dark:bg-blue-900/20 shadow-sm ring-1 ring-blue-100 dark:ring-blue-800/50"
+                              : "hover:bg-gray-50 dark:hover:bg-gray-800/40"
+                          }`}
                         >
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center justify-between gap-2">
-                              <h3 className={`truncate text-sm font-bold tracking-tight ${isSelected ? "text-blue-900 dark:text-blue-100" : "text-gray-900 dark:text-white"}`}>
+                              <h3
+                                className={`truncate text-sm font-bold tracking-tight ${
+                                  isSelected
+                                    ? "text-blue-900 dark:text-blue-100"
+                                    : "text-gray-900 dark:text-white"
+                                }`}
+                              >
                                 {itinerary.title}
                               </h3>
-
                             </div>
 
                             <p className="mt-1 text-[12px] font-medium text-gray-500 dark:text-gray-400">
-                              {formatDateRange(itinerary.start_date, itinerary.end_date)}
+                              {formatDateRange(
+                                itinerary.start_date,
+                                itinerary.end_date
+                              )}
                             </p>
 
                             <div className="mt-3 flex items-center justify-between gap-2">
                               <div className="flex -space-x-2">
-                                {[...Array(Math.min(travelerTotal, 3))].map((_, i) => (
-                                  <div key={i} className="h-6 w-6 rounded-full border-2 border-white bg-gray-200 dark:border-gray-900 dark:bg-gray-700" />
-                                ))}
+                                {[...Array(Math.min(travelerTotal, 3))].map(
+                                  (_, i) => (
+                                    <div
+                                      key={i}
+                                      className="h-6 w-6 rounded-full border-2 border-white bg-gray-200 dark:border-gray-900 dark:bg-gray-700"
+                                    />
+                                  )
+                                )}
                                 {travelerTotal > 3 && (
                                   <div className="flex h-6 w-6 items-center justify-center rounded-full border-2 border-white bg-gray-100 text-[10px] font-bold text-gray-500 dark:border-gray-900 dark:bg-gray-800">
                                     +{travelerTotal - 3}
@@ -989,34 +1057,65 @@ export default function ItineraryPlanner() {
 
                 {isEditingHeader && (
                   <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-                    <div className="absolute inset-0 bg-black/60 backdrop-blur-md" onClick={() => setIsEditingHeader(false)} />
+                    <div
+                      className="absolute inset-0 bg-black/60 backdrop-blur-md"
+                      onClick={() => setIsEditingHeader(false)}
+                    />
                     <div className="relative w-full max-w-3xl bg-white dark:bg-gray-900 rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
                       <div className="px-8 py-6 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between bg-gray-50/50 dark:bg-gray-950/50">
-                        <h3 className="text-xl font-black text-gray-900 dark:text-white">Settings</h3>
-                        <button onClick={() => setIsEditingHeader(false)} className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition">
-                          <svg className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                        <h3 className="text-xl font-black text-gray-900 dark:text-white">
+                          Settings
+                        </h3>
+                        <button
+                          onClick={() => setIsEditingHeader(false)}
+                          className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition"
+                        >
+                          <svg
+                            className="h-5 w-5 text-gray-400"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                            strokeWidth={2}
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              d="M6 18L18 6M6 6l12 12"
+                            />
                           </svg>
                         </button>
                       </div>
 
                       <div className="flex-1 overflow-y-auto p-8 space-y-10">
                         {/* Visibility Section */}
-                        <form onSubmit={handleUpdateItinerary} className="space-y-6">
+                        <form
+                          onSubmit={handleUpdateItinerary}
+                          className="space-y-6"
+                        >
                           <div>
-                            <label className="block text-sm font-bold text-gray-400 uppercase tracking-widest mb-4">Visibility & Privacy</label>
+                            <label className="block text-sm font-bold text-gray-400 uppercase tracking-widest mb-4">
+                              Visibility & Privacy
+                            </label>
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                               {["private", "shared", "public"].map((v) => (
                                 <button
                                   key={v}
                                   type="button"
-                                  onClick={() => setEditHeaderForm({ ...editHeaderForm, visibility: v })}
-                                  className={`p-4 rounded-2xl border-2 text-left transition-all ${editHeaderForm.visibility === v
-                                    ? "border-blue-500 bg-blue-50 dark:bg-blue-900/10"
-                                    : "border-gray-100 dark:border-gray-800 hover:border-gray-200"
-                                    }`}
+                                  onClick={() =>
+                                    setEditHeaderForm({
+                                      ...editHeaderForm,
+                                      visibility: v,
+                                    })
+                                  }
+                                  className={`p-4 rounded-2xl border-2 text-left transition-all ${
+                                    editHeaderForm.visibility === v
+                                      ? "border-blue-500 bg-blue-50 dark:bg-blue-900/10"
+                                      : "border-gray-100 dark:border-gray-800 hover:border-gray-200"
+                                  }`}
                                 >
-                                  <p className="font-bold text-gray-900 dark:text-white capitalize mb-1">{v}</p>
+                                  <p className="font-bold text-gray-900 dark:text-white capitalize mb-1">
+                                    {v}
+                                  </p>
                                   <p className="text-[10px] text-gray-500">
                                     {v === "private" && "Only travelers"}
                                     {v === "shared" && "Connections only"}
@@ -1034,8 +1133,12 @@ export default function ItineraryPlanner() {
                         <div className="space-y-6">
                           <div className="flex items-center justify-between">
                             <div>
-                              <h4 className="font-bold text-gray-900 dark:text-white">Participants</h4>
-                              <p className="text-xs text-gray-500">Collaborate with others on this journey</p>
+                              <h4 className="font-bold text-gray-900 dark:text-white">
+                                Participants
+                              </h4>
+                              <p className="text-xs text-gray-500">
+                                Collaborate with others on this journey
+                              </p>
                             </div>
                             <button className="px-5 py-2.5 bg-blue-600 text-white rounded-xl text-xs font-bold hover:bg-blue-700 shadow-lg shadow-blue-500/20 transition">
                               Invite +
@@ -1044,16 +1147,32 @@ export default function ItineraryPlanner() {
 
                           <div className="divide-y divide-gray-50 dark:divide-gray-800 border border-gray-100 dark:border-gray-800 rounded-2xl overflow-hidden">
                             {detail.travelers?.map((traveler, index) => {
-                              const displayName = travelerDisplayName(traveler, usersById);
+                              const displayName = travelerDisplayName(
+                                traveler,
+                                usersById
+                              );
                               return (
-                                <div key={index} className="px-5 py-4 flex items-center justify-between bg-white dark:bg-gray-900/50">
+                                <div
+                                  key={index}
+                                  className="px-5 py-4 flex items-center justify-between bg-white dark:bg-gray-900/50"
+                                >
                                   <div className="flex items-center gap-3">
-                                    <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center text-xs font-bold text-blue-600" style={{ background: traveler.color_hex || undefined }}>
+                                    <div
+                                      className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center text-xs font-bold text-blue-600"
+                                      style={{
+                                        background:
+                                          traveler.color_hex || undefined,
+                                      }}
+                                    >
                                       {avatarInitials(displayName)}
                                     </div>
                                     <div>
-                                      <p className="text-sm font-bold text-gray-900 dark:text-white">{displayName}</p>
-                                      <p className="text-[10px] uppercase font-black text-gray-400">{traveler.role}</p>
+                                      <p className="text-sm font-bold text-gray-900 dark:text-white">
+                                        {displayName}
+                                      </p>
+                                      <p className="text-[10px] uppercase font-black text-gray-400">
+                                        {traveler.role}
+                                      </p>
                                     </div>
                                   </div>
                                   <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-gray-50 dark:bg-gray-800 text-gray-500 uppercase">
@@ -1066,8 +1185,18 @@ export default function ItineraryPlanner() {
                         </div>
 
                         <div className="flex justify-end gap-4 pt-4">
-                          <button type="button" onClick={() => setIsEditingHeader(false)} className="px-6 py-3 text-sm font-bold text-gray-500 hover:text-gray-900">Close</button>
-                          <button onClick={() => handleUpdateItinerary()} disabled={updatingHeader} className="px-8 py-3 bg-blue-600 text-white rounded-2xl font-bold shadow-lg shadow-blue-500/30 hover:bg-blue-700 disabled:opacity-50">
+                          <button
+                            type="button"
+                            onClick={() => setIsEditingHeader(false)}
+                            className="px-6 py-3 text-sm font-bold text-gray-500 hover:text-gray-900"
+                          >
+                            Close
+                          </button>
+                          <button
+                            onClick={() => handleUpdateItinerary()}
+                            disabled={updatingHeader}
+                            className="px-8 py-3 bg-blue-600 text-white rounded-2xl font-bold shadow-lg shadow-blue-500/30 hover:bg-blue-700 disabled:opacity-50"
+                          >
                             {updatingHeader ? "Saving..." : "Save Settings"}
                           </button>
                         </div>
@@ -1083,9 +1212,23 @@ export default function ItineraryPlanner() {
                       className="p-3 rounded-full bg-gray-50/50 dark:bg-gray-800/50 text-gray-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-all duration-300 shadow-sm border border-gray-100 dark:border-gray-800 backdrop-blur-sm"
                       aria-label="Itinerary settings"
                     >
-                      <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                      <svg
+                        className="h-6 w-6"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                        strokeWidth={2}
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
+                        />
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                        />
                       </svg>
                     </button>
                   </div>
@@ -1097,13 +1240,19 @@ export default function ItineraryPlanner() {
                           type="text"
                           autoFocus
                           value={editHeaderForm.title}
-                          onChange={(e) => setEditHeaderForm({ ...editHeaderForm, title: e.target.value })}
+                          onChange={(e) =>
+                            setEditHeaderForm({
+                              ...editHeaderForm,
+                              title: e.target.value,
+                            })
+                          }
                           onKeyDown={(e) => {
                             if (e.key === "Enter") handleUpdateItinerary();
                             if (e.key === "Escape") setIsEditingTitle(false);
                           }}
                           onBlur={() => {
-                            if (editHeaderForm.title === detail.title) setIsEditingTitle(false);
+                            if (editHeaderForm.title === detail.title)
+                              setIsEditingTitle(false);
                           }}
                           className="w-full bg-gray-50 dark:bg-gray-800/50 text-4xl font-black text-gray-900 dark:text-white px-4 py-2 rounded-2xl border-2 border-blue-500/20 focus:border-blue-500 focus:outline-none transition-all"
                         />
@@ -1138,8 +1287,18 @@ export default function ItineraryPlanner() {
                         >
                           {detail.title}
                           {detail.owner_id === userId && (
-                            <svg className="h-6 w-6 opacity-0 group-hover/title:opacity-100 transition-opacity text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                            <svg
+                              className="h-6 w-6 opacity-0 group-hover/title:opacity-100 transition-opacity text-blue-500"
+                              fill="none"
+                              viewBox="0 0 24 24"
+                              stroke="currentColor"
+                              strokeWidth={2.5}
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
+                              />
                             </svg>
                           )}
                         </h2>
@@ -1150,10 +1309,23 @@ export default function ItineraryPlanner() {
                   <div className="flex flex-col gap-8 lg:flex-row lg:items-center lg:justify-between">
                     <div className="flex flex-col gap-1">
                       <p className="flex items-center gap-2 text-lg font-semibold text-gray-700 dark:text-gray-300">
-                        <svg className="h-5 w-5 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                        <svg
+                          className="h-5 w-5 text-blue-500"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                          strokeWidth={2}
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+                          />
                         </svg>
-                        {formatDateRange(inferredDates.start, inferredDates.end)}
+                        {formatDateRange(
+                          inferredDates.start,
+                          inferredDates.end
+                        )}
                       </p>
                       <p className="text-sm font-medium text-gray-400 dark:text-gray-500 ml-7">
                         {tripDurationLabel}
@@ -1166,7 +1338,7 @@ export default function ItineraryPlanner() {
                           <div className="h-full w-full rounded-full bg-white dark:bg-gray-900 flex items-center justify-center font-bold text-blue-600 dark:text-blue-400">
                             {avatarInitials(
                               detail.owner?.preferred_name ||
-                              detail.owner?.name,
+                                detail.owner?.name,
                               detail.owner?.username
                             )}
                           </div>
@@ -1297,10 +1469,11 @@ export default function ItineraryPlanner() {
                                       type: type.value,
                                     }))
                                   }
-                                  className={`px-3 py-2 text-sm font-medium rounded-lg border transition ${segmentForm.type === type.value
-                                    ? "border-blue-500 bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-500"
-                                    : "border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800"
-                                    }`}
+                                  className={`px-3 py-2 text-sm font-medium rounded-lg border transition ${
+                                    segmentForm.type === type.value
+                                      ? "border-blue-500 bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-500"
+                                      : "border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800"
+                                  }`}
                                 >
                                   {type.label}
                                 </button>
@@ -1463,30 +1636,30 @@ export default function ItineraryPlanner() {
                           {/* Transport Number (for flights/transport) */}
                           {(segmentForm.type === "flight" ||
                             segmentForm.type === "transport") && (
-                              <div>
-                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                                  {segmentForm.type === "flight"
-                                    ? "Flight Number"
-                                    : "Route/Line"}
-                                </label>
-                                <input
-                                  type="text"
-                                  value={segmentForm.transportNumber}
-                                  onChange={(e) =>
-                                    setSegmentForm((prev) => ({
-                                      ...prev,
-                                      transportNumber: e.target.value,
-                                    }))
-                                  }
-                                  className="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                  placeholder={
-                                    segmentForm.type === "flight"
-                                      ? "UA 123"
-                                      : "Line 4"
-                                  }
-                                />
-                              </div>
-                            )}
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                {segmentForm.type === "flight"
+                                  ? "Flight Number"
+                                  : "Route/Line"}
+                              </label>
+                              <input
+                                type="text"
+                                value={segmentForm.transportNumber}
+                                onChange={(e) =>
+                                  setSegmentForm((prev) => ({
+                                    ...prev,
+                                    transportNumber: e.target.value,
+                                  }))
+                                }
+                                className="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                placeholder={
+                                  segmentForm.type === "flight"
+                                    ? "UA 123"
+                                    : "Line 4"
+                                }
+                              />
+                            </div>
+                          )}
                           {/* Timezone */}
                           <div>
                             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -1602,16 +1775,14 @@ export default function ItineraryPlanner() {
 
                     {segmentCount > 0 && (
                       <div className="relative">
-                        {/* Timeline line */}
-                        <div className="absolute left-6 top-0 bottom-0 w-0.5 bg-gradient-to-b from-blue-500 via-blue-400 to-blue-300 dark:from-blue-600 dark:via-blue-500 dark:to-blue-400" />
+                        <div className="pointer-events-none absolute left-12 top-6 bottom-6 w-0.5 bg-gradient-to-b from-blue-500 via-blue-400 to-blue-300 dark:from-blue-600 dark:via-blue-500 dark:to-blue-400" />
 
-                        {/* Timeline nodes */}
-                        <div className="space-y-0">
+                        <div className="rounded-[1.75rem] border border-gray-200 dark:border-gray-800 bg-gradient-to-b from-white via-gray-50 to-gray-100/60 dark:from-gray-950 dark:via-gray-900/40 dark:to-gray-900/10 shadow-inner">
                           {detail.segments?.map((segment, index) => {
                             const isFirst = index === 0;
                             const isLast =
                               index === (detail.segments?.length ?? 0) - 1;
-                            // Get segment type icon and color
+                            const isEven = index % 2 === 0;
                             const typeConfig: Record<
                               string,
                               {
@@ -1656,8 +1827,7 @@ export default function ItineraryPlanner() {
                                   </svg>
                                 ),
                                 color: "text-purple-600 dark:text-purple-400",
-                                bgColor:
-                                  "bg-purple-100 dark:bg-purple-900/40",
+                                bgColor: "bg-purple-100 dark:bg-purple-900/40",
                               },
                               activity: {
                                 icon: (
@@ -1747,164 +1917,48 @@ export default function ItineraryPlanner() {
                             return (
                               <div
                                 key={segment.id}
-                                className="relative pl-16"
+                                className={`group relative pl-24 pr-8 py-8 transition-colors ${
+                                  !isLast
+                                    ? "border-b border-white/60 dark:border-gray-800/70"
+                                    : ""
+                                } ${
+                                  isEven
+                                    ? "bg-white/80 dark:bg-gray-900/30"
+                                    : "bg-white/60 dark:bg-gray-900/10"
+                                }`}
                               >
-                                {/* Node circle */}
                                 <div
-                                  className={`absolute left-3 w-7 h-7 rounded-full ${config.bgColor} ${config.color} flex items-center justify-center ring-4 ring-white dark:ring-gray-900 z-10`}
+                                  className={`absolute left-8 top-8 w-8 h-8 rounded-full ${config.bgColor} ${config.color} flex items-center justify-center ring-4 ring-white dark:ring-gray-900 shadow-sm`}
                                 >
                                   {config.icon}
                                 </div>
 
-                                {/* Start marker */}
-                                {isFirst && (
-                                  <div className="absolute left-[18px] -top-4 w-3 h-3 rounded-full bg-blue-500 ring-4 ring-white dark:ring-gray-900 z-20" />
-                                )}
-
-                                {/* Content card */}
-                                <div
-                                  className={`pb-8 ${isLast ? "pb-0" : ""}`}
-                                >
-                                  <div className="group rounded-xl border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-950/40 hover:border-blue-300 dark:hover:border-blue-700 hover:shadow-md transition-all overflow-hidden">
-                                    {/* Segment header */}
-                                    <div className="px-4 py-4">
-                                      <div className="flex items-start justify-between gap-3">
-                                        <div className="flex-1 min-w-0">
-                                          <div className="flex items-center gap-2 mb-1">
-                                            <span
-                                              className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold uppercase tracking-wide ${config.bgColor} ${config.color}`}
-                                            >
-                                              {segment.type}
-                                            </span>
-                                            {segment.confirmation_code && (
-                                              <span className="text-xs text-gray-400 dark:text-gray-500">
-                                                #{segment.confirmation_code}
-                                              </span>
-                                            )}
-                                          </div>
-                                          <h4 className="text-base font-semibold text-gray-900 dark:text-white truncate">
-                                            {segment.title}
-                                          </h4>
-                                          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                                            {formatSegmentTime(segment)}
-                                          </p>
-                                          {segment.location_name && (
-                                            <p className="text-sm text-gray-500 dark:text-gray-400 flex items-center gap-1 mt-1">
-                                              <svg
-                                                className="h-3.5 w-3.5"
-                                                fill="none"
-                                                viewBox="0 0 24 24"
-                                                stroke="currentColor"
-                                                strokeWidth={1.5}
-                                              >
-                                                <path
-                                                  strokeLinecap="round"
-                                                  strokeLinejoin="round"
-                                                  d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z"
-                                                />
-                                                <path
-                                                  strokeLinecap="round"
-                                                  strokeLinejoin="round"
-                                                  d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z"
-                                                />
-                                              </svg>
-                                              {segment.location_name}
-                                            </p>
-                                          )}
-                                        </div>
-                                        <div className="flex items-center gap-1">
-                                          {segment.cost_amount &&
-                                            segment.cost_currency && (
-                                              <span className="text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 rounded-lg px-2 py-1">
-                                                {segment.cost_currency}{" "}
-                                                {segment.cost_amount}
-                                              </span>
-                                            )}
-                                          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                            {detail.owner_id === userId && (
-                                              <>
-                                                <button
-                                                  type="button"
-                                                  onClick={() => startEditingSegment(segment)}
-                                                  className="p-1.5 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:text-blue-400 dark:hover:bg-blue-900/30 transition"
-                                                  title="Edit segment"
-                                                >
-                                                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                                    <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" />
-                                                  </svg>
-                                                </button>
-                                                <button
-                                                  type="button"
-                                                  onClick={() => handleDeleteSegment(segment.id)}
-                                                  className="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:text-red-400 dark:hover:bg-red-900/30 transition"
-                                                  title="Delete segment"
-                                                >
-                                                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                                    <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
-                                                  </svg>
-                                                </button>
-                                              </>
-                                            )}
-                                          </div>
-                                        </div>
-                                      </div>
-
-                                      {segment.description && (
-                                        <p className="mt-3 text-sm text-gray-600 dark:text-gray-300">
-                                          {segment.description}
-                                        </p>
-                                      )}
-
-                                      {/* Additional details */}
-                                      {(segment.provider_name ||
-                                        segment.transport_number) && (
-                                          <div className="mt-3 flex flex-wrap gap-2">
-                                            {segment.provider_name && (
-                                              <span className="inline-flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 rounded-lg px-2 py-1">
-                                                <svg
-                                                  className="h-3 w-3"
-                                                  fill="none"
-                                                  viewBox="0 0 24 24"
-                                                  stroke="currentColor"
-                                                  strokeWidth={1.5}
-                                                >
-                                                  <path
-                                                    strokeLinecap="round"
-                                                    strokeLinejoin="round"
-                                                    d="M2.25 21h19.5m-18-18v18m10.5-18v18m6-13.5V21M6.75 6.75h.75m-.75 3h.75m-.75 3h.75m3-6h.75m-.75 3h.75m-.75 3h.75M6.75 21v-3.375c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21M3 3h12m-.75 4.5H21m-3.75 3.75h.008v.008h-.008v-.008zm0 3h.008v.008h-.008v-.008zm0 3h.008v.008h-.008v-.008z"
-                                                  />
-                                                </svg>
-                                                {segment.provider_name}
-                                              </span>
-                                            )}
-                                            {segment.transport_number && (
-                                              <span className="inline-flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 rounded-lg px-2 py-1">
-                                                <svg
-                                                  className="h-3 w-3"
-                                                  fill="none"
-                                                  viewBox="0 0 24 24"
-                                                  stroke="currentColor"
-                                                  strokeWidth={1.5}
-                                                >
-                                                  <path
-                                                    strokeLinecap="round"
-                                                    strokeLinejoin="round"
-                                                    d="M5.25 8.25h15m-16.5 7.5h15m-1.8-13.5l-3.9 19.5m-2.1-19.5l-3.9 19.5"
-                                                  />
-                                                </svg>
-                                                {segment.transport_number}
-                                              </span>
-                                            )}
-                                          </div>
+                                {/* Content */}
+                                <div className="flex flex-col gap-4">
+                                  <div className="flex items-start justify-between gap-4">
+                                    <div className="flex-1 min-w-0">
+                                      <div className="flex flex-wrap items-center gap-2 mb-1">
+                                        <span
+                                          className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold uppercase tracking-wide ${config.bgColor} ${config.color}`}
+                                        >
+                                          {segment.type}
+                                        </span>
+                                        {segment.confirmation_code && (
+                                          <span className="text-xs text-gray-400 dark:text-gray-500">
+                                            #{segment.confirmation_code}
+                                          </span>
                                         )}
-                                    </div>
-
-                                    {/* Segment checklist - expandable */}
-                                    <details className="border-t border-gray-200 dark:border-gray-800">
-                                      <summary className="px-4 py-3 cursor-pointer text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-900/50 transition flex items-center justify-between">
-                                        <span className="flex items-center gap-2">
+                                      </div>
+                                      <h4 className="text-base font-semibold text-gray-900 dark:text-white truncate">
+                                        {segment.title}
+                                      </h4>
+                                      <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                                        {formatSegmentTime(segment)}
+                                      </p>
+                                      {segment.location_name && (
+                                        <p className="text-sm text-gray-500 dark:text-gray-400 flex items-center gap-1 mt-1">
                                           <svg
-                                            className="h-4 w-4 text-gray-400"
+                                            className="h-3.5 w-3.5"
                                             fill="none"
                                             viewBox="0 0 24 24"
                                             stroke="currentColor"
@@ -1913,38 +1967,170 @@ export default function ItineraryPlanner() {
                                             <path
                                               strokeLinecap="round"
                                               strokeLinejoin="round"
-                                              d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                                              d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z"
+                                            />
+                                            <path
+                                              strokeLinecap="round"
+                                              strokeLinejoin="round"
+                                              d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z"
                                             />
                                           </svg>
-                                          Checklist
-                                        </span>
-                                        <span className="text-xs text-gray-400 dark:text-gray-500">
-                                          0 / 0 complete
-                                        </span>
-                                      </summary>
-                                      <div className="px-4 pb-4">
-                                        <div className="space-y-2">
-                                          {/* Empty state for segment checklist */}
-                                          <div className="rounded-lg border border-dashed border-gray-300 dark:border-gray-700 px-3 py-4 text-center">
-                                            <p className="text-xs text-gray-500 dark:text-gray-400">
-                                              No tasks yet for this segment
-                                            </p>
+                                          {segment.location_name}
+                                        </p>
+                                      )}
+                                    </div>
+                                    <div className="flex items-center gap-1">
+                                      {segment.cost_amount &&
+                                        segment.cost_currency && (
+                                          <span className="text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 rounded-lg px-2 py-1">
+                                            {segment.cost_currency}{" "}
+                                            {segment.cost_amount}
+                                          </span>
+                                        )}
+                                      <div className="flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+                                        {detail.owner_id === userId && (
+                                          <>
                                             <button
                                               type="button"
-                                              className="mt-2 text-xs font-medium text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300"
+                                              onClick={() =>
+                                                startEditingSegment(segment)
+                                              }
+                                              className="p-1.5 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:text-blue-400 dark:hover:bg-blue-900/30 transition"
+                                              title="Edit segment"
                                             >
-                                              + Add task
+                                              <svg
+                                                className="h-4 w-4"
+                                                fill="none"
+                                                viewBox="0 0 24 24"
+                                                stroke="currentColor"
+                                                strokeWidth={2}
+                                              >
+                                                <path
+                                                  strokeLinecap="round"
+                                                  strokeLinejoin="round"
+                                                  d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10"
+                                                />
+                                              </svg>
                                             </button>
-                                          </div>
-                                        </div>
+                                            <button
+                                              type="button"
+                                              onClick={() =>
+                                                handleDeleteSegment(segment.id)
+                                              }
+                                              className="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:text-red-400 dark:hover:bg-red-900/30 transition"
+                                              title="Delete segment"
+                                            >
+                                              <svg
+                                                className="h-4 w-4"
+                                                fill="none"
+                                                viewBox="0 0 24 24"
+                                                stroke="currentColor"
+                                                strokeWidth={2}
+                                              >
+                                                <path
+                                                  strokeLinecap="round"
+                                                  strokeLinejoin="round"
+                                                  d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0"
+                                                />
+                                              </svg>
+                                            </button>
+                                          </>
+                                        )}
                                       </div>
-                                    </details>
+                                    </div>
                                   </div>
+
+                                  {segment.description && (
+                                    <p className="text-sm text-gray-600 dark:text-gray-300">
+                                      {segment.description}
+                                    </p>
+                                  )}
+
+                                  {(segment.provider_name ||
+                                    segment.transport_number) && (
+                                    <div className="flex flex-wrap gap-2">
+                                      {segment.provider_name && (
+                                        <span className="inline-flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 rounded-lg px-2 py-1">
+                                          <svg
+                                            className="h-3 w-3"
+                                            fill="none"
+                                            viewBox="0 0 24 24"
+                                            stroke="currentColor"
+                                            strokeWidth={1.5}
+                                          >
+                                            <path
+                                              strokeLinecap="round"
+                                              strokeLinejoin="round"
+                                              d="M2.25 21h19.5m-18-18v18m10.5-18v18m6-13.5V21M6.75 6.75h.75m-.75 3h.75m-.75 3h.75m3-6h.75m-.75 3h.75m-.75 3h.75M6.75 21v-3.375c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21M3 3h12m-.75 4.5H21m-3.75 3.75h.008v.008h-.008v-.008zm0 3h.008v.008h-.008v-.008zm0 3h.008v.008h-.008v-.008z"
+                                            />
+                                          </svg>
+                                          {segment.provider_name}
+                                        </span>
+                                      )}
+                                      {segment.transport_number && (
+                                        <span className="inline-flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 rounded-lg px-2 py-1">
+                                          <svg
+                                            className="h-3 w-3"
+                                            fill="none"
+                                            viewBox="0 0 24 24"
+                                            stroke="currentColor"
+                                            strokeWidth={1.5}
+                                          >
+                                            <path
+                                              strokeLinecap="round"
+                                              strokeLinejoin="round"
+                                              d="M5.25 8.25h15m-16.5 7.5h15m-1.8-13.5l-3.9 19.5m-2.1-19.5l-3.9 19.5"
+                                            />
+                                          </svg>
+                                          {segment.transport_number}
+                                        </span>
+                                      )}
+                                    </div>
+                                  )}
+
+                                  <details className="rounded-2xl border border-dashed border-gray-200 dark:border-gray-800 bg-white/40 dark:bg-transparent">
+                                    <summary className="px-4 py-3 cursor-pointer text-sm font-medium text-gray-700 dark:text-gray-300 flex items-center justify-between">
+                                      <span className="flex items-center gap-2">
+                                        <svg
+                                          className="h-4 w-4 text-gray-400"
+                                          fill="none"
+                                          viewBox="0 0 24 24"
+                                          stroke="currentColor"
+                                          strokeWidth={1.5}
+                                        >
+                                          <path
+                                            strokeLinecap="round"
+                                            strokeLinejoin="round"
+                                            d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                                          />
+                                        </svg>
+                                        Checklist
+                                      </span>
+                                      <span className="text-xs text-gray-400 dark:text-gray-500">
+                                        0 / 0 complete
+                                      </span>
+                                    </summary>
+                                    <div className="px-4 pb-4">
+                                      <div className="rounded-lg border border-dashed border-gray-300 dark:border-gray-700 px-3 py-4 text-center">
+                                        <p className="text-xs text-gray-500 dark:text-gray-400">
+                                          No tasks yet for this segment
+                                        </p>
+                                        <button
+                                          type="button"
+                                          className="mt-2 text-xs font-medium text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300"
+                                        >
+                                          + Add task
+                                        </button>
+                                      </div>
+                                    </div>
+                                  </details>
                                 </div>
 
-                                {/* End marker */}
+                                {isFirst && (
+                                  <div className="absolute left-[46px] top-3 w-3 h-3 rounded-full bg-blue-500 ring-4 ring-white dark:ring-gray-900" />
+                                )}
                                 {isLast && (
-                                  <div className="absolute left-[18px] bottom-0 w-3 h-3 rounded-full bg-blue-300 dark:bg-blue-500 ring-4 ring-white dark:ring-gray-900 z-20" />
+                                  <div className="absolute left-[46px] bottom-3 w-3 h-3 rounded-full bg-blue-300 dark:bg-blue-500 ring-4 ring-white dark:ring-gray-900" />
                                 )}
                               </div>
                             );
@@ -1990,32 +2176,32 @@ export default function ItineraryPlanner() {
                                   : "s"}
                               </span>
                             </div>
-                            {checklist.tasks &&
-                              checklist.tasks.length > 0 && (
-                                <div className="border-t border-gray-200 dark:border-gray-800 px-4 py-2 space-y-1">
-                                  {checklist.tasks.map((task) => (
-                                    <div
-                                      key={task.id}
-                                      className="flex items-center gap-3 py-1"
-                                    >
-                                      <input
-                                        type="checkbox"
-                                        checked={task.status === "completed"}
-                                        readOnly
-                                        className="h-4 w-4 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500"
-                                      />
-                                      <span
-                                        className={`text-sm ${task.status === "completed"
+                            {checklist.tasks && checklist.tasks.length > 0 && (
+                              <div className="border-t border-gray-200 dark:border-gray-800 px-4 py-2 space-y-1">
+                                {checklist.tasks.map((task) => (
+                                  <div
+                                    key={task.id}
+                                    className="flex items-center gap-3 py-1"
+                                  >
+                                    <input
+                                      type="checkbox"
+                                      checked={task.status === "completed"}
+                                      readOnly
+                                      className="h-4 w-4 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500"
+                                    />
+                                    <span
+                                      className={`text-sm ${
+                                        task.status === "completed"
                                           ? "text-gray-400 line-through"
                                           : "text-gray-700 dark:text-gray-300"
-                                          }`}
-                                      >
-                                        {task.title}
-                                      </span>
-                                    </div>
-                                  ))}
-                                </div>
-                              )}
+                                      }`}
+                                    >
+                                      {task.title}
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
                           </div>
                         ))}
                       </div>
@@ -2028,79 +2214,150 @@ export default function ItineraryPlanner() {
               <div className="space-y-6">
                 {editingSegmentId && (
                   <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
-                    <div className="absolute inset-0 bg-black/60 backdrop-blur-md" onClick={() => setEditingSegmentId(null)} />
+                    <div
+                      className="absolute inset-0 bg-black/60 backdrop-blur-md"
+                      onClick={() => setEditingSegmentId(null)}
+                    />
                     <div className="relative w-full max-w-2xl bg-white dark:bg-gray-900 rounded-[2.5rem] shadow-2xl p-8 overflow-y-auto max-h-[90vh]">
-                      <h3 className="text-2xl font-black text-gray-900 dark:text-white mb-6">Edit Segment</h3>
-                      <form onSubmit={handleUpdateSegment} className="space-y-6">
+                      <h3 className="text-2xl font-black text-gray-900 dark:text-white mb-6">
+                        Edit Segment
+                      </h3>
+                      <form
+                        onSubmit={handleUpdateSegment}
+                        className="space-y-6"
+                      >
                         <div className="grid grid-cols-2 gap-6">
                           <div className="col-span-2">
-                            <label className="block text-sm font-bold text-gray-400 uppercase tracking-widest mb-2">Title</label>
+                            <label className="block text-sm font-bold text-gray-400 uppercase tracking-widest mb-2">
+                              Title
+                            </label>
                             <input
                               type="text"
                               value={editSegmentForm.title}
-                              onChange={(e) => setEditSegmentForm({ ...editSegmentForm, title: e.target.value })}
+                              onChange={(e) =>
+                                setEditSegmentForm({
+                                  ...editSegmentForm,
+                                  title: e.target.value,
+                                })
+                              }
                               className="w-full rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 px-5 py-3 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none"
                               required
                             />
                           </div>
                           <div>
-                            <label className="block text-sm font-bold text-gray-400 uppercase tracking-widest mb-2">Type</label>
+                            <label className="block text-sm font-bold text-gray-400 uppercase tracking-widest mb-2">
+                              Type
+                            </label>
                             <select
                               value={editSegmentForm.type}
-                              onChange={(e) => setEditSegmentForm({ ...editSegmentForm, type: e.target.value })}
+                              onChange={(e) =>
+                                setEditSegmentForm({
+                                  ...editSegmentForm,
+                                  type: e.target.value,
+                                })
+                              }
                               className="w-full rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 px-5 py-3 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none"
                             >
-                              {SEGMENT_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+                              {SEGMENT_TYPES.map((t) => (
+                                <option key={t.value} value={t.value}>
+                                  {t.label}
+                                </option>
+                              ))}
                             </select>
                           </div>
                           <div>
-                            <label className="block text-sm font-bold text-gray-400 uppercase tracking-widest mb-2">Timezone</label>
+                            <label className="block text-sm font-bold text-gray-400 uppercase tracking-widest mb-2">
+                              Timezone
+                            </label>
                             <input
                               type="text"
                               value={editSegmentForm.timezone}
-                              onChange={(e) => setEditSegmentForm({ ...editSegmentForm, timezone: e.target.value })}
+                              onChange={(e) =>
+                                setEditSegmentForm({
+                                  ...editSegmentForm,
+                                  timezone: e.target.value,
+                                })
+                              }
                               className="w-full rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 px-5 py-3 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none"
                             />
                           </div>
                           <div>
-                            <label className="block text-sm font-bold text-gray-400 uppercase tracking-widest mb-2">Location</label>
+                            <label className="block text-sm font-bold text-gray-400 uppercase tracking-widest mb-2">
+                              Location
+                            </label>
                             <input
                               type="text"
                               value={editSegmentForm.locationName}
-                              onChange={(e) => setEditSegmentForm({ ...editSegmentForm, locationName: e.target.value })}
+                              onChange={(e) =>
+                                setEditSegmentForm({
+                                  ...editSegmentForm,
+                                  locationName: e.target.value,
+                                })
+                              }
                               className="w-full rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 px-5 py-3 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none"
                             />
                           </div>
                           <div>
-                            <label className="block text-sm font-bold text-gray-400 uppercase tracking-widest mb-2">Start Time</label>
+                            <label className="block text-sm font-bold text-gray-400 uppercase tracking-widest mb-2">
+                              Start Time
+                            </label>
                             <input
                               type="datetime-local"
                               value={editSegmentForm.startTime}
-                              onChange={(e) => setEditSegmentForm({ ...editSegmentForm, startTime: e.target.value })}
+                              onChange={(e) =>
+                                setEditSegmentForm({
+                                  ...editSegmentForm,
+                                  startTime: e.target.value,
+                                })
+                              }
                               className="w-full rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 px-5 py-3 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none"
                             />
                           </div>
                           <div>
-                            <label className="block text-sm font-bold text-gray-400 uppercase tracking-widest mb-2">End Time</label>
+                            <label className="block text-sm font-bold text-gray-400 uppercase tracking-widest mb-2">
+                              End Time
+                            </label>
                             <input
                               type="datetime-local"
                               value={editSegmentForm.endTime}
-                              onChange={(e) => setEditSegmentForm({ ...editSegmentForm, endTime: e.target.value })}
+                              onChange={(e) =>
+                                setEditSegmentForm({
+                                  ...editSegmentForm,
+                                  endTime: e.target.value,
+                                })
+                              }
                               className="w-full rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 px-5 py-3 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none"
                             />
                           </div>
                           <div className="col-span-2">
-                            <label className="block text-sm font-bold text-gray-400 uppercase tracking-widest mb-2">Description</label>
+                            <label className="block text-sm font-bold text-gray-400 uppercase tracking-widest mb-2">
+                              Description
+                            </label>
                             <textarea
                               value={editSegmentForm.description}
-                              onChange={(e) => setEditSegmentForm({ ...editSegmentForm, description: e.target.value })}
+                              onChange={(e) =>
+                                setEditSegmentForm({
+                                  ...editSegmentForm,
+                                  description: e.target.value,
+                                })
+                              }
                               className="w-full rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 px-5 py-3 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none h-24"
                             />
                           </div>
                         </div>
                         <div className="flex justify-end gap-4 pt-6 border-t border-gray-100 dark:border-gray-800">
-                          <button type="button" onClick={() => setEditingSegmentId(null)} className="px-6 py-3 text-sm font-bold text-gray-500 hover:text-gray-900">Cancel</button>
-                          <button type="submit" disabled={updatingSegment} className="px-8 py-3 bg-blue-600 text-white rounded-2xl font-bold shadow-lg shadow-blue-500/30 hover:bg-blue-700 disabled:opacity-50">
+                          <button
+                            type="button"
+                            onClick={() => setEditingSegmentId(null)}
+                            className="px-6 py-3 text-sm font-bold text-gray-500 hover:text-gray-900"
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            type="submit"
+                            disabled={updatingSegment}
+                            className="px-8 py-3 bg-blue-600 text-white rounded-2xl font-bold shadow-lg shadow-blue-500/30 hover:bg-blue-700 disabled:opacity-50"
+                          >
                             {updatingSegment ? "Saving..." : "Save Changes"}
                           </button>
                         </div>
@@ -2166,20 +2423,36 @@ export default function ItineraryPlanner() {
                     {!comments.length && (
                       <div className="flex flex-col items-center justify-center py-12 text-center">
                         <div className="h-16 w-16 rounded-full bg-gray-50 dark:bg-gray-800/50 flex items-center justify-center mb-4 transition-transform hover:scale-110 duration-500">
-                          <svg className="h-8 w-8 text-gray-300 dark:text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M8.625 12a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H8.25m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H12m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 01-2.555-.337A5.972 5.972 0 015.41 20.97a5.969 5.969 0 01-.474-.065 4.48 4.48 0 00.978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25z" />
+                          <svg
+                            className="h-8 w-8 text-gray-300 dark:text-gray-600"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                            strokeWidth={1.5}
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              d="M8.625 12a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H8.25m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H12m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 01-2.555-.337A5.972 5.972 0 015.41 20.97a5.969 5.969 0 01-.474-.065 4.48 4.48 0 00.978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25z"
+                            />
                           </svg>
                         </div>
-                        <p className="text-sm font-bold text-gray-400 dark:text-gray-500">No comments yet</p>
+                        <p className="text-sm font-bold text-gray-400 dark:text-gray-500">
+                          No comments yet
+                        </p>
                       </div>
                     )}
                     {comments.map((comment) => {
                       const isOwner = comment.author_id === detail?.owner_id;
                       return (
-                        <div key={comment.id} className="group relative flex gap-4">
+                        <div
+                          key={comment.id}
+                          className="group relative flex gap-4"
+                        >
                           <div className="h-11 w-11 shrink-0 rounded-full bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/10 dark:to-indigo-900/10 border border-blue-100 dark:border-blue-900/30 flex items-center justify-center text-sm font-black text-blue-600 dark:text-blue-400 shadow-sm transition-transform group-hover:scale-110">
                             {avatarInitials(
-                              comment.author?.preferred_name || comment.author?.name,
+                              comment.author?.preferred_name ||
+                                comment.author?.name,
                               comment.author?.username
                             )}
                           </div>
@@ -2187,14 +2460,23 @@ export default function ItineraryPlanner() {
                             <div className="flex items-center justify-between">
                               <div className="flex items-center gap-2">
                                 <span className="text-sm font-black text-gray-900 dark:text-white">
-                                  {comment.author?.preferred_name || comment.author?.name || comment.author?.username || "Traveler"}
+                                  {comment.author?.preferred_name ||
+                                    comment.author?.name ||
+                                    comment.author?.username ||
+                                    "Traveler"}
                                 </span>
                                 {isOwner && (
-                                  <span className="inline-flex items-center rounded-full bg-blue-500 px-2 py-0.5 text-[8px] font-black uppercase tracking-widest text-white">Owner</span>
+                                  <span className="inline-flex items-center rounded-full bg-blue-500 px-2 py-0.5 text-[8px] font-black uppercase tracking-widest text-white">
+                                    Owner
+                                  </span>
                                 )}
                               </div>
                               <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 dark:text-gray-500">
-                                {comment.created_at ? new Date(comment.created_at).toLocaleDateString() : 'Just now'}
+                                {comment.created_at
+                                  ? new Date(
+                                      comment.created_at
+                                    ).toLocaleDateString()
+                                  : "Just now"}
                               </span>
                             </div>
                             <div className="relative p-4 bg-gray-50 dark:bg-gray-800/40 rounded-2xl rounded-tl-none border border-gray-100 dark:border-gray-800/50 transition-colors group-hover:bg-white dark:group-hover:bg-gray-800/60 group-hover:shadow-xl group-hover:shadow-gray-200/50 dark:group-hover:shadow-none">
