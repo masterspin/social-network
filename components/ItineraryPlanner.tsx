@@ -3,40 +3,52 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { getCurrentUser } from "@/lib/supabase/queries";
 import { Database } from "@/types/supabase";
+import type {
+  SegmentAutofillSuggestion,
+  SegmentAutofillType,
+} from "@/lib/autofill/types";
+
+const SEGMENT_TYPES = [
+  "flight",
+  "train",
+  "car",
+  "activity",
+  "meal",
+  "hotel",
+  "other",
+] as const;
+
+type SegmentType = (typeof SEGMENT_TYPES)[number];
 
 type ItineraryRow = Database["public"]["Tables"]["itineraries"]["Row"];
-type TravelerRow = Database["public"]["Tables"]["itinerary_travelers"]["Row"];
 type SegmentRow = Database["public"]["Tables"]["itinerary_segments"]["Row"];
-type ChecklistRow = Database["public"]["Tables"]["itinerary_checklists"]["Row"];
-type TaskRow = Database["public"]["Tables"]["itinerary_tasks"]["Row"];
+type TravelerRow =
+  Database["public"]["Tables"]["itinerary_travelers"]["Row"] & {
+    user?: UserSummary | null;
+  };
 type CommentRow = Database["public"]["Tables"]["itinerary_comments"]["Row"];
 type UserSummary = Pick<
   Database["public"]["Tables"]["users"]["Row"],
   "id" | "username" | "name" | "preferred_name" | "profile_image_url"
 >;
+type ChecklistRow = Database["public"]["Tables"]["itinerary_checklists"]["Row"];
+type ChecklistTaskRow = Database["public"]["Tables"]["itinerary_tasks"]["Row"];
+
+type ChecklistWithTasks = ChecklistRow & {
+  tasks?: (ChecklistTaskRow & {
+    assignee?: UserSummary | null;
+  })[];
+};
 
 type ItinerarySummary = ItineraryRow & {
-  owner?: UserSummary | null;
-  travelers?: TravelerRow[] | null;
+  travelers?: TravelerRow[];
 };
 
 type DetailedItinerary = ItineraryRow & {
   owner?: UserSummary | null;
-  travelers?: (TravelerRow & { user?: UserSummary | null })[] | null;
-  segments?:
-    | (SegmentRow & {
-        created_by_user?: UserSummary | null;
-      })[]
-    | null;
-  checklists?:
-    | (ChecklistRow & {
-        tasks?:
-          | (TaskRow & {
-              assignee?: UserSummary | null;
-            })[]
-          | null;
-      })[]
-    | null;
+  travelers?: TravelerRow[];
+  segments?: SegmentRow[];
+  checklists?: ChecklistWithTasks[];
 };
 
 type CommentWithAuthor = CommentRow & {
@@ -45,14 +57,28 @@ type CommentWithAuthor = CommentRow & {
 
 type CreateFormState = {
   title: string;
-  visibility: string;
+  visibility: "private" | "shared" | "public";
+};
+
+type SegmentLegForm = {
+  id: string;
+  origin: string;
+  destination: string;
+  departureTime: string;
+  arrivalTime: string;
+  carrier: string;
+  number: string;
+  seat: string;
 };
 
 type SegmentFormState = {
-  type: string;
+  type: SegmentType;
   title: string;
   description: string;
   locationName: string;
+  locationAddress: string;
+  locationLat: string;
+  locationLng: string;
   startTime: string;
   endTime: string;
   timezone: string;
@@ -60,18 +86,620 @@ type SegmentFormState = {
   providerName: string;
   confirmationCode: string;
   transportNumber: string;
+  seatInfo: string;
   costAmount: string;
   costCurrency: string;
+  legs: SegmentLegForm[];
+  metadata: Record<string, unknown>;
 };
 
-const SEGMENT_TYPES = [
-  { value: "flight", label: "Flight" },
-  { value: "hotel", label: "Hotel" },
-  { value: "activity", label: "Activity" },
-  { value: "transport", label: "Transport" },
-  { value: "meal", label: "Meal" },
-  { value: "custom", label: "Other" },
-];
+type SegmentTypeConfig = {
+  key: SegmentType;
+  label: string;
+  smartFillHint: string;
+  titlePlaceholder: string;
+  descriptionPlaceholder: string;
+  locationLabel: string;
+  locationPlaceholder: string;
+  providerLabel: string;
+  providerPlaceholder: string;
+  confirmationLabel: string;
+  confirmationPlaceholder: string;
+  referenceLabel?: string;
+  referencePlaceholder?: string;
+  showSeatInput?: boolean;
+  seatLabel?: string;
+  seatPlaceholder?: string;
+};
+
+const SEGMENT_TYPE_CONFIG: Record<SegmentType, SegmentTypeConfig> = {
+  flight: {
+    key: "flight",
+    label: "Flight",
+    smartFillHint: "Flight number · e.g., UA 120",
+    titlePlaceholder: "UA120 · SFO → NRT",
+    descriptionPlaceholder: "Cabin, seat, baggage, or lounge notes",
+    locationLabel: "Primary airport / terminal",
+    locationPlaceholder: "San Francisco Intl · Terminal G",
+    providerLabel: "Airline",
+    providerPlaceholder: "United Airlines",
+    confirmationLabel: "Confirmation",
+    confirmationPlaceholder: "ABC123",
+    referenceLabel: "Flight number",
+    referencePlaceholder: "UA 120",
+    showSeatInput: true,
+    seatLabel: "Seat / Cabin",
+    seatPlaceholder: "12A · Polaris",
+  },
+  car: {
+    key: "car",
+    label: "Car / Ride",
+    smartFillHint: "Pickup or driver · e.g., Hertz Shinjuku",
+    titlePlaceholder: "Escort from HND to hotel",
+    descriptionPlaceholder: "Vehicle class, driver, or luggage notes",
+    locationLabel: "Pickup point",
+    locationPlaceholder: "Haneda Airport · Terminal 3 curb",
+    providerLabel: "Provider",
+    providerPlaceholder: "Hertz, Uber Black, MK Taxi...",
+    confirmationLabel: "Reservation",
+    confirmationPlaceholder: "HRZ-123456",
+    referenceLabel: "Vehicle / plate",
+    referencePlaceholder: "Toyota Alphard · 8JR-221",
+  },
+  activity: {
+    key: "activity",
+    label: "Activity",
+    smartFillHint: "Activity keyword · e.g., TeamLab Planets",
+    titlePlaceholder: "Teamlab R&D walkthrough",
+    descriptionPlaceholder: "Hosts, goals, or equipment to bring",
+    locationLabel: "Meeting point",
+    locationPlaceholder: "Toyosu · Entrance B",
+    providerLabel: "Host / operator",
+    providerPlaceholder: "Teamlab",
+    confirmationLabel: "Reference",
+    confirmationPlaceholder: "Invite link, CRM ID...",
+  },
+  meal: {
+    key: "meal",
+    label: "Meal",
+    smartFillHint: "Restaurant or chef · e.g., Sushi Saito",
+    titlePlaceholder: "Dinner at Den",
+    descriptionPlaceholder: "Course, guests, or dietary notes",
+    locationLabel: "Restaurant",
+    locationPlaceholder: "Kanda, Chiyoda City",
+    providerLabel: "Chef / venue",
+    providerPlaceholder: "Den",
+    confirmationLabel: "Reservation",
+    confirmationPlaceholder: "Resy/Opentable code",
+  },
+  hotel: {
+    key: "hotel",
+    label: "Stay",
+    smartFillHint: "Property name · e.g., Park Hyatt Tokyo",
+    titlePlaceholder: "Check-in · Park Hyatt Tokyo",
+    descriptionPlaceholder: "Room type, guest of, loyalty",
+    locationLabel: "Property",
+    locationPlaceholder: "Park Hyatt Tokyo",
+    providerLabel: "Brand or host",
+    providerPlaceholder: "Hyatt",
+    confirmationLabel: "Confirmation",
+    confirmationPlaceholder: "HYT12345",
+    referenceLabel: "Room # / key",
+    referencePlaceholder: "Room 5201 · Suite",
+  },
+  train: {
+    key: "train",
+    label: "Train",
+    smartFillHint: "Train service · e.g., Nozomi 18",
+    titlePlaceholder: "Nozomi 18 · Tokyo → Kyoto",
+    descriptionPlaceholder: "Car / seat, onboard notes",
+    locationLabel: "Origin station",
+    locationPlaceholder: "Tokyo Station",
+    providerLabel: "Operator",
+    providerPlaceholder: "JR Central",
+    confirmationLabel: "Reference",
+    confirmationPlaceholder: "Ticket number, QR link",
+    referenceLabel: "Service / car",
+    referencePlaceholder: "Nozomi 18 · Car 6",
+    showSeatInput: true,
+    seatLabel: "Seat",
+    seatPlaceholder: "Car 6 · Seat 4A",
+  },
+  other: {
+    key: "other",
+    label: "Other",
+    smartFillHint: "Describe what you need to fill",
+    titlePlaceholder: "Briefing, visa appointment, etc.",
+    descriptionPlaceholder: "Add any relevant context",
+    locationLabel: "Location",
+    locationPlaceholder: "Address or online link",
+    providerLabel: "Point of contact",
+    providerPlaceholder: "Host or vendor",
+    confirmationLabel: "Reference",
+    confirmationPlaceholder: "Ticket, approval, or doc ID",
+  },
+};
+
+const SEGMENT_TYPE_OPTIONS = SEGMENT_TYPES.map((value) => ({
+  value,
+  label: SEGMENT_TYPE_CONFIG[value].label,
+}));
+
+type TimelineStyle = {
+  icon: JSX.Element;
+  color: string;
+  bgColor: string;
+};
+
+const TIMELINE_STYLES: Record<SegmentType, TimelineStyle> = {
+  flight: {
+    icon: (
+      <svg
+        className="h-5 w-5"
+        fill="none"
+        viewBox="0 0 24 24"
+        stroke="currentColor"
+        strokeWidth={1.5}
+      >
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5"
+        />
+      </svg>
+    ),
+    color: "text-sky-600 dark:text-sky-400",
+    bgColor: "bg-sky-100 dark:bg-sky-900/40",
+  },
+  train: {
+    icon: (
+      <svg
+        className="h-5 w-5"
+        fill="none"
+        viewBox="0 0 24 24"
+        stroke="currentColor"
+        strokeWidth={1.5}
+      >
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          d="M8.25 18.75a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 01-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h1.125c.621 0 1.129-.504 1.09-1.124a17.902 17.902 0 00-3.213-9.193 2.056 2.056 0 00-1.58-.86H14.25M16.5 18.75h-2.25m0-11.177v-.958c0-.568-.422-1.048-.987-1.106a48.554 48.554 0 00-10.026 0 1.106 1.106 0 00-.987 1.106v7.635m12-6.677v6.677m0 4.5v-4.5m0 0h-12"
+        />
+      </svg>
+    ),
+    color: "text-green-600 dark:text-green-400",
+    bgColor: "bg-green-100 dark:bg-green-900/40",
+  },
+  car: {
+    icon: (
+      <svg
+        className="h-5 w-5"
+        fill="none"
+        viewBox="0 0 24 24"
+        stroke="currentColor"
+        strokeWidth={1.5}
+      >
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          d="M3 13.5l1.312-3.943A2 2 0 016.214 8h11.572a2 2 0 011.902 1.557L21 13.5M5 18.75a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zm0 0h14m0 0a1.5 1.5 0 103 0 1.5 1.5 0 00-3 0zm-11-6h8"
+        />
+      </svg>
+    ),
+    color: "text-emerald-600 dark:text-emerald-400",
+    bgColor: "bg-emerald-100 dark:bg-emerald-900/40",
+  },
+  activity: {
+    icon: (
+      <svg
+        className="h-5 w-5"
+        fill="none"
+        viewBox="0 0 24 24"
+        stroke="currentColor"
+        strokeWidth={1.5}
+      >
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          d="M11.48 3.499a.562.562 0 011.04 0l2.125 5.111a.563.563 0 00.475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 00-.182.557l1.285 5.385a.562.562 0 01-.84.61l-4.725-2.885a.563.563 0 00-.586 0L6.982 20.54a.562.562 0 01-.84-.61l1.285-5.386a.563.563 0 00-.182-.557l-4.204-3.602a.563.563 0 01.321-.988l5.518-.442a.563.563 0 00.475-.345L11.48 3.5z"
+        />
+      </svg>
+    ),
+    color: "text-amber-600 dark:text-amber-400",
+    bgColor: "bg-amber-100 dark:bg-amber-900/40",
+  },
+  meal: {
+    icon: (
+      <svg
+        className="h-5 w-5"
+        fill="none"
+        viewBox="0 0 24 24"
+        stroke="currentColor"
+        strokeWidth={1.5}
+      >
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          d="M12 8.25v-1.5m0 1.5c-1.355 0-2.697.056-4.024.166C6.845 8.51 6 9.473 6 10.608v2.513m6-4.87c1.355 0 2.697.055 4.024.165C17.155 8.51 18 9.473 18 10.608v2.513m-3-4.87v-1.5m-6 1.5v-1.5m12 9.75l-1.5.75a3.354 3.354 0 01-3 0 3.354 3.354 0 00-3 0 3.354 3.354 0 01-3 0 3.354 3.354 0 00-3 0 3.354 3.354 0 01-3 0L3 16.5m15-3.38a48.474 48.474 0 00-6-.37c-2.032 0-4.034.125-6 .37m12 0c.39.049.777.102 1.163.16 1.07.16 1.837 1.094 1.837 2.175v5.17c0 .62-.504 1.124-1.125 1.124H4.125A1.125 1.125 0 013 20.625v-5.17c0-1.08.768-2.014 1.837-2.174A47.78 47.78 0 016 13.12M12.265 3.11a.375.375 0 11-.53 0L12 2.845l.265.265zm-3 0a.375.375 0 11-.53 0L9 2.845l.265.265zm6 0a.375.375 0 11-.53 0L15 2.845l.265.265z"
+        />
+      </svg>
+    ),
+    color: "text-rose-600 dark:text-rose-400",
+    bgColor: "bg-rose-100 dark:bg-rose-900/40",
+  },
+  hotel: {
+    icon: (
+      <svg
+        className="h-5 w-5"
+        fill="none"
+        viewBox="0 0 24 24"
+        stroke="currentColor"
+        strokeWidth={1.5}
+      >
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          d="M2.25 21h19.5m-18-18v18m10.5-18v18m6-13.5V21M6.75 6.75h.75m-.75 3h.75m-.75 3h.75m3-6h.75m-.75 3h.75m-.75 3h.75M6.75 21v-3.375c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21M3 3h12m-.75 4.5H21m-3.75 3.75h.008v.008h-.008v-.008zm0 3h.008v.008h-.008v-.008zm0 3h.008v.008h-.008v-.008z"
+        />
+      </svg>
+    ),
+    color: "text-purple-600 dark:text-purple-400",
+    bgColor: "bg-purple-100 dark:bg-purple-900/40",
+  },
+  other: {
+    icon: (
+      <svg
+        className="h-5 w-5"
+        fill="none"
+        viewBox="0 0 24 24"
+        stroke="currentColor"
+        strokeWidth={1.5}
+      >
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z"
+        />
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z"
+        />
+      </svg>
+    ),
+    color: "text-blue-600 dark:text-blue-400",
+    bgColor: "bg-blue-100 dark:bg-blue-900/40",
+  },
+};
+
+const SMART_FILL_SUPPORTED_TYPES = new Set<SegmentType>([
+  "flight",
+  "train",
+  "hotel",
+  "meal",
+  "activity",
+]);
+
+function normalizeSegmentType(value?: string | null): SegmentType {
+  if (!value) return "other";
+  const normalized = value.toLowerCase();
+  switch (normalized) {
+    case "flight":
+      return "flight";
+    case "train":
+    case "transport":
+      return "train";
+    case "hotel":
+      return "hotel";
+    case "meal":
+      return "meal";
+    case "activity":
+      return "activity";
+    case "car":
+    case "ride":
+    case "rideshare":
+      return "car";
+    default:
+      return "other";
+  }
+}
+
+function getTypeConfig(value?: string | null): SegmentTypeConfig {
+  return SEGMENT_TYPE_CONFIG[normalizeSegmentType(value)];
+}
+
+function supportsLegsForType(type: SegmentType): boolean {
+  return type === "flight" || type === "train";
+}
+
+function toAutofillType(type: SegmentType): SegmentAutofillType {
+  switch (type) {
+    case "flight":
+      return "flight";
+    case "train":
+      return "train";
+    case "hotel":
+      return "hotel";
+    case "meal":
+      return "meal";
+    case "activity":
+      return "activity";
+    default:
+      return "custom";
+  }
+}
+
+function createLegId(): string {
+  if (typeof crypto !== "undefined" && crypto.randomUUID) {
+    return crypto.randomUUID();
+  }
+  return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
+function normalizeLegTimeInput(value?: string | null): string {
+  if (!value) return "";
+  if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(value)) {
+    return value;
+  }
+  return isoToLocalInput(value) || value;
+}
+
+function localInputToIso(value: string): string | null {
+  if (!value) return null;
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    return value;
+  }
+  return parsed.toISOString();
+}
+
+function createEmptyLeg(seed?: Partial<SegmentLegForm>): SegmentLegForm {
+  return {
+    id: createLegId(),
+    origin: seed?.origin ?? "",
+    destination: seed?.destination ?? "",
+    departureTime: seed?.departureTime ?? "",
+    arrivalTime: seed?.arrivalTime ?? "",
+    carrier: seed?.carrier ?? "",
+    number: seed?.number ?? "",
+    seat: seed?.seat ?? "",
+  };
+}
+
+function parseLegsFromMetadata(
+  metadata?: Record<string, unknown> | null
+): SegmentLegForm[] {
+  if (!metadata || typeof metadata !== "object") return [];
+  const rawLegs = (metadata as Record<string, unknown>).legs;
+  if (!Array.isArray(rawLegs)) return [];
+  return rawLegs
+    .map((entry) => {
+      if (!entry || typeof entry !== "object") return null;
+      const record = entry as Record<string, unknown>;
+      const departureRaw =
+        (record.departure_time as string | undefined) ??
+        (record.departureTime as string | undefined);
+      const arrivalRaw =
+        (record.arrival_time as string | undefined) ??
+        (record.arrivalTime as string | undefined);
+      return createEmptyLeg({
+        origin: typeof record.origin === "string" ? record.origin : "",
+        destination:
+          typeof record.destination === "string" ? record.destination : "",
+        departureTime: normalizeLegTimeInput(departureRaw ?? null),
+        arrivalTime: normalizeLegTimeInput(arrivalRaw ?? null),
+        carrier: typeof record.carrier === "string" ? record.carrier : "",
+        number: typeof record.number === "string" ? record.number : "",
+        seat: typeof record.seat === "string" ? record.seat : "",
+      });
+    })
+    .filter((leg): leg is SegmentLegForm => Boolean(leg));
+}
+
+function serializeLegs(
+  legs: SegmentLegForm[]
+): Array<Record<string, string | null>> | undefined {
+  const serialized = legs
+    .map((leg) => {
+      const origin = leg.origin.trim();
+      const destination = leg.destination.trim();
+      const departure_time = localInputToIso(leg.departureTime);
+      const arrival_time = localInputToIso(leg.arrivalTime);
+      const carrier = leg.carrier.trim();
+      const number = leg.number.trim();
+      const seat = leg.seat.trim();
+      const hasValue =
+        origin ||
+        destination ||
+        departure_time ||
+        arrival_time ||
+        carrier ||
+        number ||
+        seat;
+      if (!hasValue) return null;
+      return {
+        origin: origin || null,
+        destination: destination || null,
+        departure_time: departure_time,
+        arrival_time: arrival_time,
+        carrier: carrier || null,
+        number: number || null,
+        seat: seat || null,
+      };
+    })
+    .filter((entry): entry is Record<string, string | null> => Boolean(entry));
+  return serialized.length ? serialized : undefined;
+}
+
+function extractLegsFromSuggestion(
+  suggestion: SegmentAutofillSuggestion
+): SegmentLegForm[] | null {
+  const metadata = suggestion.metadata;
+  if (!metadata || typeof metadata !== "object") return null;
+  if (Array.isArray((metadata as Record<string, unknown>).legs)) {
+    return parseLegsFromMetadata(metadata as Record<string, unknown>);
+  }
+
+  const cast = metadata as Record<string, unknown>;
+  const legCandidate = cast.leg || cast.legs;
+  if (legCandidate && typeof legCandidate === "object") {
+    const entries = Array.isArray(legCandidate) ? legCandidate : [legCandidate];
+    const legs = entries
+      .map((entry) => {
+        if (!entry || typeof entry !== "object") return null;
+        const record = entry as Record<string, unknown>;
+        const departure = record.departure as Record<string, unknown>;
+        const arrival = record.arrival as Record<string, unknown>;
+        const departureTime =
+          (departure?.scheduledTimeLocal as string | undefined) ??
+          (departure?.scheduledTimeUtc as string | undefined);
+        const arrivalTime =
+          (arrival?.scheduledTimeLocal as string | undefined) ??
+          (arrival?.scheduledTimeUtc as string | undefined);
+        const departureAirport = departure?.airport as Record<string, unknown>;
+        const arrivalAirport = arrival?.airport as Record<string, unknown>;
+        const originName =
+          (departureAirport?.name as string | undefined) ??
+          (departure?.airportName as string | undefined) ??
+          "";
+        const destinationName =
+          (arrivalAirport?.name as string | undefined) ??
+          (arrival?.airportName as string | undefined) ??
+          "";
+        return createEmptyLeg({
+          origin: originName,
+          destination: destinationName,
+          departureTime: normalizeLegTimeInput(departureTime ?? null),
+          arrivalTime: normalizeLegTimeInput(arrivalTime ?? null),
+          carrier:
+            typeof suggestion.provider_name === "string"
+              ? suggestion.provider_name
+              : "",
+          number:
+            typeof suggestion.transport_number === "string"
+              ? suggestion.transport_number
+              : "",
+        });
+      })
+      .filter((leg): leg is SegmentLegForm => Boolean(leg));
+    if (legs.length) return legs;
+  }
+
+  if (Array.isArray(cast.stop_times)) {
+    const stops = cast.stop_times as Record<string, unknown>[];
+    if (stops.length >= 2) {
+      const legs = [] as SegmentLegForm[];
+      for (let i = 0; i < stops.length - 1; i += 1) {
+        const current = stops[i];
+        const next = stops[i + 1];
+        const currentStop = current?.stop_point as Record<string, unknown>;
+        const nextStop = next?.stop_point as Record<string, unknown>;
+        legs.push(
+          createEmptyLeg({
+            origin:
+              (currentStop?.name as string | undefined) ??
+              (current?.name as string | undefined) ??
+              "",
+            destination:
+              (nextStop?.name as string | undefined) ??
+              (next?.name as string | undefined) ??
+              "",
+            departureTime: normalizeLegTimeInput(
+              (current?.departure_date_time as string | undefined) ?? null
+            ),
+            arrivalTime: normalizeLegTimeInput(
+              (next?.arrival_date_time as string | undefined) ?? null
+            ),
+            carrier:
+              typeof suggestion.provider_name === "string"
+                ? suggestion.provider_name
+                : "",
+            number:
+              typeof suggestion.transport_number === "string"
+                ? suggestion.transport_number
+                : "",
+          })
+        );
+      }
+      if (legs.length) return legs;
+    }
+  }
+
+  return null;
+}
+
+function buildMetadataPayload(
+  form: SegmentFormState
+): Record<string, unknown> | null {
+  const base = { ...form.metadata };
+  const serializedLegs = supportsLegsForType(form.type)
+    ? serializeLegs(form.legs)
+    : undefined;
+  if (serializedLegs) {
+    base.legs = serializedLegs;
+  } else {
+    delete base.legs;
+  }
+  return Object.keys(base).length ? base : null;
+}
+
+function isoToLocalInput(value?: string | null): string {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  const tzOffset = date.getTimezoneOffset() * 60000;
+  const local = new Date(date.getTime() - tzOffset);
+  return local.toISOString().slice(0, 16);
+}
+
+function mergeSmartSuggestion(
+  current: SegmentFormState,
+  suggestion: SegmentAutofillSuggestion
+): SegmentFormState {
+  const mergedMetadata: Record<string, unknown> = {
+    ...current.metadata,
+    ...(suggestion.metadata ?? {}),
+  };
+  if (suggestion.source) {
+    mergedMetadata.smartFillSource = suggestion.source;
+  }
+
+  const latValue =
+    suggestion.location_lat !== null && suggestion.location_lat !== undefined
+      ? String(suggestion.location_lat)
+      : current.locationLat;
+  const lngValue =
+    suggestion.location_lng !== null && suggestion.location_lng !== undefined
+      ? String(suggestion.location_lng)
+      : current.locationLng;
+
+  const legsFromSuggestion = extractLegsFromSuggestion(suggestion);
+
+  return {
+    ...current,
+    title: suggestion.title ?? current.title,
+    description: suggestion.description ?? current.description,
+    locationName: suggestion.location_name ?? current.locationName,
+    locationAddress: suggestion.location_address ?? current.locationAddress,
+    locationLat: latValue,
+    locationLng: lngValue,
+    startTime: isoToLocalInput(suggestion.start_time) || current.startTime,
+    endTime: isoToLocalInput(suggestion.end_time) || current.endTime,
+    isAllDay:
+      typeof suggestion.is_all_day === "boolean"
+        ? suggestion.is_all_day
+        : current.isAllDay,
+    providerName: suggestion.provider_name ?? current.providerName,
+    confirmationCode: suggestion.confirmation_code ?? current.confirmationCode,
+    transportNumber: suggestion.transport_number ?? current.transportNumber,
+    timezone: suggestion.timezone ?? current.timezone,
+    metadata: mergedMetadata,
+    legs:
+      legsFromSuggestion && supportsLegsForType(current.type)
+        ? legsFromSuggestion
+        : current.legs,
+  };
+}
 
 function getInitialSegmentForm(): SegmentFormState {
   return {
@@ -79,6 +707,9 @@ function getInitialSegmentForm(): SegmentFormState {
     title: "",
     description: "",
     locationName: "",
+    locationAddress: "",
+    locationLat: "",
+    locationLng: "",
     startTime: "",
     endTime: "",
     timezone: DEFAULT_TIMEZONE,
@@ -86,8 +717,11 @@ function getInitialSegmentForm(): SegmentFormState {
     providerName: "",
     confirmationCode: "",
     transportNumber: "",
+    seatInfo: "",
     costAmount: "",
     costCurrency: "USD",
+    legs: [],
+    metadata: {},
   };
 }
 
@@ -216,6 +850,13 @@ export default function ItineraryPlanner() {
   const [segmentForm, setSegmentForm] = useState<SegmentFormState>(() =>
     getInitialSegmentForm()
   );
+  const [legsExpanded, setLegsExpanded] = useState(true);
+  const [smartFillInput, setSmartFillInput] = useState("");
+  const [smartFillDate, setSmartFillDate] = useState("");
+  const [smartFillSuggestion, setSmartFillSuggestion] =
+    useState<SegmentAutofillSuggestion | null>(null);
+  const [smartFillLoading, setSmartFillLoading] = useState(false);
+  const [smartFillError, setSmartFillError] = useState<string | null>(null);
   const [creatingSegment, setCreatingSegment] = useState(false);
   const [isEditingHeader, setIsEditingHeader] = useState(false);
   const [editHeaderForm, setEditHeaderForm] = useState<CreateFormState>(
@@ -232,6 +873,60 @@ export default function ItineraryPlanner() {
     type: "success" | "error";
     text: string;
   } | null>(null);
+
+  const resetSegmentForm = useCallback(() => {
+    setSegmentForm(getInitialSegmentForm());
+    setSmartFillInput("");
+    setSmartFillDate("");
+    setSmartFillSuggestion(null);
+    setSmartFillError(null);
+    setSmartFillLoading(false);
+    setLegsExpanded(true);
+  }, []);
+
+  const handleCreateLegAdd = useCallback(() => {
+    setSegmentForm((prev) => ({
+      ...prev,
+      legs: [...prev.legs, createEmptyLeg()],
+    }));
+  }, []);
+
+  const handleCreateLegChange = useCallback(
+    (legId: string, field: keyof SegmentLegForm, value: string) => {
+      setSegmentForm((prev) => ({
+        ...prev,
+        legs: prev.legs.map((leg) =>
+          leg.id === legId ? { ...leg, [field]: value } : leg
+        ),
+      }));
+    },
+    []
+  );
+
+  const handleCreateLegRemove = useCallback((legId: string) => {
+    setSegmentForm((prev) => ({
+      ...prev,
+      legs: prev.legs.filter((leg) => leg.id !== legId),
+    }));
+  }, []);
+
+  const closeSegmentModal = useCallback(() => {
+    resetSegmentForm();
+    setShowSegmentForm(false);
+  }, [resetSegmentForm]);
+
+  useEffect(() => {
+    setSegmentForm((prev) => {
+      const supports = supportsLegsForType(prev.type);
+      if (supports && prev.legs.length === 0) {
+        return { ...prev, legs: [createEmptyLeg()] };
+      }
+      if (!supports && prev.legs.length > 0) {
+        return { ...prev, legs: [] };
+      }
+      return prev;
+    });
+  }, [segmentForm.type]);
 
   useEffect(() => {
     if (!feedback) return;
@@ -558,6 +1253,10 @@ export default function ItineraryPlanner() {
 
     setCreatingSegment(true);
     try {
+      const latValue = Number.parseFloat(segmentForm.locationLat);
+      const lngValue = Number.parseFloat(segmentForm.locationLng);
+      const metadataPayload = buildMetadataPayload(segmentForm);
+
       const response = await fetch(
         `/api/itineraries/${encodeURIComponent(selectedId)}/segments`,
         {
@@ -571,17 +1270,22 @@ export default function ItineraryPlanner() {
             title: segmentForm.title.trim(),
             description: segmentForm.description.trim() || null,
             location_name: segmentForm.locationName.trim() || null,
+            location_address: segmentForm.locationAddress.trim() || null,
+            location_lat: Number.isFinite(latValue) ? latValue : null,
+            location_lng: Number.isFinite(lngValue) ? lngValue : null,
             start_time: segmentForm.startTime || null,
             end_time: segmentForm.endTime || null,
             is_all_day: segmentForm.isAllDay,
             provider_name: segmentForm.providerName.trim() || null,
             confirmation_code: segmentForm.confirmationCode.trim() || null,
             transport_number: segmentForm.transportNumber.trim() || null,
+            seat_info: segmentForm.seatInfo.trim() || null,
             timezone: segmentForm.timezone,
             cost_amount: segmentForm.costAmount
               ? parseFloat(segmentForm.costAmount)
               : null,
             cost_currency: segmentForm.costCurrency || null,
+            metadata: metadataPayload,
           }),
         }
       );
@@ -595,8 +1299,7 @@ export default function ItineraryPlanner() {
         type: "success",
         text: "Segment added to your itinerary!",
       });
-      setSegmentForm(getInitialSegmentForm());
-      setShowSegmentForm(false);
+      closeSegmentModal();
       // Reload the itinerary detail to show the new segment
       await loadItineraryDetail(selectedId, userId);
     } catch (error) {
@@ -608,6 +1311,91 @@ export default function ItineraryPlanner() {
     } finally {
       setCreatingSegment(false);
     }
+  };
+
+  const handleSmartFill = async (event?: React.FormEvent) => {
+    if (event) event.preventDefault();
+    setSmartFillError(null);
+    if (!segmentForm.type) {
+      setSmartFillError("Select a segment type first.");
+      return;
+    }
+    if (!smartFillSupported) {
+      setSmartFillError(
+        "Smart fill is only available for flights, trains, stays, meals, and activities right now."
+      );
+      return;
+    }
+
+    const fallbackQuery =
+      segmentForm.transportNumber.trim() ||
+      segmentForm.title.trim() ||
+      segmentForm.locationName.trim();
+    const query = smartFillInput.trim() || fallbackQuery;
+    if (!query) {
+      setSmartFillError("Add a quick description or code to smart fill.");
+      return;
+    }
+
+    const dateCandidate =
+      smartFillDate ||
+      (segmentForm.startTime ? segmentForm.startTime.slice(0, 10) : undefined);
+    const latValue = Number.parseFloat(segmentForm.locationLat);
+    const lngValue = Number.parseFloat(segmentForm.locationLng);
+    const hasContext = Number.isFinite(latValue) && Number.isFinite(lngValue);
+    const autofillType = toAutofillType(segmentForm.type);
+
+    setSmartFillLoading(true);
+    try {
+      const response = await fetch("/api/segments/autofill", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          type: autofillType,
+          query,
+          date: dateCandidate,
+          context: hasContext
+            ? { lat: latValue, lng: lngValue, radiusMeters: 20000 }
+            : undefined,
+        }),
+      });
+
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(
+          (payload as { error?: string })?.error ||
+            "Unable to fetch smart fill data."
+        );
+      }
+
+      const suggestion = (payload as { data?: SegmentAutofillSuggestion })
+        ?.data;
+      if (!suggestion) {
+        throw new Error("No suggestions were returned for that input.");
+      }
+
+      setSegmentForm((prev) => mergeSmartSuggestion(prev, suggestion));
+      setSmartFillSuggestion(suggestion);
+      setSmartFillError(null);
+      setFeedback({
+        type: "success",
+        text: "Smart fill applied. Feel free to tweak the details.",
+      });
+    } catch (error) {
+      console.error(error);
+      setSmartFillError(
+        error instanceof Error
+          ? error.message
+          : "Unable to complete smart fill."
+      );
+    } finally {
+      setSmartFillLoading(false);
+    }
+  };
+
+  const clearSmartFillSuggestion = () => {
+    setSmartFillSuggestion(null);
+    setSmartFillError(null);
   };
   const handleUpdateItinerary = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
@@ -644,6 +1432,10 @@ export default function ItineraryPlanner() {
     if (!userId || !selectedId || !editingSegmentId) return;
     setUpdatingSegment(true);
     try {
+      const latValue = Number.parseFloat(editSegmentForm.locationLat);
+      const lngValue = Number.parseFloat(editSegmentForm.locationLng);
+      const metadataPayload = buildMetadataPayload(editSegmentForm);
+
       const response = await fetch(
         `/api/itineraries/${encodeURIComponent(
           selectedId
@@ -657,17 +1449,24 @@ export default function ItineraryPlanner() {
             title: editSegmentForm.title,
             description: editSegmentForm.description,
             location_name: editSegmentForm.locationName,
+            location_address: editSegmentForm.locationAddress,
+            location_lat: Number.isFinite(latValue) ? latValue : null,
+            location_lng: Number.isFinite(lngValue) ? lngValue : null,
             start_time: editSegmentForm.startTime,
             end_time: editSegmentForm.endTime,
             is_all_day: editSegmentForm.isAllDay,
             provider_name: editSegmentForm.providerName,
             confirmation_code: editSegmentForm.confirmationCode,
             transport_number: editSegmentForm.transportNumber,
+            seat_info: editSegmentForm.seatInfo
+              ? editSegmentForm.seatInfo.trim()
+              : null,
             timezone: editSegmentForm.timezone,
             cost_amount: editSegmentForm.costAmount
               ? parseFloat(editSegmentForm.costAmount)
               : null,
             cost_currency: editSegmentForm.costCurrency,
+            metadata: metadataPayload,
           }),
         }
       );
@@ -681,6 +1480,32 @@ export default function ItineraryPlanner() {
       setUpdatingSegment(false);
     }
   };
+
+  const handleEditLegAdd = useCallback(() => {
+    setEditSegmentForm((prev) => ({
+      ...prev,
+      legs: [...prev.legs, createEmptyLeg()],
+    }));
+  }, []);
+
+  const handleEditLegChange = useCallback(
+    (legId: string, field: keyof SegmentLegForm, value: string) => {
+      setEditSegmentForm((prev) => ({
+        ...prev,
+        legs: prev.legs.map((leg) =>
+          leg.id === legId ? { ...leg, [field]: value } : leg
+        ),
+      }));
+    },
+    []
+  );
+
+  const handleEditLegRemove = useCallback((legId: string) => {
+    setEditSegmentForm((prev) => ({
+      ...prev,
+      legs: prev.legs.filter((leg) => leg.id !== legId),
+    }));
+  }, []);
 
   const handleDeleteSegment = async (segmentId: string) => {
     if (
@@ -716,11 +1541,29 @@ export default function ItineraryPlanner() {
   };
 
   const startEditingSegment = (segment: SegmentRow) => {
+    const segmentMetadata =
+      segment.metadata && typeof segment.metadata === "object"
+        ? (segment.metadata as Record<string, unknown>)
+        : {};
+    const timezoneFromMetadata =
+      typeof segmentMetadata.timezone === "string"
+        ? (segmentMetadata.timezone as string)
+        : DEFAULT_TIMEZONE;
+
     setEditSegmentForm({
-      type: segment.type || "activity",
+      type: normalizeSegmentType(segment.type),
       title: segment.title || "",
       description: segment.description || "",
       locationName: segment.location_name || "",
+      locationAddress: segment.location_address || "",
+      locationLat:
+        typeof segment.location_lat === "number"
+          ? segment.location_lat.toString()
+          : "",
+      locationLng:
+        typeof segment.location_lng === "number"
+          ? segment.location_lng.toString()
+          : "",
       startTime: segment.start_time ? segment.start_time.slice(0, 16) : "",
       endTime: segment.end_time ? segment.end_time.slice(0, 16) : "",
       isAllDay: segment.is_all_day || false,
@@ -729,10 +1572,10 @@ export default function ItineraryPlanner() {
       transportNumber: segment.transport_number || "",
       costAmount: segment.cost_amount ? segment.cost_amount.toString() : "",
       costCurrency: segment.cost_currency || "USD",
-      timezone:
-        (segment as any).timezone ||
-        (segment as any).metadata?.timezone ||
-        DEFAULT_TIMEZONE,
+      timezone: timezoneFromMetadata,
+      seatInfo: segment.seat_info || "",
+      legs: parseLegsFromMetadata(segmentMetadata),
+      metadata: segmentMetadata,
     });
     setEditingSegmentId(segment.id);
   };
@@ -776,6 +1619,50 @@ export default function ItineraryPlanner() {
     }
     return `${diffDays} day${diffDays === 1 ? "" : "s"}`;
   }, [inferredDates]);
+
+  const createFormTypeConfig = useMemo(
+    () => getTypeConfig(segmentForm.type),
+    [segmentForm.type]
+  );
+  const smartFillPlaceholder = createFormTypeConfig.smartFillHint;
+  const {
+    label: createTypeLabel,
+    titlePlaceholder,
+    descriptionPlaceholder,
+    locationLabel,
+    locationPlaceholder,
+    providerLabel,
+    providerPlaceholder,
+    confirmationLabel,
+    confirmationPlaceholder,
+    referenceLabel,
+    referencePlaceholder,
+    seatLabel,
+    seatPlaceholder,
+  } = createFormTypeConfig;
+  const titlePlaceholderText = titlePlaceholder || "Segment title";
+  const descriptionPlaceholderText =
+    descriptionPlaceholder || "Add any notes or details";
+  const locationPlaceholderText =
+    locationPlaceholder || "Where is this happening?";
+  const providerPlaceholderText = providerPlaceholder || "Company or host";
+  const confirmationPlaceholderText =
+    confirmationPlaceholder || "Confirmation or booking code";
+  const referencePlaceholderText = referencePlaceholder || "Reference";
+  const seatPlaceholderText = seatPlaceholder || "Seat info";
+  const locationLabelText = locationLabel || "Location";
+  const providerLabelText = providerLabel || "Provider";
+  const confirmationLabelText = confirmationLabel || "Confirmation";
+  const showReferenceField = Boolean(referenceLabel);
+  const referenceLabelText = referenceLabel || "Reference";
+  const showSeatField = Boolean(createFormTypeConfig.showSeatInput);
+  const seatLabelText = seatLabel || "Seat";
+  const showLegsEditor = supportsLegsForType(segmentForm.type);
+  const smartFillSupported = SMART_FILL_SUPPORTED_TYPES.has(segmentForm.type);
+  const editFormTypeConfig = useMemo(
+    () => getTypeConfig(editSegmentForm.type),
+    [editSegmentForm.type]
+  );
 
   return (
     <div className="flex flex-col h-full">
@@ -840,11 +1727,8 @@ export default function ItineraryPlanner() {
             <div className="flex items-center justify-between gap-3 border-b border-gray-100 dark:border-gray-800 px-6 py-5">
               <div>
                 <p className="text-[11px] font-bold uppercase tracking-wider text-gray-400 dark:text-gray-500">
-                  Collection
+                  Itineraries ({itineraries.length})
                 </p>
-                <h2 className="text-xl font-bold text-gray-900 dark:text-white mt-0.5">
-                  {itineraries.length} Itineraries
-                </h2>
               </div>
               <div className="flex items-center gap-2.5">
                 <button
@@ -1052,6 +1936,157 @@ export default function ItineraryPlanner() {
 
           {detail && (
             <div className="space-y-6">
+              {editingSegmentId && (
+                <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+                  <div
+                    className="absolute inset-0 bg-black/60 backdrop-blur-md"
+                    onClick={() => setEditingSegmentId(null)}
+                  />
+                  <div className="relative w-full max-w-2xl bg-white dark:bg-gray-900 rounded-[2.5rem] shadow-2xl p-8 overflow-y-auto max-h-[90vh]">
+                    <h3 className="text-2xl font-black text-gray-900 dark:text-white mb-6">
+                      Edit Segment
+                    </h3>
+                    <form onSubmit={handleUpdateSegment} className="space-y-6">
+                      <div className="grid grid-cols-2 gap-6">
+                        <div className="col-span-2">
+                          <label className="block text-sm font-bold text-gray-400 uppercase tracking-widest mb-2">
+                            Title
+                          </label>
+                          <input
+                            type="text"
+                            value={editSegmentForm.title}
+                            onChange={(e) =>
+                              setEditSegmentForm({
+                                ...editSegmentForm,
+                                title: e.target.value,
+                              })
+                            }
+                            className="w-full rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 px-5 py-3 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none"
+                            required
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-bold text-gray-400 uppercase tracking-widest mb-2">
+                            Type
+                          </label>
+                          <select
+                            value={editSegmentForm.type}
+                            onChange={(e) =>
+                              setEditSegmentForm({
+                                ...editSegmentForm,
+                                type: e.target.value,
+                              })
+                            }
+                            className="w-full rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 px-5 py-3 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none"
+                          >
+                            {SEGMENT_TYPE_OPTIONS.map((t) => (
+                              <option key={t.value} value={t.value}>
+                                {t.label}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-bold text-gray-400 uppercase tracking-widest mb-2">
+                            Timezone
+                          </label>
+                          <input
+                            type="text"
+                            value={editSegmentForm.timezone}
+                            onChange={(e) =>
+                              setEditSegmentForm({
+                                ...editSegmentForm,
+                                timezone: e.target.value,
+                              })
+                            }
+                            className="w-full rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 px-5 py-3 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-bold text-gray-400 uppercase tracking-widest mb-2">
+                            Location
+                          </label>
+                          <input
+                            type="text"
+                            value={editSegmentForm.locationName}
+                            onChange={(e) =>
+                              setEditSegmentForm({
+                                ...editSegmentForm,
+                                locationName: e.target.value,
+                              })
+                            }
+                            className="w-full rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 px-5 py-3 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-bold text-gray-400 uppercase tracking-widest mb-2">
+                            Start Time
+                          </label>
+                          <input
+                            type="datetime-local"
+                            value={editSegmentForm.startTime}
+                            onChange={(e) =>
+                              setEditSegmentForm({
+                                ...editSegmentForm,
+                                startTime: e.target.value,
+                              })
+                            }
+                            className="w-full rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 px-5 py-3 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-bold text-gray-400 uppercase tracking-widest mb-2">
+                            End Time
+                          </label>
+                          <input
+                            type="datetime-local"
+                            value={editSegmentForm.endTime}
+                            onChange={(e) =>
+                              setEditSegmentForm({
+                                ...editSegmentForm,
+                                endTime: e.target.value,
+                              })
+                            }
+                            className="w-full rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 px-5 py-3 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none"
+                          />
+                        </div>
+                        <div className="col-span-2">
+                          <label className="block text-sm font-bold text-gray-400 uppercase tracking-widest mb-2">
+                            Description
+                          </label>
+                          <textarea
+                            value={editSegmentForm.description}
+                            onChange={(e) =>
+                              setEditSegmentForm({
+                                ...editSegmentForm,
+                                description: e.target.value,
+                              })
+                            }
+                            className="w-full rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 px-5 py-3 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none h-24"
+                          />
+                        </div>
+                      </div>
+                      <div className="flex justify-end gap-4 pt-6 border-t border-gray-100 dark:border-gray-800">
+                        <button
+                          type="button"
+                          onClick={() => setEditingSegmentId(null)}
+                          className="px-6 py-3 text-sm font-bold text-gray-500 hover:text-gray-900"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          type="submit"
+                          disabled={updatingSegment}
+                          className="px-8 py-3 bg-blue-600 text-white rounded-2xl font-bold shadow-lg shadow-blue-500/30 hover:bg-blue-700 disabled:opacity-50"
+                        >
+                          {updatingSegment ? "Saving..." : "Save Changes"}
+                        </button>
+                      </div>
+                    </form>
+                  </div>
+                </div>
+              )}
+
               <div className="group relative rounded-[2rem] border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-xl shadow-gray-200/50 dark:shadow-none overflow-hidden transition-all duration-500">
                 <div className="h-3 bg-gradient-to-r from-blue-600 to-indigo-600 w-full" />
 
@@ -1379,13 +2414,9 @@ export default function ItineraryPlanner() {
                     </div>
                   </div>
                 </div>
-              </div>
 
-              {/* Itinerary Tab Content - Timeline View */}
-              <div className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm overflow-hidden pt-8">
-                <div className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm overflow-hidden">
-                  {/* Header */}
-                  <div className="px-6 py-4 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between">
+                <div className="border-t border-gray-100 dark:border-gray-800">
+                  <div className="px-8 lg:px-10 py-6 flex items-center justify-between">
                     <div>
                       <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
                         Trip Timeline
@@ -1417,21 +2448,20 @@ export default function ItineraryPlanner() {
                     </button>
                   </div>
 
-                  {/* Segment Creation Form Modal */}
                   {showSegmentForm && (
                     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
                       <div
                         className="absolute inset-0 bg-black/50 backdrop-blur-sm"
-                        onClick={() => setShowSegmentForm(false)}
+                        onClick={closeSegmentModal}
                       />
-                      <div className="relative w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-2xl bg-white dark:bg-gray-900 shadow-2xl border border-gray-200 dark:border-gray-800">
-                        <div className="sticky top-0 z-10 bg-white dark:bg-gray-900 px-6 py-4 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between">
+                      <div className="relative w-full max-w-4xl lg:max-w-5xl max-h-[90vh] overflow-y-auto rounded-3xl bg-white dark:bg-gray-900 shadow-2xl border border-gray-200 dark:border-gray-800">
+                        <div className="sticky top-0 z-10 bg-white dark:bg-gray-900 px-8 py-5 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between">
                           <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
                             Add New Segment
                           </h3>
                           <button
                             type="button"
-                            onClick={() => setShowSegmentForm(false)}
+                            onClick={closeSegmentModal}
                             className="p-2 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:text-gray-300 dark:hover:bg-gray-800 transition"
                           >
                             <svg
@@ -1451,282 +2481,603 @@ export default function ItineraryPlanner() {
                         </div>
                         <form
                           onSubmit={handleCreateSegment}
-                          className="p-6 space-y-4"
+                          className="p-6 lg:p-8 space-y-6"
                         >
-                          {/* Segment Type */}
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                              Type
-                            </label>
-                            <div className="grid grid-cols-3 gap-2">
-                              {SEGMENT_TYPES.map((type) => (
+                          {/* Smart Fill */}
+                          <div className="rounded-2xl border border-dashed border-blue-200/70 dark:border-blue-800/70 bg-blue-50/50 dark:bg-blue-900/10 p-4 space-y-3">
+                            <div className="flex items-center justify-between gap-3">
+                              <div>
+                                <p className="text-sm font-semibold text-blue-900 dark:text-blue-100">
+                                  Smart fill
+                                </p>
+                                <p className="text-xs text-blue-700/80 dark:text-blue-200/70">
+                                  Use free data sources to pre-fill this
+                                  segment, then tweak anything.
+                                </p>
+                              </div>
+                              {smartFillSuggestion && (
                                 <button
-                                  key={type.value}
                                   type="button"
-                                  onClick={() =>
-                                    setSegmentForm((prev) => ({
-                                      ...prev,
-                                      type: type.value,
-                                    }))
-                                  }
-                                  className={`px-3 py-2 text-sm font-medium rounded-lg border transition ${
-                                    segmentForm.type === type.value
-                                      ? "border-blue-500 bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-500"
-                                      : "border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800"
-                                  }`}
+                                  onClick={clearSmartFillSuggestion}
+                                  className="text-xs font-semibold text-blue-700 hover:text-blue-900 dark:text-blue-300"
                                 >
-                                  {type.label}
+                                  Clear
                                 </button>
-                              ))}
+                              )}
                             </div>
-                          </div>
-
-                          {/* Title */}
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                              Title *
-                            </label>
-                            <input
-                              type="text"
-                              value={segmentForm.title}
-                              onChange={(e) =>
-                                setSegmentForm((prev) => ({
-                                  ...prev,
-                                  title: e.target.value,
-                                }))
-                              }
-                              className="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                              placeholder="e.g., Flight to Tokyo, Hotel Check-in"
-                              required
-                            />
-                          </div>
-
-                          {/* Description */}
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                              Description
-                            </label>
-                            <textarea
-                              value={segmentForm.description}
-                              onChange={(e) =>
-                                setSegmentForm((prev) => ({
-                                  ...prev,
-                                  description: e.target.value,
-                                }))
-                              }
-                              className="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                              rows={2}
-                              placeholder="Add any notes or details..."
-                            />
-                          </div>
-
-                          {/* Location */}
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                              Location
-                            </label>
-                            <input
-                              type="text"
-                              value={segmentForm.locationName}
-                              onChange={(e) =>
-                                setSegmentForm((prev) => ({
-                                  ...prev,
-                                  locationName: e.target.value,
-                                }))
-                              }
-                              className="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                              placeholder="e.g., Narita Airport, Park Hyatt Tokyo"
-                            />
-                          </div>
-
-                          {/* Date/Time */}
-                          <div className="grid grid-cols-2 gap-3">
-                            <div>
-                              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                                Start
-                              </label>
-                              <input
-                                type="datetime-local"
-                                value={segmentForm.startTime}
-                                onChange={(e) =>
-                                  setSegmentForm((prev) => ({
-                                    ...prev,
-                                    startTime: e.target.value,
-                                  }))
-                                }
-                                disabled={segmentForm.isAllDay}
-                                className="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
-                              />
-                            </div>
-                            <div>
-                              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                                End
-                              </label>
-                              <input
-                                type="datetime-local"
-                                value={segmentForm.endTime}
-                                onChange={(e) =>
-                                  setSegmentForm((prev) => ({
-                                    ...prev,
-                                    endTime: e.target.value,
-                                  }))
-                                }
-                                disabled={segmentForm.isAllDay}
-                                className="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
-                              />
-                            </div>
-                          </div>
-
-                          {/* All Day Toggle */}
-                          <label className="flex items-center gap-2 cursor-pointer">
-                            <input
-                              type="checkbox"
-                              checked={segmentForm.isAllDay}
-                              onChange={(e) =>
-                                setSegmentForm((prev) => ({
-                                  ...prev,
-                                  isAllDay: e.target.checked,
-                                }))
-                              }
-                              className="h-4 w-4 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500"
-                            />
-                            <span className="text-sm text-gray-700 dark:text-gray-300">
-                              All day event
-                            </span>
-                          </label>
-
-                          {/* Provider & Confirmation */}
-                          <div className="grid grid-cols-2 gap-3">
-                            <div>
-                              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                                Provider
-                              </label>
+                            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                               <input
                                 type="text"
-                                value={segmentForm.providerName}
-                                onChange={(e) =>
-                                  setSegmentForm((prev) => ({
-                                    ...prev,
-                                    providerName: e.target.value,
-                                  }))
+                                value={smartFillInput}
+                                onChange={(event) =>
+                                  setSmartFillInput(event.target.value)
                                 }
-                                className="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                placeholder="e.g., United, Marriott"
+                                placeholder={smartFillPlaceholder}
+                                className="w-full rounded-lg border border-blue-200/70 dark:border-blue-800/70 bg-white dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
                               />
+                              <div className="flex gap-2">
+                                <input
+                                  type="date"
+                                  value={smartFillDate}
+                                  onChange={(event) =>
+                                    setSmartFillDate(event.target.value)
+                                  }
+                                  className="flex-1 rounded-lg border border-blue-200/70 dark:border-blue-800/70 bg-white dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                />
+                                <button
+                                  type="button"
+                                  onClick={handleSmartFill}
+                                  disabled={
+                                    smartFillLoading || !smartFillSupported
+                                  }
+                                  className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 disabled:opacity-50"
+                                >
+                                  {smartFillLoading
+                                    ? "Filling..."
+                                    : "Auto fill"}
+                                </button>
+                              </div>
                             </div>
-                            <div>
-                              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                                Confirmation #
-                              </label>
-                              <input
-                                type="text"
-                                value={segmentForm.confirmationCode}
-                                onChange={(e) =>
-                                  setSegmentForm((prev) => ({
-                                    ...prev,
-                                    confirmationCode: e.target.value,
-                                  }))
-                                }
-                                className="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                placeholder="ABC123"
-                              />
-                            </div>
+                            {!smartFillSupported && (
+                              <p className="text-[11px] font-medium text-blue-900/70 dark:text-blue-200/70">
+                                Smart fill currently supports flights, trains,
+                                stays, meals, and activities.
+                              </p>
+                            )}
+                            {smartFillError && (
+                              <p className="text-xs font-semibold text-red-600 dark:text-red-400">
+                                {smartFillError}
+                              </p>
+                            )}
+                            {smartFillSuggestion && (
+                              <div className="rounded-xl border border-blue-200/70 dark:border-blue-800/70 bg-white/80 dark:bg-gray-900/40 px-3 py-3">
+                                <p className="text-xs font-semibold text-blue-900 dark:text-blue-100">
+                                  Filled via{" "}
+                                  {smartFillSuggestion.source ?? "smart fill"}
+                                </p>
+                                {smartFillSuggestion.highlights?.length ? (
+                                  <div className="mt-2 flex flex-wrap gap-2">
+                                    {smartFillSuggestion.highlights!.map(
+                                      (highlight) => (
+                                        <span
+                                          key={`${highlight.label}-${highlight.value}`}
+                                          className="inline-flex items-center rounded-full bg-blue-100/70 px-2 py-0.5 text-[11px] font-semibold text-blue-800 dark:bg-blue-900/40 dark:text-blue-200"
+                                        >
+                                          <span className="mr-1 text-blue-500">
+                                            ●
+                                          </span>
+                                          {highlight.label}: {highlight.value}
+                                        </span>
+                                      )
+                                    )}
+                                  </div>
+                                ) : (
+                                  <p className="mt-2 text-[11px] text-blue-900/70 dark:text-blue-200/70">
+                                    We filled the available fields – you can
+                                    still edit before saving.
+                                  </p>
+                                )}
+                              </div>
+                            )}
                           </div>
 
-                          {/* Transport Number (for flights/transport) */}
-                          {(segmentForm.type === "flight" ||
-                            segmentForm.type === "transport") && (
+                          {/* Segment Type */}
+                          <div className="grid gap-3 md:grid-cols-[minmax(0,320px)_1fr]">
                             <div>
                               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                                {segmentForm.type === "flight"
-                                  ? "Flight Number"
-                                  : "Route/Line"}
-                              </label>
-                              <input
-                                type="text"
-                                value={segmentForm.transportNumber}
-                                onChange={(e) =>
-                                  setSegmentForm((prev) => ({
-                                    ...prev,
-                                    transportNumber: e.target.value,
-                                  }))
-                                }
-                                className="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                placeholder={
-                                  segmentForm.type === "flight"
-                                    ? "UA 123"
-                                    : "Line 4"
-                                }
-                              />
-                            </div>
-                          )}
-                          {/* Timezone */}
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                              Timezone
-                            </label>
-                            <input
-                              type="text"
-                              value={segmentForm.timezone}
-                              onChange={(e) =>
-                                setSegmentForm((prev) => ({
-                                  ...prev,
-                                  timezone: e.target.value,
-                                }))
-                              }
-                              className="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                              placeholder="e.g. UTC, America/New_York"
-                            />
-                          </div>
-                          {/* Cost */}
-                          <div className="grid grid-cols-3 gap-3">
-                            <div className="col-span-2">
-                              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                                Cost
-                              </label>
-                              <input
-                                type="number"
-                                step="0.01"
-                                value={segmentForm.costAmount}
-                                onChange={(e) =>
-                                  setSegmentForm((prev) => ({
-                                    ...prev,
-                                    costAmount: e.target.value,
-                                  }))
-                                }
-                                className="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                placeholder="0.00"
-                              />
-                            </div>
-                            <div>
-                              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                                Currency
+                                Type
                               </label>
                               <select
-                                value={segmentForm.costCurrency}
-                                onChange={(e) =>
+                                value={segmentForm.type}
+                                onChange={(event) =>
                                   setSegmentForm((prev) => ({
                                     ...prev,
-                                    costCurrency: e.target.value,
+                                    type: event.target.value as SegmentType,
                                   }))
                                 }
-                                className="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                className="w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
                               >
-                                <option value="USD">USD</option>
-                                <option value="EUR">EUR</option>
-                                <option value="GBP">GBP</option>
-                                <option value="JPY">JPY</option>
-                                <option value="CAD">CAD</option>
-                                <option value="AUD">AUD</option>
+                                {SEGMENT_TYPE_OPTIONS.map((typeOption) => (
+                                  <option
+                                    key={typeOption.value}
+                                    value={typeOption.value}
+                                  >
+                                    {typeOption.label}
+                                  </option>
+                                ))}
                               </select>
                             </div>
+                            <div className="rounded-2xl dark:border-gray-700 px-4 text-xs text-gray-500 dark:text-gray-400">
+                              <div>
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                  Title
+                                </label>
+                                <input
+                                  type="text"
+                                  value={segmentForm.title}
+                                  onChange={(e) =>
+                                    setSegmentForm((prev) => ({
+                                      ...prev,
+                                      title: e.target.value,
+                                    }))
+                                  }
+                                  className="w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                  placeholder={titlePlaceholderText}
+                                  required
+                                />
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="space-y-5">
+                            <div>
+                              <section className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white/60 dark:bg-gray-950/40 p-4 sm:p-5 space-y-4">
+                                <div className="flex items-center justify-between">
+                                  <p className="text-[11px] font-black uppercase tracking-[0.2em] text-gray-400 dark:text-gray-500">
+                                    Location & timing
+                                  </p>
+                                  {segmentForm.locationAddress && (
+                                    <span className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                                      {segmentForm.locationAddress}
+                                    </span>
+                                  )}
+                                </div>
+                                <div className="space-y-4">
+                                  <div>
+                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                      {locationLabelText}
+                                    </label>
+                                    <input
+                                      type="text"
+                                      value={segmentForm.locationName}
+                                      onChange={(e) =>
+                                        setSegmentForm((prev) => ({
+                                          ...prev,
+                                          locationName: e.target.value,
+                                        }))
+                                      }
+                                      className="w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                      placeholder={locationPlaceholderText}
+                                    />
+                                  </div>
+                                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                                    <div>
+                                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                        Start
+                                      </label>
+                                      <input
+                                        type="datetime-local"
+                                        value={segmentForm.startTime}
+                                        onChange={(e) =>
+                                          setSegmentForm((prev) => ({
+                                            ...prev,
+                                            startTime: e.target.value,
+                                          }))
+                                        }
+                                        disabled={segmentForm.isAllDay}
+                                        className="w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
+                                      />
+                                    </div>
+                                    <div>
+                                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                        End
+                                      </label>
+                                      <input
+                                        type="datetime-local"
+                                        value={segmentForm.endTime}
+                                        onChange={(e) =>
+                                          setSegmentForm((prev) => ({
+                                            ...prev,
+                                            endTime: e.target.value,
+                                          }))
+                                        }
+                                        disabled={segmentForm.isAllDay}
+                                        className="w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
+                                      />
+                                    </div>
+                                  </div>
+                                  <div className="flex flex-col gap-2">
+                                    <label className="flex items-center gap-2 cursor-pointer">
+                                      <input
+                                        type="checkbox"
+                                        checked={segmentForm.isAllDay}
+                                        onChange={(e) =>
+                                          setSegmentForm((prev) => ({
+                                            ...prev,
+                                            isAllDay: e.target.checked,
+                                          }))
+                                        }
+                                        className="h-4 w-4 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500"
+                                      />
+                                      <span className="text-sm text-gray-700 dark:text-gray-300">
+                                        All day event
+                                      </span>
+                                    </label>
+                                    <div>
+                                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                        Timezone
+                                      </label>
+                                      <input
+                                        type="text"
+                                        value={segmentForm.timezone}
+                                        onChange={(e) =>
+                                          setSegmentForm((prev) => ({
+                                            ...prev,
+                                            timezone: e.target.value,
+                                          }))
+                                        }
+                                        className="w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        placeholder="e.g., Asia/Tokyo"
+                                      />
+                                    </div>
+                                  </div>
+                                </div>
+                              </section>
+                            </div>
+
+                            <div className="grid gap-5 lg:grid-cols-2">
+                              <section className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white/60 dark:bg-gray-950/40 p-4 sm:p-5 space-y-4">
+                                <div className="flex items-center justify-between">
+                                  <p className="text-[11px] font-black uppercase tracking-[0.2em] text-gray-400 dark:text-gray-500">
+                                    Partners & references
+                                  </p>
+                                </div>
+                                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                                  <div>
+                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                      {providerLabelText}
+                                    </label>
+                                    <input
+                                      type="text"
+                                      value={segmentForm.providerName}
+                                      onChange={(e) =>
+                                        setSegmentForm((prev) => ({
+                                          ...prev,
+                                          providerName: e.target.value,
+                                        }))
+                                      }
+                                      className="w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                      placeholder={providerPlaceholderText}
+                                    />
+                                  </div>
+                                  <div>
+                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                      {confirmationLabelText}
+                                    </label>
+                                    <input
+                                      type="text"
+                                      value={segmentForm.confirmationCode}
+                                      onChange={(e) =>
+                                        setSegmentForm((prev) => ({
+                                          ...prev,
+                                          confirmationCode: e.target.value,
+                                        }))
+                                      }
+                                      className="w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                      placeholder={confirmationPlaceholderText}
+                                    />
+                                  </div>
+                                </div>
+                                {showReferenceField && (
+                                  <div>
+                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                      {referenceLabelText}
+                                    </label>
+                                    <input
+                                      type="text"
+                                      value={segmentForm.transportNumber}
+                                      onChange={(e) =>
+                                        setSegmentForm((prev) => ({
+                                          ...prev,
+                                          transportNumber: e.target.value,
+                                        }))
+                                      }
+                                      className="w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                      placeholder={referencePlaceholderText}
+                                    />
+                                  </div>
+                                )}
+                                {showSeatField && (
+                                  <div>
+                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                      {seatLabelText}
+                                    </label>
+                                    <input
+                                      type="text"
+                                      value={segmentForm.seatInfo}
+                                      onChange={(e) =>
+                                        setSegmentForm((prev) => ({
+                                          ...prev,
+                                          seatInfo: e.target.value,
+                                        }))
+                                      }
+                                      className="w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                      placeholder={seatPlaceholderText}
+                                    />
+                                  </div>
+                                )}
+                              </section>
+
+                              <section className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white/60 dark:bg-gray-950/40 p-4 sm:p-5 space-y-4">
+                                <div className="flex items-center justify-between">
+                                  <p className="text-[11px] font-black uppercase tracking-[0.2em] text-gray-400 dark:text-gray-500">
+                                    Budget & tracking
+                                  </p>
+                                </div>
+                                <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                                  <div className="sm:col-span-2">
+                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                      Cost
+                                    </label>
+                                    <input
+                                      type="number"
+                                      step="0.01"
+                                      value={segmentForm.costAmount}
+                                      onChange={(e) =>
+                                        setSegmentForm((prev) => ({
+                                          ...prev,
+                                          costAmount: e.target.value,
+                                        }))
+                                      }
+                                      className="w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                      placeholder="0.00"
+                                    />
+                                  </div>
+                                  <div>
+                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                      Currency
+                                    </label>
+                                    <select
+                                      value={segmentForm.costCurrency}
+                                      onChange={(e) =>
+                                        setSegmentForm((prev) => ({
+                                          ...prev,
+                                          costCurrency: e.target.value,
+                                        }))
+                                      }
+                                      className="w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    >
+                                      <option value="USD">USD</option>
+                                      <option value="EUR">EUR</option>
+                                      <option value="GBP">GBP</option>
+                                      <option value="JPY">JPY</option>
+                                      <option value="CAD">CAD</option>
+                                      <option value="AUD">AUD</option>
+                                    </select>
+                                  </div>
+                                </div>
+                                <p className="text-xs text-gray-500 dark:text-gray-400">
+                                  Cost is optional—use it if you want quick
+                                  rollups in the itinerary summary.
+                                </p>
+                              </section>
+                            </div>
+
+                            {showLegsEditor && (
+                              <section className="rounded-2xl border border-blue-200/70 dark:border-blue-800/60 bg-blue-50/50 dark:bg-blue-900/10 p-4 sm:p-5">
+                                <div className="flex flex-wrap items-center justify-between gap-3">
+                                  <div>
+                                    <p className="text-[11px] font-black uppercase tracking-[0.2em] text-blue-500">
+                                      Legs & hops
+                                    </p>
+                                    <p className="text-sm text-blue-700 dark:text-blue-200">
+                                      Track each hop for multi-leg flights or
+                                      trains.
+                                    </p>
+                                  </div>
+                                  <div className="flex items-center gap-2">
+                                    <button
+                                      type="button"
+                                      onClick={() =>
+                                        setLegsExpanded((prev) => !prev)
+                                      }
+                                      className="inline-flex items-center rounded-xl border border-blue-300 bg-white px-3 py-1.5 text-xs font-semibold text-blue-700 shadow-sm hover:bg-blue-50 dark:bg-blue-900/30 dark:text-blue-100"
+                                    >
+                                      {legsExpanded ? "Collapse" : "Expand"}
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={handleCreateLegAdd}
+                                      className="inline-flex items-center rounded-xl border border-blue-300 bg-white px-3 py-1.5 text-xs font-semibold text-blue-700 shadow-sm hover:bg-blue-50 dark:bg-blue-900/30 dark:text-blue-100"
+                                    >
+                                      + Add leg
+                                    </button>
+                                  </div>
+                                </div>
+                                {legsExpanded && (
+                                  <div className="mt-4 space-y-4">
+                                    {segmentForm.legs.length === 0 ? (
+                                      <div className="rounded-2xl border border-dashed border-blue-200/80 dark:border-blue-800/60 bg-white dark:bg-gray-950/70 p-6 text-center text-sm text-blue-600 dark:text-blue-200">
+                                        No legs yet — add hops to keep
+                                        connections clear.
+                                      </div>
+                                    ) : (
+                                      segmentForm.legs.map((leg, index) => (
+                                        <div
+                                          key={leg.id}
+                                          className="rounded-2xl border border-blue-200/70 dark:border-blue-800/60 bg-white dark:bg-gray-950/70 p-4 space-y-3"
+                                        >
+                                          <div className="flex items-center justify-between">
+                                            <p className="text-sm font-semibold text-gray-900 dark:text-white">
+                                              Leg {index + 1}
+                                            </p>
+                                            <button
+                                              type="button"
+                                              onClick={() =>
+                                                handleCreateLegRemove(leg.id)
+                                              }
+                                              disabled={
+                                                segmentForm.legs.length === 1
+                                              }
+                                              className="text-xs font-semibold text-red-500 disabled:text-gray-400"
+                                            >
+                                              Remove
+                                            </button>
+                                          </div>
+                                          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                                            <div>
+                                              <label className="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">
+                                                Origin
+                                              </label>
+                                              <input
+                                                type="text"
+                                                value={leg.origin}
+                                                onChange={(e) =>
+                                                  handleCreateLegChange(
+                                                    leg.id,
+                                                    "origin",
+                                                    e.target.value
+                                                  )
+                                                }
+                                                className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                placeholder="Airport or station"
+                                              />
+                                            </div>
+                                            <div>
+                                              <label className="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">
+                                                Destination
+                                              </label>
+                                              <input
+                                                type="text"
+                                                value={leg.destination}
+                                                onChange={(e) =>
+                                                  handleCreateLegChange(
+                                                    leg.id,
+                                                    "destination",
+                                                    e.target.value
+                                                  )
+                                                }
+                                                className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                placeholder="Airport or station"
+                                              />
+                                            </div>
+                                          </div>
+                                          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                                            <div>
+                                              <label className="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">
+                                                Departure
+                                              </label>
+                                              <input
+                                                type="datetime-local"
+                                                value={leg.departureTime}
+                                                onChange={(e) =>
+                                                  handleCreateLegChange(
+                                                    leg.id,
+                                                    "departureTime",
+                                                    e.target.value
+                                                  )
+                                                }
+                                                className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                              />
+                                            </div>
+                                            <div>
+                                              <label className="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">
+                                                Arrival
+                                              </label>
+                                              <input
+                                                type="datetime-local"
+                                                value={leg.arrivalTime}
+                                                onChange={(e) =>
+                                                  handleCreateLegChange(
+                                                    leg.id,
+                                                    "arrivalTime",
+                                                    e.target.value
+                                                  )
+                                                }
+                                                className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                              />
+                                            </div>
+                                          </div>
+                                          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                                            <div>
+                                              <label className="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">
+                                                Carrier
+                                              </label>
+                                              <input
+                                                type="text"
+                                                value={leg.carrier}
+                                                onChange={(e) =>
+                                                  handleCreateLegChange(
+                                                    leg.id,
+                                                    "carrier",
+                                                    e.target.value
+                                                  )
+                                                }
+                                                className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                placeholder="Airline / rail"
+                                              />
+                                            </div>
+                                            <div>
+                                              <label className="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">
+                                                Number
+                                              </label>
+                                              <input
+                                                type="text"
+                                                value={leg.number}
+                                                onChange={(e) =>
+                                                  handleCreateLegChange(
+                                                    leg.id,
+                                                    "number",
+                                                    e.target.value
+                                                  )
+                                                }
+                                                className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                placeholder="UA 120"
+                                              />
+                                            </div>
+                                            <div>
+                                              <label className="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">
+                                                Seat
+                                              </label>
+                                              <input
+                                                type="text"
+                                                value={leg.seat}
+                                                onChange={(e) =>
+                                                  handleCreateLegChange(
+                                                    leg.id,
+                                                    "seat",
+                                                    e.target.value
+                                                  )
+                                                }
+                                                className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                placeholder="12A"
+                                              />
+                                            </div>
+                                          </div>
+                                        </div>
+                                      ))
+                                    )}
+                                  </div>
+                                )}
+                              </section>
+                            )}
                           </div>
 
                           {/* Submit */}
                           <div className="flex justify-end gap-3 pt-4 border-t border-gray-200 dark:border-gray-800">
                             <button
                               type="button"
-                              onClick={() => setShowSegmentForm(false)}
+                              onClick={closeSegmentModal}
                               className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition"
                             >
                               Cancel
@@ -1744,8 +3095,7 @@ export default function ItineraryPlanner() {
                     </div>
                   )}
 
-                  {/* Timeline */}
-                  <div className="p-6">
+                  <div className="px-8 lg:px-10 pb-8">
                     {!segmentCount && (
                       <div className="flex flex-col items-center justify-center py-16 text-center">
                         <div className="h-16 w-16 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center mb-4">
@@ -1941,7 +3291,7 @@ export default function ItineraryPlanner() {
                                         <span
                                           className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold uppercase tracking-wide ${config.bgColor} ${config.color}`}
                                         >
-                                          {segment.type}
+                                          {typeLabel}
                                         </span>
                                         {segment.confirmation_code && (
                                           <span className="text-xs text-gray-400 dark:text-gray-500">
@@ -2208,180 +3558,29 @@ export default function ItineraryPlanner() {
                     </div>
                   )}
                 </div>
-              </div>
 
-              {/* Comments Section */}
-              <div className="space-y-6">
-                {editingSegmentId && (
-                  <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
-                    <div
-                      className="absolute inset-0 bg-black/60 backdrop-blur-md"
-                      onClick={() => setEditingSegmentId(null)}
-                    />
-                    <div className="relative w-full max-w-2xl bg-white dark:bg-gray-900 rounded-[2.5rem] shadow-2xl p-8 overflow-y-auto max-h-[90vh]">
-                      <h3 className="text-2xl font-black text-gray-900 dark:text-white mb-6">
-                        Edit Segment
+                <div className="border-t border-gray-100 dark:border-gray-800">
+                  <div className="px-8 lg:px-10 py-6 space-y-6">
+                    <div>
+                      <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                        Comments
+                        {comments.length > 0 && (
+                          <span className="ml-2 text-sm font-normal text-gray-500 dark:text-gray-400">
+                            ({comments.length})
+                          </span>
+                        )}
                       </h3>
-                      <form
-                        onSubmit={handleUpdateSegment}
-                        className="space-y-6"
-                      >
-                        <div className="grid grid-cols-2 gap-6">
-                          <div className="col-span-2">
-                            <label className="block text-sm font-bold text-gray-400 uppercase tracking-widest mb-2">
-                              Title
-                            </label>
-                            <input
-                              type="text"
-                              value={editSegmentForm.title}
-                              onChange={(e) =>
-                                setEditSegmentForm({
-                                  ...editSegmentForm,
-                                  title: e.target.value,
-                                })
-                              }
-                              className="w-full rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 px-5 py-3 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none"
-                              required
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-sm font-bold text-gray-400 uppercase tracking-widest mb-2">
-                              Type
-                            </label>
-                            <select
-                              value={editSegmentForm.type}
-                              onChange={(e) =>
-                                setEditSegmentForm({
-                                  ...editSegmentForm,
-                                  type: e.target.value,
-                                })
-                              }
-                              className="w-full rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 px-5 py-3 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none"
-                            >
-                              {SEGMENT_TYPES.map((t) => (
-                                <option key={t.value} value={t.value}>
-                                  {t.label}
-                                </option>
-                              ))}
-                            </select>
-                          </div>
-                          <div>
-                            <label className="block text-sm font-bold text-gray-400 uppercase tracking-widest mb-2">
-                              Timezone
-                            </label>
-                            <input
-                              type="text"
-                              value={editSegmentForm.timezone}
-                              onChange={(e) =>
-                                setEditSegmentForm({
-                                  ...editSegmentForm,
-                                  timezone: e.target.value,
-                                })
-                              }
-                              className="w-full rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 px-5 py-3 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none"
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-sm font-bold text-gray-400 uppercase tracking-widest mb-2">
-                              Location
-                            </label>
-                            <input
-                              type="text"
-                              value={editSegmentForm.locationName}
-                              onChange={(e) =>
-                                setEditSegmentForm({
-                                  ...editSegmentForm,
-                                  locationName: e.target.value,
-                                })
-                              }
-                              className="w-full rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 px-5 py-3 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none"
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-sm font-bold text-gray-400 uppercase tracking-widest mb-2">
-                              Start Time
-                            </label>
-                            <input
-                              type="datetime-local"
-                              value={editSegmentForm.startTime}
-                              onChange={(e) =>
-                                setEditSegmentForm({
-                                  ...editSegmentForm,
-                                  startTime: e.target.value,
-                                })
-                              }
-                              className="w-full rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 px-5 py-3 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none"
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-sm font-bold text-gray-400 uppercase tracking-widest mb-2">
-                              End Time
-                            </label>
-                            <input
-                              type="datetime-local"
-                              value={editSegmentForm.endTime}
-                              onChange={(e) =>
-                                setEditSegmentForm({
-                                  ...editSegmentForm,
-                                  endTime: e.target.value,
-                                })
-                              }
-                              className="w-full rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 px-5 py-3 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none"
-                            />
-                          </div>
-                          <div className="col-span-2">
-                            <label className="block text-sm font-bold text-gray-400 uppercase tracking-widest mb-2">
-                              Description
-                            </label>
-                            <textarea
-                              value={editSegmentForm.description}
-                              onChange={(e) =>
-                                setEditSegmentForm({
-                                  ...editSegmentForm,
-                                  description: e.target.value,
-                                })
-                              }
-                              className="w-full rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 px-5 py-3 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none h-24"
-                            />
-                          </div>
-                        </div>
-                        <div className="flex justify-end gap-4 pt-6 border-t border-gray-100 dark:border-gray-800">
-                          <button
-                            type="button"
-                            onClick={() => setEditingSegmentId(null)}
-                            className="px-6 py-3 text-sm font-bold text-gray-500 hover:text-gray-900"
-                          >
-                            Cancel
-                          </button>
-                          <button
-                            type="submit"
-                            disabled={updatingSegment}
-                            className="px-8 py-3 bg-blue-600 text-white rounded-2xl font-bold shadow-lg shadow-blue-500/30 hover:bg-blue-700 disabled:opacity-50"
-                          >
-                            {updatingSegment ? "Saving..." : "Save Changes"}
-                          </button>
-                        </div>
-                      </form>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">
+                        Share updates, attach context, and keep everyone on the
+                        same page.
+                      </p>
                     </div>
-                  </div>
-                )}
 
-                <div className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm overflow-hidden">
-                  <div className="px-6 py-4 border-b border-gray-100 dark:border-gray-800">
-                    <h3 className="text-base font-semibold text-gray-900 dark:text-white">
-                      Comments
-                      {comments.length > 0 && (
-                        <span className="ml-2 text-sm font-normal text-gray-500 dark:text-gray-400">
-                          ({comments.length})
-                        </span>
-                      )}
-                    </h3>
-                  </div>
-
-                  {/* Comment Input - Top like social media */}
-                  <div className="px-6 py-4 border-b border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-950/30">
-                    <form onSubmit={handleCommentSubmit} className="flex gap-3">
-                      <div className="h-9 w-9 shrink-0 rounded-full bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-200 flex items-center justify-center text-xs font-semibold">
+                    <form
+                      onSubmit={handleCommentSubmit}
+                      className="flex gap-3 rounded-2xl border border-gray-100 dark:border-gray-800 bg-gray-50/70 dark:bg-gray-950/30 px-5 py-4"
+                    >
+                      <div className="h-10 w-10 shrink-0 rounded-full bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-200 flex items-center justify-center text-xs font-semibold">
                         {avatarInitials(
                           detail?.owner?.preferred_name || detail?.owner?.name,
                           detail?.owner?.username
@@ -2393,18 +3592,19 @@ export default function ItineraryPlanner() {
                           onChange={(event) =>
                             setCommentInput(event.target.value)
                           }
-                          className="w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-4 py-2.5 text-sm text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                          className="w-full rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-4 py-2.5 text-sm text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
                           rows={1}
                           placeholder="Add a comment..."
-                          onFocus={(e) => {
-                            e.target.rows = 3;
+                          onFocus={(event) => {
+                            event.target.rows = 3;
                           }}
-                          onBlur={(e) => {
-                            if (!e.target.value.trim()) e.target.rows = 1;
+                          onBlur={(event) => {
+                            if (!event.target.value.trim())
+                              event.target.rows = 1;
                           }}
                         />
                         {commentInput.trim() && (
-                          <div className="mt-2 flex justify-end">
+                          <div className="mt-3 flex justify-end">
                             <button
                               type="submit"
                               className="rounded-full bg-blue-600 text-white px-4 py-1.5 text-sm font-medium shadow-sm hover:bg-blue-700 transition disabled:cursor-not-allowed disabled:opacity-50"
@@ -2416,78 +3616,78 @@ export default function ItineraryPlanner() {
                         )}
                       </div>
                     </form>
-                  </div>
 
-                  {/* Comments List */}
-                  <div className="px-6 py-8 space-y-8">
-                    {!comments.length && (
-                      <div className="flex flex-col items-center justify-center py-12 text-center">
-                        <div className="h-16 w-16 rounded-full bg-gray-50 dark:bg-gray-800/50 flex items-center justify-center mb-4 transition-transform hover:scale-110 duration-500">
-                          <svg
-                            className="h-8 w-8 text-gray-300 dark:text-gray-600"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            stroke="currentColor"
-                            strokeWidth={1.5}
+                    <div className="space-y-6 pt-2">
+                      {!comments.length && (
+                        <div className="flex flex-col items-center justify-center py-12 text-center">
+                          <div className="h-16 w-16 rounded-full bg-gray-50 dark:bg-gray-800/50 flex items-center justify-center mb-4 transition-transform hover:scale-110 duration-500">
+                            <svg
+                              className="h-8 w-8 text-gray-300 dark:text-gray-600"
+                              fill="none"
+                              viewBox="0 0 24 24"
+                              stroke="currentColor"
+                              strokeWidth={1.5}
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                d="M8.625 12a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H8.25m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H12m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 01-2.555-.337A5.972 5.972 0 015.41 20.97a5.969 5.969 0 01-.474-.065 4.48 4.48 0 00.978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25z"
+                              />
+                            </svg>
+                          </div>
+                          <p className="text-sm font-bold text-gray-400 dark:text-gray-500">
+                            No comments yet
+                          </p>
+                        </div>
+                      )}
+
+                      {comments.map((comment) => {
+                        const isOwner = comment.author_id === detail?.owner_id;
+                        return (
+                          <div
+                            key={comment.id}
+                            className="group relative flex gap-4"
                           >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              d="M8.625 12a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H8.25m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H12m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 01-2.555-.337A5.972 5.972 0 015.41 20.97a5.969 5.969 0 01-.474-.065 4.48 4.48 0 00.978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25z"
-                            />
-                          </svg>
-                        </div>
-                        <p className="text-sm font-bold text-gray-400 dark:text-gray-500">
-                          No comments yet
-                        </p>
-                      </div>
-                    )}
-                    {comments.map((comment) => {
-                      const isOwner = comment.author_id === detail?.owner_id;
-                      return (
-                        <div
-                          key={comment.id}
-                          className="group relative flex gap-4"
-                        >
-                          <div className="h-11 w-11 shrink-0 rounded-full bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/10 dark:to-indigo-900/10 border border-blue-100 dark:border-blue-900/30 flex items-center justify-center text-sm font-black text-blue-600 dark:text-blue-400 shadow-sm transition-transform group-hover:scale-110">
-                            {avatarInitials(
-                              comment.author?.preferred_name ||
-                                comment.author?.name,
-                              comment.author?.username
-                            )}
-                          </div>
-                          <div className="flex-1 space-y-2">
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-2">
-                                <span className="text-sm font-black text-gray-900 dark:text-white">
-                                  {comment.author?.preferred_name ||
-                                    comment.author?.name ||
-                                    comment.author?.username ||
-                                    "Traveler"}
-                                </span>
-                                {isOwner && (
-                                  <span className="inline-flex items-center rounded-full bg-blue-500 px-2 py-0.5 text-[8px] font-black uppercase tracking-widest text-white">
-                                    Owner
+                            <div className="h-11 w-11 shrink-0 rounded-full bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/10 dark:to-indigo-900/10 border border-blue-100 dark:border-blue-900/30 flex items-center justify-center text-sm font-black text-blue-600 dark:text-blue-400 shadow-sm transition-transform group-hover:scale-110">
+                              {avatarInitials(
+                                comment.author?.preferred_name ||
+                                  comment.author?.name,
+                                comment.author?.username
+                              )}
+                            </div>
+                            <div className="flex-1 space-y-2">
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                  <span className="text-sm font-black text-gray-900 dark:text-white">
+                                    {comment.author?.preferred_name ||
+                                      comment.author?.name ||
+                                      comment.author?.username ||
+                                      "Traveler"}
                                   </span>
-                                )}
+                                  {isOwner && (
+                                    <span className="inline-flex items-center rounded-full bg-blue-500 px-2 py-0.5 text-[8px] font-black uppercase tracking-widest text-white">
+                                      Owner
+                                    </span>
+                                  )}
+                                </div>
+                                <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 dark:text-gray-500">
+                                  {comment.created_at
+                                    ? new Date(
+                                        comment.created_at
+                                      ).toLocaleDateString()
+                                    : "Just now"}
+                                </span>
                               </div>
-                              <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 dark:text-gray-500">
-                                {comment.created_at
-                                  ? new Date(
-                                      comment.created_at
-                                    ).toLocaleDateString()
-                                  : "Just now"}
-                              </span>
-                            </div>
-                            <div className="relative p-4 bg-gray-50 dark:bg-gray-800/40 rounded-2xl rounded-tl-none border border-gray-100 dark:border-gray-800/50 transition-colors group-hover:bg-white dark:group-hover:bg-gray-800/60 group-hover:shadow-xl group-hover:shadow-gray-200/50 dark:group-hover:shadow-none">
-                              <p className="text-sm font-medium text-gray-700 dark:text-gray-300 leading-relaxed">
-                                {comment.body}
-                              </p>
+                              <div className="relative p-4 bg-gray-50 dark:bg-gray-800/40 rounded-2xl rounded-tl-none border border-gray-100 dark:border-gray-800/50 transition-colors group-hover:bg-white dark:group-hover:bg-gray-800/60 group-hover:shadow-xl group-hover:shadow-gray-200/50 dark:group-hover:shadow-none">
+                                <p className="text-sm font-medium text-gray-700 dark:text-gray-300 leading-relaxed">
+                                  {comment.body}
+                                </p>
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      );
-                    })}
+                        );
+                      })}
+                    </div>
                   </div>
                 </div>
               </div>
