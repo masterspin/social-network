@@ -9,6 +9,8 @@ import type {
 } from "@/lib/autofill/types";
 import AddressAutocomplete from "./AddressAutocomplete";
 import ChatAssistant from "./ChatAssistant";
+import AddFlightModal, { type FlightFormData } from "./AddFlightModal";
+import AddStayModal, { type StayFormData } from "./AddStayModal";
 
 const SEGMENT_TYPES = ["flight", "stay"] as const;
 
@@ -807,7 +809,8 @@ export default function ItineraryPlanner() {
   const [activeTab, setActiveTab] = useState<"itinerary" | "travelers">(
     "itinerary"
   );
-  const [showSegmentForm, setShowSegmentForm] = useState(false);
+  const [showFlightModal, setShowFlightModal] = useState(false);
+  const [showStayModal, setShowStayModal] = useState(false);
   const [segmentForm, setSegmentForm] = useState<SegmentFormState>(() =>
     getInitialSegmentForm()
   );
@@ -1063,7 +1066,8 @@ export default function ItineraryPlanner() {
 
   const closeSegmentModal = useCallback(() => {
     resetSegmentForm();
-    setShowSegmentForm(false);
+    setShowFlightModal(false);
+    setShowStayModal(false);
   }, [resetSegmentForm]);
 
   useEffect(() => {
@@ -1517,6 +1521,97 @@ export default function ItineraryPlanner() {
     } finally {
       setCreatingSegment(false);
     }
+  };
+
+  const handleFlightSubmit = async (data: FlightFormData) => {
+    if (!userId || !selectedId) {
+      throw new Error("Missing user or itinerary");
+    }
+
+    const response = await fetch(
+      `/api/itineraries/${encodeURIComponent(selectedId)}/segments`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          user_id: userId,
+          type: "flight",
+          title: data.title.trim(),
+          description: data.description.trim() || null,
+          start_time: data.departureTime || null,
+          end_time: data.arrivalTime || null,
+          provider_name: data.airline.trim() || null,
+          confirmation_code: data.confirmationCode.trim() || null,
+          transport_number: data.flightNumber.trim() || null,
+          seat_info: data.seatInfo.trim() || null,
+          cost_amount: data.costAmount ? parseFloat(data.costAmount) : null,
+          cost_currency: data.costAmount ? "USD" : null,
+          metadata: {
+            departure: {
+              airport: data.departureAirport,
+              terminal: data.departureTerminal,
+              gate: data.departureGate,
+              timezone: data.departureTimezone,
+            },
+            arrival: {
+              airport: data.arrivalAirport,
+              terminal: data.arrivalTerminal,
+              gate: data.arrivalGate,
+              timezone: data.arrivalTimezone,
+            },
+          },
+        }),
+      }
+    );
+
+    if (!response.ok) {
+      const payload = await response.json().catch(() => ({}));
+      throw new Error(payload?.error || "Failed to create flight segment");
+    }
+
+    setFeedback({
+      type: "success",
+      text: "Flight added to your itinerary!",
+    });
+    await loadItineraryDetail(selectedId, userId);
+  };
+
+  const handleStaySubmit = async (data: StayFormData) => {
+    if (!userId || !selectedId) {
+      throw new Error("Missing user or itinerary");
+    }
+
+    const response = await fetch(
+      `/api/itineraries/${encodeURIComponent(selectedId)}/segments`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          user_id: userId,
+          type: "stay",
+          title: data.title.trim(),
+          description: data.description.trim() || null,
+          location_address: data.locationAddress.trim() || null,
+          start_time: data.checkInTime || null,
+          end_time: data.checkOutTime || null,
+          provider_name: data.property.trim() || null,
+          confirmation_code: data.confirmationCode.trim() || null,
+          cost_amount: data.costAmount ? parseFloat(data.costAmount) : null,
+          cost_currency: data.costAmount ? "USD" : null,
+        }),
+      }
+    );
+
+    if (!response.ok) {
+      const payload = await response.json().catch(() => ({}));
+      throw new Error(payload?.error || "Failed to create stay segment");
+    }
+
+    setFeedback({
+      type: "success",
+      text: "Stay added to your itinerary!",
+    });
+    await loadItineraryDetail(selectedId, userId);
   };
 
   const handleSmartFill = async (event?: React.FormEvent) => {
@@ -3378,29 +3473,71 @@ export default function ItineraryPlanner() {
                         planned
                       </p>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => setShowSegmentForm(true)}
-                      className="rounded-full bg-blue-600 text-white px-4 py-2 text-sm font-medium shadow-sm hover:bg-blue-700 transition flex items-center gap-2"
-                    >
-                      <svg
-                        className="h-4 w-4"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                        strokeWidth={2}
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setShowFlightModal(true)}
+                        className="rounded-full bg-blue-600 text-white px-4 py-2 text-sm font-medium shadow-sm hover:bg-blue-700 transition flex items-center gap-2"
                       >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          d="M12 4v16m8-8H4"
-                        />
-                      </svg>
-                      Add segment
-                    </button>
+                        <svg
+                          className="h-4 w-4"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                          strokeWidth={2}
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5"
+                          />
+                        </svg>
+                        Add Flight
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setShowStayModal(true)}
+                        className="rounded-full bg-purple-600 text-white px-4 py-2 text-sm font-medium shadow-sm hover:bg-purple-700 transition flex items-center gap-2"
+                      >
+                        <svg
+                          className="h-4 w-4"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                          strokeWidth={2}
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            d="M2.25 21h19.5m-18-18v18m10.5-18v18m6-13.5V21M6.75 6.75h.75m-.75 3h.75m-.75 3h.75m3-6h.75m-.75 3h.75m-.75 3h.75M6.75 21v-3.375c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21M3 3h12m-.75 4.5H21m-3.75 3.75h.008v.008h-.008v-.008zm0 3h.008v.008h-.008v-.008zm0 3h.008v.008h-.008v-.008z"
+                          />
+                        </svg>
+                        Add Stay
+                      </button>
+                    </div>
                   </div>
 
-                  {showSegmentForm && (
+                  {/* Modals */}
+                  <AddFlightModal
+                    isOpen={showFlightModal}
+                    onClose={() => setShowFlightModal(false)}
+                    onSubmit={handleFlightSubmit}
+                    smartFillEnabled={smartFillSupported}
+                    onSmartFill={async (_query, _date) => {
+                      // TODO: Implement smart fill
+                    }}
+                    smartFillSuggestion={smartFillSuggestion}
+                    onClearSmartFill={clearSmartFillSuggestion}
+                    smartFillLoading={smartFillLoading}
+                    smartFillError={smartFillError}
+                  />
+                  <AddStayModal
+                    isOpen={showStayModal}
+                    onClose={() => setShowStayModal(false)}
+                    onSubmit={handleStaySubmit}
+                  />
+
+                  {false && (
                     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
                       <div
                         className="absolute inset-0 bg-black/50 backdrop-blur-sm"
@@ -5235,7 +5372,7 @@ export default function ItineraryPlanner() {
               legs: [],
               metadata: suggestion.metadata || {},
             });
-            setShowSegmentForm(true);
+            setShowFlightModal(true);
             // Show success feedback
             setFeedback({
               type: "success",
