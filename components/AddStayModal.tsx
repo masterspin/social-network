@@ -5,7 +5,7 @@ import { useState } from "react";
 interface AddStayModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (data: StayFormData) => Promise<void>;
+  onSubmit: (data: StayFormData) => void;
   initialData?: Partial<StayFormData>;
 }
 
@@ -81,9 +81,20 @@ export default function AddStayModal({
       />
       <div className="relative w-full max-w-4xl lg:max-w-5xl max-h-[90vh] overflow-y-auto rounded-3xl bg-white dark:bg-gray-900 shadow-2xl border border-gray-200 dark:border-gray-800">
         <div className="sticky top-0 z-10 bg-white dark:bg-gray-900 px-8 py-5 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-            {isEdit ? "Edit Stay Segment" : "Add Stay Segment"}
-          </h3>
+          <div className="flex items-center gap-3">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+              {isEdit ? "Edit Stay Segment" : "Add Stay Segment"}
+            </h3>
+            {isEdit && onChangeType && (
+              <button
+                type="button"
+                onClick={onChangeType}
+                className="text-xs font-medium text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 px-2 py-1 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/20 transition"
+              >
+                Change Type
+              </button>
+            )}
+          </div>
           <button
             type="button"
             onClick={onClose}

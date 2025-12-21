@@ -809,6 +809,7 @@ export default function ItineraryPlanner() {
   const [activeTab, setActiveTab] = useState<"itinerary" | "travelers">(
     "itinerary"
   );
+  const [showSegmentTypeSelector, setShowSegmentTypeSelector] = useState(false);
   const [showFlightModal, setShowFlightModal] = useState(false);
   const [showStayModal, setShowStayModal] = useState(false);
   const [segmentForm, setSegmentForm] = useState<SegmentFormState>(() =>
@@ -829,10 +830,16 @@ export default function ItineraryPlanner() {
   );
   const [updatingHeader, setUpdatingHeader] = useState(false);
   const [isEditingTitle, setIsEditingTitle] = useState(false);
-  const [editingFlightSegmentId, setEditingFlightSegmentId] = useState<string | null>(null);
-  const [editingStaySegmentId, setEditingStaySegmentId] = useState<string | null>(null);
-  const [editFlightData, setEditFlightData] = useState<Partial<FlightFormData> | null>(null);
-  const [editStayData, setEditStayData] = useState<Partial<StayFormData> | null>(null);
+  const [editingFlightSegmentId, setEditingFlightSegmentId] = useState<
+    string | null
+  >(null);
+  const [editingStaySegmentId, setEditingStaySegmentId] = useState<
+    string | null
+  >(null);
+  const [editFlightData, setEditFlightData] =
+    useState<Partial<FlightFormData> | null>(null);
+  const [editStayData, setEditStayData] =
+    useState<Partial<StayFormData> | null>(null);
   const [feedback, setFeedback] = useState<{
     type: "success" | "error";
     text: string;
@@ -1522,7 +1529,9 @@ export default function ItineraryPlanner() {
 
     const isEdit = !!editingFlightSegmentId;
     const url = isEdit
-      ? `/api/itineraries/${encodeURIComponent(selectedId)}/segments/${encodeURIComponent(editingFlightSegmentId)}`
+      ? `/api/itineraries/${encodeURIComponent(
+          selectedId
+        )}/segments/${encodeURIComponent(editingFlightSegmentId)}`
       : `/api/itineraries/${encodeURIComponent(selectedId)}/segments`;
     const method = isEdit ? "PATCH" : "POST";
 
@@ -1561,19 +1570,22 @@ export default function ItineraryPlanner() {
 
     if (!response.ok) {
       const payload = await response.json().catch(() => ({}));
-      throw new Error(payload?.error || `Failed to ${isEdit ? 'update' : 'create'} flight segment`);
+      throw new Error(
+        payload?.error ||
+          `Failed to ${isEdit ? "update" : "create"} flight segment`
+      );
     }
 
     setFeedback({
       type: "success",
       text: isEdit ? "Flight updated!" : "Flight added to your itinerary!",
     });
-    
+
     if (isEdit) {
       setEditingFlightSegmentId(null);
       setEditFlightData(null);
     }
-    
+
     await loadItineraryDetail(selectedId, userId);
   };
 
@@ -1584,7 +1596,9 @@ export default function ItineraryPlanner() {
 
     const isEdit = !!editingStaySegmentId;
     const url = isEdit
-      ? `/api/itineraries/${encodeURIComponent(selectedId)}/segments/${encodeURIComponent(editingStaySegmentId)}`
+      ? `/api/itineraries/${encodeURIComponent(
+          selectedId
+        )}/segments/${encodeURIComponent(editingStaySegmentId)}`
       : `/api/itineraries/${encodeURIComponent(selectedId)}/segments`;
     const method = isEdit ? "PATCH" : "POST";
 
@@ -1608,19 +1622,22 @@ export default function ItineraryPlanner() {
 
     if (!response.ok) {
       const payload = await response.json().catch(() => ({}));
-      throw new Error(payload?.error || `Failed to ${isEdit ? 'update' : 'create'} stay segment`);
+      throw new Error(
+        payload?.error ||
+          `Failed to ${isEdit ? "update" : "create"} stay segment`
+      );
     }
 
     setFeedback({
       type: "success",
       text: isEdit ? "Stay updated!" : "Stay added to your itinerary!",
     });
-    
+
     if (isEdit) {
       setEditingStaySegmentId(null);
       setEditStayData(null);
     }
-    
+
     await loadItineraryDetail(selectedId, userId);
   };
 
@@ -1980,30 +1997,41 @@ export default function ItineraryPlanner() {
 
     if (segment.type === "flight") {
       // Prepare flight data
-      const departure = typeof segmentMetadata.departure === "object" && segmentMetadata.departure !== null
-        ? (segmentMetadata.departure as Record<string, unknown>)
-        : {};
-      const arrival = typeof segmentMetadata.arrival === "object" && segmentMetadata.arrival !== null
-        ? (segmentMetadata.arrival as Record<string, unknown>)
-        : {};
+      const departure =
+        typeof segmentMetadata.departure === "object" &&
+        segmentMetadata.departure !== null
+          ? (segmentMetadata.departure as Record<string, unknown>)
+          : {};
+      const arrival =
+        typeof segmentMetadata.arrival === "object" &&
+        segmentMetadata.arrival !== null
+          ? (segmentMetadata.arrival as Record<string, unknown>)
+          : {};
 
       const flightData: Partial<FlightFormData> = {
         type: "flight",
         title: segment.title || "",
         description: segment.description || "",
-        costAmount: segment.cost_amount !== null && segment.cost_amount !== undefined
-          ? segment.cost_amount.toString()
-          : "",
-        departureAirport: typeof departure.airport === "string" ? departure.airport : "",
-        departureTerminal: typeof departure.terminal === "string" ? departure.terminal : "",
+        costAmount:
+          segment.cost_amount !== null && segment.cost_amount !== undefined
+            ? segment.cost_amount.toString()
+            : "",
+        departureAirport:
+          typeof departure.airport === "string" ? departure.airport : "",
+        departureTerminal:
+          typeof departure.terminal === "string" ? departure.terminal : "",
         departureGate: typeof departure.gate === "string" ? departure.gate : "",
         departureTime: isoToLocalInput(segment.start_time),
-        departureTimezone: typeof departure.timezone === "string" ? departure.timezone : "",
-        arrivalAirport: typeof arrival.airport === "string" ? arrival.airport : "",
-        arrivalTerminal: typeof arrival.terminal === "string" ? arrival.terminal : "",
+        departureTimezone:
+          typeof departure.timezone === "string" ? departure.timezone : "",
+        arrivalAirport:
+          typeof arrival.airport === "string" ? arrival.airport : "",
+        arrivalTerminal:
+          typeof arrival.terminal === "string" ? arrival.terminal : "",
         arrivalGate: typeof arrival.gate === "string" ? arrival.gate : "",
         arrivalTime: isoToLocalInput(segment.end_time),
-        arrivalTimezone: typeof arrival.timezone === "string" ? arrival.timezone : "",
+        arrivalTimezone:
+          typeof arrival.timezone === "string" ? arrival.timezone : "",
         airline: segment.provider_name || "",
         confirmationCode: segment.confirmation_code || "",
         flightNumber: segment.transport_number || "",
@@ -2019,9 +2047,10 @@ export default function ItineraryPlanner() {
         type: "stay",
         title: segment.title || "",
         description: segment.description || "",
-        costAmount: segment.cost_amount !== null && segment.cost_amount !== undefined
-          ? segment.cost_amount.toString()
-          : "",
+        costAmount:
+          segment.cost_amount !== null && segment.cost_amount !== undefined
+            ? segment.cost_amount.toString()
+            : "",
         locationAddress: segment.location_address || "",
         checkInTime: isoToLocalInput(segment.start_time),
         checkOutTime: isoToLocalInput(segment.end_time),
@@ -2959,10 +2988,12 @@ export default function ItineraryPlanner() {
                         planned
                       </p>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="relative">
                       <button
                         type="button"
-                        onClick={() => setShowFlightModal(true)}
+                        onClick={() =>
+                          setShowSegmentTypeSelector(!showSegmentTypeSelector)
+                        }
                         className="rounded-full bg-blue-600 text-white px-4 py-2 text-sm font-medium shadow-sm hover:bg-blue-700 transition flex items-center gap-2"
                       >
                         <svg
@@ -2975,16 +3006,10 @@ export default function ItineraryPlanner() {
                           <path
                             strokeLinecap="round"
                             strokeLinejoin="round"
-                            d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5"
+                            d="M12 4.5v15m7.5-7.5h-15"
                           />
                         </svg>
-                        Add Flight
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setShowStayModal(true)}
-                        className="rounded-full bg-purple-600 text-white px-4 py-2 text-sm font-medium shadow-sm hover:bg-purple-700 transition flex items-center gap-2"
-                      >
+                        Add Segment
                         <svg
                           className="h-4 w-4"
                           fill="none"
@@ -2995,11 +3020,85 @@ export default function ItineraryPlanner() {
                           <path
                             strokeLinecap="round"
                             strokeLinejoin="round"
-                            d="M2.25 21h19.5m-18-18v18m10.5-18v18m6-13.5V21M6.75 6.75h.75m-.75 3h.75m-.75 3h.75m3-6h.75m-.75 3h.75m-.75 3h.75M6.75 21v-3.375c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21M3 3h12m-.75 4.5H21m-3.75 3.75h.008v.008h-.008v-.008zm0 3h.008v.008h-.008v-.008zm0 3h.008v.008h-.008v-.008z"
+                            d="M19.5 8.25l-7.5 7.5-7.5-7.5"
                           />
                         </svg>
-                        Add Stay
                       </button>
+
+                      {showSegmentTypeSelector && (
+                        <>
+                          <div
+                            className="fixed inset-0 z-40"
+                            onClick={() => setShowSegmentTypeSelector(false)}
+                          />
+                          <div className="absolute right-0 top-full mt-2 w-56 rounded-2xl bg-white dark:bg-gray-900 shadow-xl border border-gray-200 dark:border-gray-800 z-50 overflow-hidden">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setShowSegmentTypeSelector(false);
+                                setShowFlightModal(true);
+                              }}
+                              className="w-full px-4 py-3 text-left hover:bg-blue-50 dark:hover:bg-blue-900/20 transition flex items-center gap-3 border-b border-gray-100 dark:border-gray-800"
+                            >
+                              <div className="h-10 w-10 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
+                                <svg
+                                  className="h-5 w-5 text-blue-600 dark:text-blue-400"
+                                  fill="none"
+                                  viewBox="0 0 24 24"
+                                  stroke="currentColor"
+                                  strokeWidth={2}
+                                >
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5"
+                                  />
+                                </svg>
+                              </div>
+                              <div>
+                                <div className="text-sm font-semibold text-gray-900 dark:text-white">
+                                  Flight
+                                </div>
+                                <div className="text-xs text-gray-500 dark:text-gray-400">
+                                  Add a flight segment
+                                </div>
+                              </div>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setShowSegmentTypeSelector(false);
+                                setShowStayModal(true);
+                              }}
+                              className="w-full px-4 py-3 text-left hover:bg-purple-50 dark:hover:bg-purple-900/20 transition flex items-center gap-3"
+                            >
+                              <div className="h-10 w-10 rounded-full bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center">
+                                <svg
+                                  className="h-5 w-5 text-purple-600 dark:text-purple-400"
+                                  fill="none"
+                                  viewBox="0 0 24 24"
+                                  stroke="currentColor"
+                                  strokeWidth={2}
+                                >
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    d="M2.25 21h19.5m-18-18v18m10.5-18v18m6-13.5V21M6.75 6.75h.75m-.75 3h.75m-.75 3h.75m3-6h.75m-.75 3h.75m-.75 3h.75M6.75 21v-3.375c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21M3 3h12m-.75 4.5H21m-3.75 3.75h.008v.008h-.008v-.008zm0 3h.008v.008h-.008v-.008zm0 3h.008v.008h-.008v-.008z"
+                                  />
+                                </svg>
+                              </div>
+                              <div>
+                                <div className="text-sm font-semibold text-gray-900 dark:text-white">
+                                  Stay
+                                </div>
+                                <div className="text-xs text-gray-500 dark:text-gray-400">
+                                  Add accommodation
+                                </div>
+                              </div>
+                            </button>
+                          </div>
+                        </>
+                      )}
                     </div>
                   </div>
 
