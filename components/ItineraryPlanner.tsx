@@ -14,6 +14,15 @@ import {
   Trash2,
   PlaneTakeoff,
   PlaneLanding,
+  Star,
+  Car,
+  Utensils,
+  CircleDot,
+  Settings,
+  CheckCircle,
+  ClipboardList,
+  MessageCircle,
+  Clock,
 } from "lucide-react";
 import { getCurrentUser } from "@/lib/supabase/queries";
 import { Database } from "@/types/supabase";
@@ -2763,24 +2772,7 @@ export default function ItineraryPlanner() {
                       className="p-3 rounded-full bg-gray-50/50 dark:bg-gray-800/50 text-gray-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-all duration-300 shadow-sm border border-gray-100 dark:border-gray-800 backdrop-blur-sm"
                       aria-label="Itinerary settings"
                     >
-                      <svg
-                        className="h-6 w-6"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                        strokeWidth={2}
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
-                        />
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-                        />
-                      </svg>
+                      <Settings className="h-6 w-6" />
                     </button>
                   </div>
 
@@ -3784,19 +3776,7 @@ export default function ItineraryPlanner() {
                     {!segmentCount && (
                       <div className="flex flex-col items-center justify-center py-16 text-center">
                         <div className="h-16 w-16 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center mb-4">
-                          <svg
-                            className="h-8 w-8 text-gray-400 dark:text-gray-500"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            stroke="currentColor"
-                            strokeWidth={1.5}
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5"
-                            />
-                          </svg>
+                          <Calendar className="h-8 w-8 text-gray-400 dark:text-gray-500" />
                         </div>
                         <p className="text-base font-medium text-gray-900 dark:text-white">
                           Start building your itinerary
@@ -3827,116 +3807,32 @@ export default function ItineraryPlanner() {
                               }
                             > = {
                               flight: {
-                                icon: (
-                                  <svg
-                                    className="h-5 w-5"
-                                    fill="none"
-                                    viewBox="0 0 24 24"
-                                    stroke="currentColor"
-                                    strokeWidth={1.5}
-                                  >
-                                    <path
-                                      strokeLinecap="round"
-                                      strokeLinejoin="round"
-                                      d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5"
-                                    />
-                                  </svg>
-                                ),
+                                icon: <Plane className="h-5 w-5" />,
                                 color: "text-sky-600 dark:text-sky-400",
                                 bgColor: "bg-sky-100 dark:bg-sky-900/40",
                               },
                               stay: {
-                                icon: (
-                                  <svg
-                                    className="h-5 w-5"
-                                    fill="none"
-                                    viewBox="0 0 24 24"
-                                    stroke="currentColor"
-                                    strokeWidth={1.5}
-                                  >
-                                    <path
-                                      strokeLinecap="round"
-                                      strokeLinejoin="round"
-                                      d="M2.25 21h19.5m-18-18v18m10.5-18v18m6-13.5V21M6.75 6.75h.75m-.75 3h.75m-.75 3h.75m3-6h.75m-.75 3h.75m-.75 3h.75M6.75 21v-3.375c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21M3 3h12m-.75 4.5H21m-3.75 3.75h.008v.008h-.008v-.008zm0 3h.008v.008h-.008v-.008zm0 3h.008v.008h-.008v-.008z"
-                                    />
-                                  </svg>
-                                ),
+                                icon: <Hotel className="h-5 w-5" />,
                                 color: "text-indigo-600 dark:text-indigo-400",
                                 bgColor: "bg-indigo-100 dark:bg-indigo-900/40",
                               },
                               hotel: {
-                                icon: (
-                                  <svg
-                                    className="h-5 w-5"
-                                    fill="none"
-                                    viewBox="0 0 24 24"
-                                    stroke="currentColor"
-                                    strokeWidth={1.5}
-                                  >
-                                    <path
-                                      strokeLinecap="round"
-                                      strokeLinejoin="round"
-                                      d="M2.25 21h19.5m-18-18v18m10.5-18v18m6-13.5V21M6.75 6.75h.75m-.75 3h.75m-.75 3h.75m3-6h.75m-.75 3h.75m-.75 3h.75M6.75 21v-3.375c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21M3 3h12m-.75 4.5H21m-3.75 3.75h.008v.008h-.008v-.008zm0 3h.008v.008h-.008v-.008zm0 3h.008v.008h-.008v-.008z"
-                                    />
-                                  </svg>
-                                ),
+                                icon: <Hotel className="h-5 w-5" />,
                                 color: "text-purple-600 dark:text-purple-400",
                                 bgColor: "bg-purple-100 dark:bg-purple-900/40",
                               },
                               activity: {
-                                icon: (
-                                  <svg
-                                    className="h-5 w-5"
-                                    fill="none"
-                                    viewBox="0 0 24 24"
-                                    stroke="currentColor"
-                                    strokeWidth={1.5}
-                                  >
-                                    <path
-                                      strokeLinecap="round"
-                                      strokeLinejoin="round"
-                                      d="M11.48 3.499a.562.562 0 011.04 0l2.125 5.111a.563.563 0 00.475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 00-.182.557l1.285 5.385a.562.562 0 01-.84.61l-4.725-2.885a.563.563 0 00-.586 0L6.982 20.54a.562.562 0 01-.84-.61l1.285-5.386a.562.562 0 00-.182-.557l-4.204-3.602a.563.563 0 01.321-.988l5.518-.442a.563.563 0 00.475-.345L11.48 3.5z"
-                                    />
-                                  </svg>
-                                ),
+                                icon: <Star className="h-5 w-5" />,
                                 color: "text-amber-600 dark:text-amber-400",
                                 bgColor: "bg-amber-100 dark:bg-amber-900/40",
                               },
                               transport: {
-                                icon: (
-                                  <svg
-                                    className="h-5 w-5"
-                                    fill="none"
-                                    viewBox="0 0 24 24"
-                                    stroke="currentColor"
-                                    strokeWidth={1.5}
-                                  >
-                                    <path
-                                      strokeLinecap="round"
-                                      strokeLinejoin="round"
-                                      d="M8.25 18.75a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 01-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h1.125c.621 0 1.129-.504 1.09-1.124a17.902 17.902 0 00-3.213-9.193 2.056 2.056 0 00-1.58-.86H14.25M16.5 18.75h-2.25m0-11.177v-.958c0-.568-.422-1.048-.987-1.106a48.554 48.554 0 00-10.026 0 1.106 1.106 0 00-.987 1.106v7.635m12-6.677v6.677m0 4.5v-4.5m0 0h-12"
-                                    />
-                                  </svg>
-                                ),
+                                icon: <Car className="h-5 w-5" />,
                                 color: "text-green-600 dark:text-green-400",
                                 bgColor: "bg-green-100 dark:bg-green-900/40",
                               },
                               meal: {
-                                icon: (
-                                  <svg
-                                    className="h-5 w-5"
-                                    fill="none"
-                                    viewBox="0 0 24 24"
-                                    stroke="currentColor"
-                                    strokeWidth={1.5}
-                                  >
-                                    <path
-                                      strokeLinecap="round"
-                                      strokeLinejoin="round"
-                                      d="M12 8.25v-1.5m0 1.5c-1.355 0-2.697.056-4.024.166C6.845 8.51 6 9.473 6 10.608v2.513m6-4.87c1.355 0 2.697.055 4.024.165C17.155 8.51 18 9.473 18 10.608v2.513m-3-4.87v-1.5m-6 1.5v-1.5m12 9.75l-1.5.75a3.354 3.354 0 01-3 0 3.354 3.354 0 00-3 0 3.354 3.354 0 01-3 0 3.354 3.354 0 00-3 0 3.354 3.354 0 01-3 0L3 16.5m15-3.38a48.474 48.474 0 00-6-.37c-2.032 0-4.034.125-6 .37m12 0c.39.049.777.102 1.163.16 1.07.16 1.837 1.094 1.837 2.175v5.17c0 .62-.504 1.124-1.125 1.124H4.125A1.125 1.125 0 013 20.625v-5.17c0-1.08.768-2.014 1.837-2.174A47.78 47.78 0 016 13.12M12.265 3.11a.375.375 0 11-.53 0L12 2.845l.265.265zm-3 0a.375.375 0 11-.53 0L9 2.845l.265.265zm6 0a.375.375 0 11-.53 0L15 2.845l.265.265z"
-                                    />
-                                  </svg>
-                                ),
+                                icon: <Utensils className="h-5 w-5" />,
                                 color: "text-rose-600 dark:text-rose-400",
                                 bgColor: "bg-rose-100 dark:bg-rose-900/40",
                               },
@@ -3944,26 +3840,7 @@ export default function ItineraryPlanner() {
                             const config = typeConfig[
                               segment.type.toLowerCase()
                             ] || {
-                              icon: (
-                                <svg
-                                  className="h-5 w-5"
-                                  fill="none"
-                                  viewBox="0 0 24 24"
-                                  stroke="currentColor"
-                                  strokeWidth={1.5}
-                                >
-                                  <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z"
-                                  />
-                                  <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z"
-                                  />
-                                </svg>
-                              ),
+                              icon: <CircleDot className="h-5 w-5" />,
                               color: "text-blue-600 dark:text-blue-400",
                               bgColor: "bg-blue-100 dark:bg-blue-900/40",
                             };
@@ -4059,19 +3936,7 @@ export default function ItineraryPlanner() {
                                       )}
                                       {segment.transport_number && (
                                         <span className="inline-flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 rounded-lg px-2 py-1">
-                                          <svg
-                                            className="h-3 w-3"
-                                            fill="none"
-                                            viewBox="0 0 24 24"
-                                            stroke="currentColor"
-                                            strokeWidth={1.5}
-                                          >
-                                            <path
-                                              strokeLinecap="round"
-                                              strokeLinejoin="round"
-                                              d="M5.25 8.25h15m-16.5 7.5h15m-1.8-13.5l-3.9 19.5m-2.1-19.5l-3.9 19.5"
-                                            />
-                                          </svg>
+                                          <Plane className="h-3 w-3" />
                                           {segment.transport_number}
                                         </span>
                                       )}
@@ -4184,24 +4049,7 @@ export default function ItineraryPlanner() {
                                       <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-gradient-to-br from-indigo-50/50 to-white dark:from-indigo-900/10 dark:to-gray-900/30 p-4">
                                         <div className="space-y-1">
                                           <p className="text-[10px] font-black uppercase tracking-wider text-indigo-600 dark:text-indigo-400 flex items-center gap-1">
-                                            <svg
-                                              className="h-3 w-3"
-                                              fill="none"
-                                              viewBox="0 0 24 24"
-                                              stroke="currentColor"
-                                              strokeWidth={2}
-                                            >
-                                              <path
-                                                strokeLinecap="round"
-                                                strokeLinejoin="round"
-                                                d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z"
-                                              />
-                                              <path
-                                                strokeLinecap="round"
-                                                strokeLinejoin="round"
-                                                d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z"
-                                              />
-                                            </svg>
+                                            <MapPin className="h-3 w-3" />
                                             Address
                                           </p>
                                           <div className="flex flex-wrap gap-2">
@@ -4218,19 +4066,7 @@ export default function ItineraryPlanner() {
                                             </a>
                                             {segment.timezone && (
                                               <span className="inline-flex items-center gap-1.5 text-sm font-medium text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-800/60 rounded-lg px-3 py-1.5 border border-gray-200 dark:border-gray-700">
-                                                <svg
-                                                  className="h-3.5 w-3.5 text-gray-500 dark:text-gray-400"
-                                                  fill="none"
-                                                  viewBox="0 0 24 24"
-                                                  stroke="currentColor"
-                                                  strokeWidth={2}
-                                                >
-                                                  <path
-                                                    strokeLinecap="round"
-                                                    strokeLinejoin="round"
-                                                    d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z"
-                                                  />
-                                                </svg>
+                                                <Clock className="h-3.5 w-3.5 text-gray-500 dark:text-gray-400" />
                                                 {segment.timezone}
                                               </span>
                                             )}
@@ -4242,19 +4078,7 @@ export default function ItineraryPlanner() {
                                   <details className="rounded-2xl border border-dashed border-gray-200 dark:border-gray-800 bg-white/40 dark:bg-transparent">
                                     <summary className="px-4 py-3 cursor-pointer text-sm font-medium text-gray-700 dark:text-gray-300 flex items-center justify-between">
                                       <span className="flex items-center gap-2">
-                                        <svg
-                                          className="h-4 w-4 text-gray-400"
-                                          fill="none"
-                                          viewBox="0 0 24 24"
-                                          stroke="currentColor"
-                                          strokeWidth={1.5}
-                                        >
-                                          <path
-                                            strokeLinecap="round"
-                                            strokeLinejoin="round"
-                                            d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                                          />
-                                        </svg>
+                                        <CheckCircle className="h-4 w-4 text-gray-400" />
                                         Checklist
                                       </span>
                                       <span className="text-xs text-gray-400 dark:text-gray-500">
@@ -4304,19 +4128,7 @@ export default function ItineraryPlanner() {
                                               }
                                               className="opacity-0 group-hover:opacity-100 p-1 rounded text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition"
                                             >
-                                              <svg
-                                                className="h-3 w-3"
-                                                fill="none"
-                                                viewBox="0 0 24 24"
-                                                stroke="currentColor"
-                                                strokeWidth={2}
-                                              >
-                                                <path
-                                                  strokeLinecap="round"
-                                                  strokeLinejoin="round"
-                                                  d="M6 18L18 6M6 6l12 12"
-                                                />
-                                              </svg>
+                                              <X className="h-3 w-3" />
                                             </button>
                                           </div>
                                         )
@@ -4405,19 +4217,7 @@ export default function ItineraryPlanner() {
                   {detail.checklists && detail.checklists.length > 0 && (
                     <div className="border-t border-gray-200 dark:border-gray-800 px-6 py-4">
                       <h4 className="text-sm font-semibold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
-                        <svg
-                          className="h-4 w-4 text-gray-400"
-                          fill="none"
-                          viewBox="0 0 24 24"
-                          stroke="currentColor"
-                          strokeWidth={1.5}
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 002.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 00-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 00.75-.75 2.25 2.25 0 00-.1-.664m-5.8 0A2.251 2.251 0 0113.5 2.25H15c1.012 0 1.867.668 2.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m0 0H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V9.375c0-.621-.504-1.125-1.125-1.125H8.25zM6.75 12h.008v.008H6.75V12zm0 3h.008v.008H6.75V15zm0 3h.008v.008H6.75V18z"
-                          />
-                        </svg>
+                        <ClipboardList className="h-4 w-4 text-gray-400" />
                         Trip Checklists
                       </h4>
                       <div className="space-y-3">
@@ -4532,19 +4332,7 @@ export default function ItineraryPlanner() {
                       {!comments.length && (
                         <div className="flex flex-col items-center justify-center py-12 text-center">
                           <div className="h-16 w-16 rounded-full bg-gray-50 dark:bg-gray-800/50 flex items-center justify-center mb-4 transition-transform hover:scale-110 duration-500">
-                            <svg
-                              className="h-8 w-8 text-gray-300 dark:text-gray-600"
-                              fill="none"
-                              viewBox="0 0 24 24"
-                              stroke="currentColor"
-                              strokeWidth={1.5}
-                            >
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                d="M8.625 12a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H8.25m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H12m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 01-2.555-.337A5.972 5.972 0 015.41 20.97a5.969 5.969 0 01-.474-.065 4.48 4.48 0 00.978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25z"
-                              />
-                            </svg>
+                            <MessageCircle className="h-8 w-8 text-gray-300 dark:text-gray-600" />
                           </div>
                           <p className="text-sm font-bold text-gray-400 dark:text-gray-500">
                             No comments yet
@@ -4602,19 +4390,7 @@ export default function ItineraryPlanner() {
                                         className="p-1 rounded text-gray-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition"
                                         title="Edit comment"
                                       >
-                                        <svg
-                                          className="h-3.5 w-3.5"
-                                          fill="none"
-                                          viewBox="0 0 24 24"
-                                          stroke="currentColor"
-                                          strokeWidth={2}
-                                        >
-                                          <path
-                                            strokeLinecap="round"
-                                            strokeLinejoin="round"
-                                            d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10"
-                                          />
-                                        </svg>
+                                        <Edit2 className="h-3.5 w-3.5" />
                                       </button>
                                       <button
                                         type="button"
@@ -4624,19 +4400,7 @@ export default function ItineraryPlanner() {
                                         className="p-1 rounded text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition"
                                         title="Delete comment"
                                       >
-                                        <svg
-                                          className="h-3.5 w-3.5"
-                                          fill="none"
-                                          viewBox="0 0 24 24"
-                                          stroke="currentColor"
-                                          strokeWidth={2}
-                                        >
-                                          <path
-                                            strokeLinecap="round"
-                                            strokeLinejoin="round"
-                                            d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0"
-                                          />
-                                        </svg>
+                                        <Trash2 className="h-3.5 w-3.5" />
                                       </button>
                                     </div>
                                   )}
