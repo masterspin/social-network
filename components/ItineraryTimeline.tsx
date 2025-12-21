@@ -197,7 +197,7 @@ export default function ItineraryTimeline({
                         onSegmentClick(info.event.extendedProps.segment);
                     }
                 }}
-                height="800px"
+                height="auto"
                 slotMinTime={slotMinTime}
                 slotMaxTime={slotMaxTime}
                 allDaySlot={false}
@@ -208,96 +208,83 @@ export default function ItineraryTimeline({
             <style jsx global>{`
         /* General Calendar Variables */
         .fc {
-          --fc-border-color: rgba(229, 231, 235, 0.5) !important; /* gray-200 with opacity */
+          --fc-border-color: rgba(229, 231, 235, 0.5);
           --fc-page-bg-color: #ffffff;
-          --fc-neutral-bg-color: rgba(243, 244, 246, 0.5); /* gray-100 */
+          --fc-neutral-bg-color: rgba(243, 244, 246, 0.5);
           --fc-list-event-hover-bg-color: #f3f4f6;
-          --fc-today-bg-color: transparent !important; /* Remove default today highlight */
-          --fc-now-indicator-color: #ef4444; /* red-500 */
+          --fc-today-bg-color: transparent !important;
+          --fc-now-indicator-color: #ef4444;
           font-family: inherit;
         }
 
         .dark .fc {
-          --fc-border-color: rgba(55, 65, 81, 0.4) !important; /* gray-700 with opacity */
-          --fc-page-bg-color: #111827; /* gray-900 */
-          --fc-neutral-bg-color: rgba(31, 41, 55, 0.5); /* gray-800 */
+          --fc-border-color: rgba(55, 65, 81, 0.2) !important; /* Very subtle gray-700 */
+          --fc-page-bg-color: #030712;
+          --fc-neutral-bg-color: rgba(31, 41, 55, 0.5);
+          --fc-button-text-color: #9ca3af;
+          --fc-button-bg-color: transparent;
+          --fc-button-border-color: rgba(75, 85, 99, 0.4);
+          --fc-button-hover-bg-color: rgba(55, 65, 81, 0.3);
+          --fc-button-hover-border-color: rgba(107, 114, 128, 0.4);
+          --fc-button-active-bg-color: rgba(55, 65, 81, 0.5);
+          --fc-button-active-border-color: rgba(107, 114, 128, 0.5);
         }
 
-        /* --- Toolbar Cleaning --- */
+        /* Toolbar */
         .fc .fc-toolbar {
             margin-bottom: 1.5rem !important;
             display: flex;
             justify-content: space-between;
             align-items: center;
         }
-
         .fc .fc-toolbar-title {
             font-size: 1.25rem !important;
             font-weight: 700;
             color: #111827;
         }
         .dark .fc .fc-toolbar-title {
-            color: #f3f4f6;
+            color: #f3f4f6; /* Title keeps white/light */
         }
 
+        /* Buttons */
         .fc .fc-button {
-            background: transparent;
-            border: 1px solid #e5e7eb;
-            color: #4b5563;
+            border-radius: 0.5rem;
             font-weight: 500;
             font-size: 0.875rem;
-            padding: 0.4rem 0.8rem;
-            border-radius: 0.5rem;
-            box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-            transition: all 0.15s ease;
             text-transform: capitalize;
-        }
-        .dark .fc .fc-button {
-            border-color: #374151;
-            color: #d1d5db;
-        }
-
-        .fc .fc-button:hover {
-            background-color: #f9fafb;
-            color: #111827;
-            border-color: #d1d5db;
-        }
-        .dark .fc .fc-button:hover {
-            background-color: #1f2937;
-            color: #f9fafb;
-            border-color: #4b5563;
-        }
-
-        .fc .fc-button-primary:not(:disabled).fc-button-active,
-        .fc .fc-button-primary:not(:disabled):active {
-            background-color: #f3f4f6;
-            color: #111827;
-            border-color: #d1d5db;
-            box-shadow: inset 0 2px 4px 0 rgba(0, 0, 0, 0.06);
-        }
-        .dark .fc .fc-button-primary:not(:disabled).fc-button-active,
-        .dark .fc .fc-button-primary:not(:disabled):active {
-            background-color: #374151;
-            color: #f9fafb;
-            border-color: #4b5563;
-        }
-
-        .fc .fc-button:focus {
+            transition: all 0.2s;
             box-shadow: none !important;
-            ring: 2px solid #e5e7eb;
         }
-
-        /* --- Grid & Cells --- */
-        .fc-theme-standard td, .fc-theme-standard th {
-            border-color: var(--fc-border-color);
+        .fc .fc-button:focus {
+            box-shadow: none !important; 
+            ring: 0 !important;
         }
         
-        /* Remove outer border only */
+        /* Grid & Structure */
+        .fc-theme-standard td, .fc-theme-standard th {
+            border-color: var(--fc-border-color) !important;
+            background-color: transparent !important; /* Ensure no white bg on cells */
+        }
+
+        /* Remove outer frame */
         .fc-theme-standard .fc-scrollgrid {
             border: none !important;
         }
 
-        /* Header Cells */
+        /* Footer cleanup */
+        .fc-scrollgrid-section-footer td {
+            border: none !important;
+            background: transparent !important;
+        }
+
+        /* Header: Transparent BG, but restore bottom border */
+        .fc-theme-standard th.fc-col-header-cell {
+            border: none !important; /* Clear other borders */
+            border-bottom: 1px solid var(--fc-border-color) !important; /* Restore separator */
+            background: transparent !important;
+        }
+
+        /* Clean Headers */
         .fc-col-header-cell-cushion {
             padding-top: 10px !important;
             padding-bottom: 10px !important;
@@ -308,27 +295,46 @@ export default function ItineraryTimeline({
             color: #6b7280;
         }
         .dark .fc-col-header-cell-cushion {
-            color: #9ca3af;
+            color: #9ca3af !important; 
         }
-        
-        /* Cleaner Time Axis & Remove Horizontal Lines */
+
+        /* Time Axis */
         .fc-timegrid-slot-label-cushion {
             font-size: 0.75rem;
             color: #9ca3af;
             font-weight: 500;
+            text-transform: lowercase;
         }
 
-        /* Hide horizontal grid lines */
+        /* Hide Horizontal Lines */
         .fc-timegrid-slot, 
         .fc-timegrid-slot-lane,
         .fc-timegrid-slot-minor {
             border-top: none !important;
             border-bottom: none !important;
         }
-        
-        /* Keep vertical dividers for days */
-        .fc-day-other .fc-timegrid-col-frame {
-             /* maintain vertical structure */
+
+        /* Keep Vertical Lines Subtle (Dashed maybe for style, or solid but faint) */
+        .fc-theme-standard .fc-timegrid-col {
+            border-right: 1px dashed rgba(229, 231, 235, 0.4);
+        }
+        .dark .fc-theme-standard .fc-timegrid-col {
+            border-right: 1px dashed rgba(55, 65, 81, 0.3) !important; /* Subtle dark gray dashed */
+        }
+        .fc-theme-standard .fc-timegrid-col:last-child {
+            border-right: none;
+        }
+
+        /* Now Indicator */
+        .fc-timegrid-now-indicator-line {
+            border-color: #ef4444;
+            border-width: 2px;
+            opacity: 0.8;
+        }
+        .fc-timegrid-now-indicator-arrow {
+            border-color: #ef4444;
+            border-width: 5px;
+            opacity: 0.8;
         }
         
         /* Events */
@@ -336,33 +342,17 @@ export default function ItineraryTimeline({
             border: none !important;
             border-radius: 6px !important;
             box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-            transition: transform 0.1s ease, box-shadow 0.1s ease;
+            color: white !important; /* Text is always white on colored cards */
         }
-        
         .fc-event:hover {
+            filter: brightness(1.1);
             transform: translateY(-1px);
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
             z-index: 50;
         }
-
-        /* Today Column Highlight - subtle vertical gradient or just standard */
-        .fc-day-today {
-            background-color: rgba(249, 250, 251, 0.6) !important;
-        }
-        .dark .fc-day-today {
-            background-color: rgba(31, 41, 55, 0.3) !important;
-        }
         
-        /* Now Indicator */
-        .fc-timegrid-now-indicator-line {
-            border-color: #ef4444;
-            border-width: 2px;
+        .fc-timegrid-event .fc-event-main {
+            padding: 2px;
         }
-        .fc-timegrid-now-indicator-arrow {
-            border-color: #ef4444;
-            border-width: 5px;
-        }
-
       `}</style>
         </div>
     );
