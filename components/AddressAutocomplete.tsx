@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { getTimezones } from "@tubular/time";
+// @ts-ignore - tz-lookup might be missing types strictly in some envs or just for safety
+import tz from "tz-lookup";
 
 type PlaceResult = {
   name: string;
@@ -73,10 +74,10 @@ export default function AddressAutocomplete({
       // Using Nominatim (OpenStreetMap) - Free and no API key required
       const response = await fetch(
         `https://nominatim.openstreetmap.org/search?` +
-          `q=${encodeURIComponent(query)}` +
-          `&format=json` +
-          `&addressdetails=1` +
-          `&limit=5`,
+        `q=${encodeURIComponent(query)}` +
+        `&format=json` +
+        `&addressdetails=1` +
+        `&limit=5`,
         {
           headers: {
             "User-Agent": "ItineraryPlanner/1.0",
@@ -124,9 +125,7 @@ export default function AddressAutocomplete({
       // Detect timezone from coordinates
       let timezone: string | undefined;
       try {
-        const timezones = getTimezones(lat, lng);
-        // getTimezones returns an array, take the first one
-        timezone = timezones && timezones.length > 0 ? timezones[0] : undefined;
+        timezone = tz(lat, lng);
       } catch (error) {
         console.error("Failed to detect timezone:", error);
       }

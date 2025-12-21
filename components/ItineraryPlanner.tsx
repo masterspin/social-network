@@ -1805,7 +1805,7 @@ export default function ItineraryPlanner() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         user_id: userId,
-        type: "transport",
+        type: "ground",
         title: data.title.trim(),
         start_time: data.departureTime || null,
         end_time: data.arrivalTime || null,
