@@ -3,15 +3,7 @@ import type {
   SegmentAutofillType,
 } from "@/lib/autofill/types";
 
-export const SEGMENT_TYPES = [
-  "flight",
-  "train",
-  "car",
-  "activity",
-  "meal",
-  "hotel",
-  "other",
-] as const;
+export const SEGMENT_TYPES = ["flight"] as const;
 
 export type SegmentType = (typeof SEGMENT_TYPES)[number];
 
@@ -85,93 +77,6 @@ export const SEGMENT_TYPE_CONFIG: Record<SegmentType, SegmentTypeConfig> = {
     seatLabel: "Seat / Cabin",
     seatPlaceholder: "12A · Polaris",
   },
-  car: {
-    key: "car",
-    label: "Car / Ride",
-    smartFillHint: "Pickup or driver · e.g., Hertz Shinjuku",
-    titlePlaceholder: "Escort from HND to hotel",
-    descriptionPlaceholder: "Vehicle class, driver, or luggage notes",
-    locationLabel: "Pickup point",
-    locationPlaceholder: "Haneda Airport · Terminal 3 curb",
-    providerLabel: "Provider",
-    providerPlaceholder: "Hertz, Uber Black, MK Taxi...",
-    confirmationLabel: "Reservation",
-    confirmationPlaceholder: "HRZ-123456",
-    referenceLabel: "Vehicle / plate",
-    referencePlaceholder: "Toyota Alphard · 8JR-221",
-  },
-  activity: {
-    key: "activity",
-    label: "Activity",
-    smartFillHint: "Activity keyword · e.g., TeamLab Planets",
-    titlePlaceholder: "Teamlab R&D walkthrough",
-    descriptionPlaceholder: "Hosts, goals, or equipment to bring",
-    locationLabel: "Meeting point",
-    locationPlaceholder: "Toyosu · Entrance B",
-    providerLabel: "Host / operator",
-    providerPlaceholder: "Teamlab",
-    confirmationLabel: "Reference",
-    confirmationPlaceholder: "Invite link, CRM ID...",
-  },
-  meal: {
-    key: "meal",
-    label: "Meal",
-    smartFillHint: "Restaurant or chef · e.g., Sushi Saito",
-    titlePlaceholder: "Dinner at Den",
-    descriptionPlaceholder: "Course, guests, or dietary notes",
-    locationLabel: "Restaurant",
-    locationPlaceholder: "Kanda, Chiyoda City",
-    providerLabel: "Chef / venue",
-    providerPlaceholder: "Den",
-    confirmationLabel: "Reservation",
-    confirmationPlaceholder: "Resy/Opentable code",
-  },
-  hotel: {
-    key: "hotel",
-    label: "Stay",
-    smartFillHint: "Property name · e.g., Park Hyatt Tokyo",
-    titlePlaceholder: "Check-in · Park Hyatt Tokyo",
-    descriptionPlaceholder: "Room type, guest of, loyalty",
-    locationLabel: "Property",
-    locationPlaceholder: "Park Hyatt Tokyo",
-    providerLabel: "Brand or host",
-    providerPlaceholder: "Hyatt",
-    confirmationLabel: "Confirmation",
-    confirmationPlaceholder: "HYT12345",
-    referenceLabel: "Room # / key",
-    referencePlaceholder: "Room 5201 · Suite",
-  },
-  train: {
-    key: "train",
-    label: "Train",
-    smartFillHint: "Train service · e.g., Nozomi 18",
-    titlePlaceholder: "Nozomi 18 · Tokyo → Kyoto",
-    descriptionPlaceholder: "Car / seat, onboard notes",
-    locationLabel: "Origin station",
-    locationPlaceholder: "Tokyo Station",
-    providerLabel: "Operator",
-    providerPlaceholder: "JR Central",
-    confirmationLabel: "Reference",
-    confirmationPlaceholder: "Ticket number, QR link",
-    referenceLabel: "Service / car",
-    referencePlaceholder: "Nozomi 18 · Car 6",
-    showSeatInput: true,
-    seatLabel: "Seat",
-    seatPlaceholder: "Car 6 · Seat 4A",
-  },
-  other: {
-    key: "other",
-    label: "Other",
-    smartFillHint: "Describe what you need to fill",
-    titlePlaceholder: "Briefing, visa appointment, etc.",
-    descriptionPlaceholder: "Add any relevant context",
-    locationLabel: "Location",
-    locationPlaceholder: "Address or online link",
-    providerLabel: "Point of contact",
-    providerPlaceholder: "Host or vendor",
-    confirmationLabel: "Reference",
-    confirmationPlaceholder: "Ticket, approval, or doc ID",
-  },
 };
 
 export type SegmentTypeOption = {
@@ -186,61 +91,24 @@ export const SEGMENT_TYPE_OPTIONS: SegmentTypeOption[] = SEGMENT_TYPES.map(
   })
 );
 
-export const SMART_FILL_SUPPORTED_TYPES = new Set<SegmentType>([
-  "flight",
-  "train",
-  "hotel",
-  "meal",
-  "activity",
-]);
+export const SMART_FILL_SUPPORTED_TYPES = new Set<SegmentType>(["flight"]);
 
-export function normalizeSegmentType(value?: string | null): SegmentType {
-  if (!value) return "other";
-  const normalized = value.toLowerCase();
-  switch (normalized) {
-    case "flight":
-      return "flight";
-    case "train":
-    case "transport":
-      return "train";
-    case "hotel":
-      return "hotel";
-    case "meal":
-      return "meal";
-    case "activity":
-      return "activity";
-    case "car":
-    case "ride":
-    case "rideshare":
-      return "car";
-    default:
-      return "other";
-  }
+export function normalizeSegmentType(
+  _: string | null | undefined
+): SegmentType {
+  return "flight";
 }
 
 export function getTypeConfig(value?: string | null): SegmentTypeConfig {
   return SEGMENT_TYPE_CONFIG[normalizeSegmentType(value)];
 }
 
-export function supportsLegsForType(type: SegmentType): boolean {
-  return type === "train";
+export function supportsLegsForType(_: SegmentType): boolean {
+  return false;
 }
 
-export function toAutofillType(type: SegmentType): SegmentAutofillType {
-  switch (type) {
-    case "flight":
-      return "flight";
-    case "train":
-      return "train";
-    case "hotel":
-      return "hotel";
-    case "meal":
-      return "meal";
-    case "activity":
-      return "activity";
-    default:
-      return "custom";
-  }
+export function toAutofillType(_: SegmentType): SegmentAutofillType {
+  return "flight";
 }
 
 export function createLegId(): string {
@@ -528,7 +396,7 @@ export function mergeSmartSuggestion(
 
 export function getInitialSegmentForm(): SegmentFormState {
   return {
-    type: "activity",
+    type: "flight",
     title: "",
     description: "",
     locationName: "",
