@@ -1015,7 +1015,7 @@ export default function AddSegmentModal({
                               />
                             </div>
                           </div>
-                          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                          <div className="grid grid-cols-1 gap-3 sm:grid-cols-4">
                             <div>
                               <label className="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">
                                 Carrier
