@@ -174,7 +174,7 @@ const SEGMENT_TYPE_OPTIONS: SegmentTypeOption[] = SEGMENT_TYPES.map(
   })
 );
 
-const SMART_FILL_SUPPORTED_TYPES = new Set<SegmentType>(["flight"]);
+const SMART_FILL_SUPPORTED_TYPES = new Set<SegmentType>(["flight", "stay"]);
 
 function normalizeSegmentType(type: string | null | undefined): SegmentType {
   if (type === "stay") return "stay";
@@ -189,7 +189,8 @@ function supportsLegsForType(_: SegmentType): boolean {
   return false;
 }
 
-function toAutofillType(_: SegmentType): SegmentAutofillType {
+function toAutofillType(type: SegmentType): SegmentAutofillType {
+  if (type === "stay") return "hotel";
   return "flight";
 }
 
@@ -1641,8 +1642,8 @@ export default function ItineraryPlanner() {
     const isEdit = !!editingFlightSegmentId;
     const url = isEdit
       ? `/api/itineraries/${encodeURIComponent(
-          selectedId
-        )}/segments/${encodeURIComponent(editingFlightSegmentId)}`
+        selectedId
+      )}/segments/${encodeURIComponent(editingFlightSegmentId)}`
       : `/api/itineraries/${encodeURIComponent(selectedId)}/segments`;
     const method = isEdit ? "PATCH" : "POST";
 
@@ -1691,7 +1692,7 @@ export default function ItineraryPlanner() {
       const payload = await response.json().catch(() => ({}));
       throw new Error(
         payload?.error ||
-          `Failed to ${isEdit ? "update" : "create"} flight segment`
+        `Failed to ${isEdit ? "update" : "create"} flight segment`
       );
     }
 
@@ -1716,8 +1717,8 @@ export default function ItineraryPlanner() {
     const isEdit = !!editingStaySegmentId;
     const url = isEdit
       ? `/api/itineraries/${encodeURIComponent(
-          selectedId
-        )}/segments/${encodeURIComponent(editingStaySegmentId)}`
+        selectedId
+      )}/segments/${encodeURIComponent(editingStaySegmentId)}`
       : `/api/itineraries/${encodeURIComponent(selectedId)}/segments`;
     const method = isEdit ? "PATCH" : "POST";
 
@@ -1741,7 +1742,7 @@ export default function ItineraryPlanner() {
       const payload = await response.json().catch(() => ({}));
       throw new Error(
         payload?.error ||
-          `Failed to ${isEdit ? "update" : "create"} stay segment`
+        `Failed to ${isEdit ? "update" : "create"} stay segment`
       );
     }
 
@@ -1814,7 +1815,7 @@ export default function ItineraryPlanner() {
         );
         throw new Error(
           (payload as { error?: string })?.error ||
-            "Unable to fetch smart fill data."
+          "Unable to fetch smart fill data."
         );
       }
 
@@ -1846,6 +1847,84 @@ export default function ItineraryPlanner() {
   const clearSmartFillSuggestion = () => {
     setSmartFillSuggestion(null);
     setSmartFillError(null);
+  };
+
+  const handleFlightSmartFill = async (query: string, date: string) => {
+    setSmartFillLoading(true);
+    setSmartFillError(null);
+    try {
+      const response = await fetch("/api/segments/autofill", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          type: "flight",
+          query,
+          date: date || undefined,
+        }),
+      });
+
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(
+          (payload as { error?: string })?.error ||
+          "Unable to fetch flight data."
+        );
+      }
+
+      const suggestion = (payload as { data?: SegmentAutofillSuggestion })
+        ?.data;
+      if (!suggestion) {
+        throw new Error("No flight found for that input.");
+      }
+
+      setSmartFillSuggestion(suggestion);
+
+      // Convert suggestion to FlightFormData
+      // Check metadata for detailed flight info
+      const meta = suggestion.metadata as any;
+      const dep = meta?.departure;
+      const arr = meta?.arrival;
+      const airline = meta?.airline;
+
+      const newFlightData: FlightFormData = {
+        type: "flight",
+        title: suggestion.title || query,
+        costAmount: "", // API doesn't usually provide cost
+
+        airline: airline?.name || suggestion.provider_name || "",
+        flightNumber: suggestion.transport_number || query,
+        confirmationCode: "",
+        seatInfo: "",
+
+        departureAirport: dep?.airport?.name || suggestion.location_name || "",
+        departureTerminal: dep?.terminal || "",
+        departureGate: dep?.gate || "",
+        departureTime: isoToLocalInput(suggestion.start_time),
+        departureTimezone: dep?.airport?.timeZone || suggestion.timezone || "",
+
+        arrivalAirport: arr?.airport?.name || "", // Often missing in flat fields, check metadata
+        arrivalTerminal: arr?.terminal || "",
+        arrivalGate: arr?.gate || "",
+        arrivalTime: isoToLocalInput(suggestion.end_time),
+        arrivalTimezone: arr?.airport?.timeZone || "",
+      };
+
+      setEditFlightData(newFlightData);
+
+      setFeedback({
+        type: "success",
+        text: "Flight details auto-filled!",
+      });
+      setTimeout(() => setFeedback(null), 3000);
+
+    } catch (error) {
+      console.error(error);
+      setSmartFillError(
+        error instanceof Error ? error.message : "Smart fill failed"
+      );
+    } finally {
+      setSmartFillLoading(false);
+    }
   };
 
   /*
@@ -2115,51 +2194,51 @@ export default function ItineraryPlanner() {
       // Prepare flight data
       const departure =
         typeof segmentMetadata.departure === "object" &&
-        segmentMetadata.departure !== null
+          segmentMetadata.departure !== null
           ? (segmentMetadata.departure as Record<string, unknown>)
           : {};
       const arrival =
         typeof segmentMetadata.arrival === "object" &&
-        segmentMetadata.arrival !== null
+          segmentMetadata.arrival !== null
           ? (segmentMetadata.arrival as Record<string, unknown>)
           : {};
 
       // Extract airport names and timezones from nested objects
       const departureAirportName =
         departure.airport &&
-        typeof departure.airport === "object" &&
-        "name" in departure.airport
+          typeof departure.airport === "object" &&
+          "name" in departure.airport
           ? String(departure.airport.name)
           : typeof departure.airport === "string"
-          ? departure.airport
-          : "";
+            ? departure.airport
+            : "";
 
       const departureTimezone =
         departure.airport &&
-        typeof departure.airport === "object" &&
-        "timeZone" in departure.airport
+          typeof departure.airport === "object" &&
+          "timeZone" in departure.airport
           ? String(departure.airport.timeZone)
           : typeof departure.timezone === "string"
-          ? departure.timezone
-          : "";
+            ? departure.timezone
+            : "";
 
       const arrivalAirportName =
         arrival.airport &&
-        typeof arrival.airport === "object" &&
-        "name" in arrival.airport
+          typeof arrival.airport === "object" &&
+          "name" in arrival.airport
           ? String(arrival.airport.name)
           : typeof arrival.airport === "string"
-          ? arrival.airport
-          : "";
+            ? arrival.airport
+            : "";
 
       const arrivalTimezone =
         arrival.airport &&
-        typeof arrival.airport === "object" &&
-        "timeZone" in arrival.airport
+          typeof arrival.airport === "object" &&
+          "timeZone" in arrival.airport
           ? String(arrival.airport.timeZone)
           : typeof arrival.timezone === "string"
-          ? arrival.timezone
-          : "";
+            ? arrival.timezone
+            : "";
 
       const flightData: Partial<FlightFormData> = {
         type: "flight",
@@ -2535,11 +2614,10 @@ export default function ItineraryPlanner() {
       {feedback && (
         <div className="px-6 py-4">
           <div
-            className={`rounded-xl border px-4 py-3 text-sm font-medium shadow-sm ${
-              feedback.type === "success"
-                ? "border-green-200 bg-green-50 text-green-700 dark:border-green-900/40 dark:bg-green-950/40 dark:text-green-200"
-                : "border-red-200 bg-red-50 text-red-700 dark:border-red-900/40 dark:bg-red-950/40 dark:text-red-200"
-            }`}
+            className={`rounded-xl border px-4 py-3 text-sm font-medium shadow-sm ${feedback.type === "success"
+              ? "border-green-200 bg-green-50 text-green-700 dark:border-green-900/40 dark:bg-green-950/40 dark:text-green-200"
+              : "border-red-200 bg-red-50 text-red-700 dark:border-red-900/40 dark:bg-red-950/40 dark:text-red-200"
+              }`}
           >
             {feedback.text}
           </div>
@@ -2547,9 +2625,8 @@ export default function ItineraryPlanner() {
       )}
 
       <div
-        className={`relative z-0 flex-1 h-full transition-[padding] duration-300 ease-in-out px-4 sm:px-6 ${
-          sidebarOpen ? "lg:pl-[21rem] lg:pr-10" : "lg:px-10 lg:pl-16"
-        }`}
+        className={`relative z-0 flex-1 h-full transition-[padding] duration-300 ease-in-out px-4 sm:px-6 ${sidebarOpen ? "lg:pl-[21rem] lg:pr-10" : "lg:px-10 lg:pl-16"
+          }`}
       >
         {sidebarOpen && (
           <div
@@ -2573,9 +2650,8 @@ export default function ItineraryPlanner() {
 
         <aside
           id="itinerary-sidebar"
-          className={`absolute inset-y-0 left-0 z-30 w-full sm:w-[18rem] lg:w-[19rem] transition-transform duration-300 ease-in-out border-r border-gray-100 dark:border-gray-800 ${
-            sidebarOpen ? "translate-x-0" : "-translate-x-full"
-          }`}
+          className={`absolute inset-y-0 left-0 z-30 w-full sm:w-[18rem] lg:w-[19rem] transition-transform duration-300 ease-in-out border-r border-gray-100 dark:border-gray-800 ${sidebarOpen ? "translate-x-0" : "-translate-x-full"
+            }`}
         >
           <div className="flex h-full flex-col bg-white dark:bg-gray-900 shadow-xl">
             <div className="flex items-center justify-between gap-3 border-b border-gray-100 dark:border-gray-800 px-6 py-5">
@@ -2587,11 +2663,10 @@ export default function ItineraryPlanner() {
               <div className="flex items-center gap-2.5">
                 <button
                   onClick={() => setShowCreateForm((open) => !open)}
-                  className={`flex h-10 items-center gap-2 rounded-full px-5 py-2 text-sm font-semibold shadow-sm transition-all duration-200 active:scale-95 ${
-                    showCreateForm
-                      ? "bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200"
-                      : "bg-blue-600 text-white hover:bg-blue-700 hover:shadow-blue-500/20"
-                  }`}
+                  className={`flex h-10 items-center gap-2 rounded-full px-5 py-2 text-sm font-semibold shadow-sm transition-all duration-200 active:scale-95 ${showCreateForm
+                    ? "bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200"
+                    : "bg-blue-600 text-white hover:bg-blue-700 hover:shadow-blue-500/20"
+                    }`}
                   disabled={loadingUser || listLoading}
                 >
                   {showCreateForm ? (
@@ -2680,20 +2755,18 @@ export default function ItineraryPlanner() {
                       <div key={itinerary.id} className="p-2">
                         <button
                           onClick={() => handleSelectItinerary(itinerary.id)}
-                          className={`group relative w-full rounded-2xl p-4 text-left transition-all duration-300 ${
-                            isSelected
-                              ? "bg-blue-50 dark:bg-blue-900/20 shadow-sm ring-1 ring-blue-100 dark:ring-blue-800/50"
-                              : "hover:bg-gray-50 dark:hover:bg-gray-800/40"
-                          }`}
+                          className={`group relative w-full rounded-2xl p-4 text-left transition-all duration-300 ${isSelected
+                            ? "bg-blue-50 dark:bg-blue-900/20 shadow-sm ring-1 ring-blue-100 dark:ring-blue-800/50"
+                            : "hover:bg-gray-50 dark:hover:bg-gray-800/40"
+                            }`}
                         >
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center justify-between gap-2">
                               <h3
-                                className={`truncate text-sm font-bold tracking-tight ${
-                                  isSelected
-                                    ? "text-blue-900 dark:text-blue-100"
-                                    : "text-gray-900 dark:text-white"
-                                }`}
+                                className={`truncate text-sm font-bold tracking-tight ${isSelected
+                                  ? "text-blue-900 dark:text-blue-100"
+                                  : "text-gray-900 dark:text-white"
+                                  }`}
                               >
                                 {itinerary.title}
                               </h3>
@@ -2797,11 +2870,10 @@ export default function ItineraryPlanner() {
                                       visibility: v,
                                     })
                                   }
-                                  className={`p-4 rounded-2xl border-2 text-left transition-all ${
-                                    editHeaderForm.visibility === v
-                                      ? "border-blue-500 bg-blue-50 dark:bg-blue-900/10"
-                                      : "border-gray-100 dark:border-gray-800 hover:border-gray-200"
-                                  }`}
+                                  className={`p-4 rounded-2xl border-2 text-left transition-all ${editHeaderForm.visibility === v
+                                    ? "border-blue-500 bg-blue-50 dark:bg-blue-900/10"
+                                    : "border-gray-100 dark:border-gray-800 hover:border-gray-200"
+                                    }`}
                                 >
                                   <p className="font-bold text-gray-900 dark:text-white capitalize mb-1">
                                     {v}
@@ -2987,7 +3059,7 @@ export default function ItineraryPlanner() {
                           <div className="h-full w-full rounded-full bg-white dark:bg-gray-900 flex items-center justify-center font-bold text-blue-600 dark:text-blue-400">
                             {avatarInitials(
                               detail.owner?.preferred_name ||
-                                detail.owner?.name,
+                              detail.owner?.name,
                               detail.owner?.username
                             )}
                           </div>
@@ -3117,9 +3189,7 @@ export default function ItineraryPlanner() {
                     onSubmit={handleFlightSubmit}
                     initialData={editFlightData || undefined}
                     smartFillEnabled={smartFillSupported}
-                    onSmartFill={async (_query, _date) => {
-                      // TODO: Implement smart fill
-                    }}
+                    onSmartFill={handleFlightSmartFill}
                     smartFillSuggestion={smartFillSuggestion}
                     onClearSmartFill={clearSmartFillSuggestion}
                     smartFillLoading={smartFillLoading}
@@ -3981,15 +4051,13 @@ export default function ItineraryPlanner() {
                             return (
                               <div
                                 key={segment.id}
-                                className={`group relative pl-24 pr-8 py-8 transition-colors ${
-                                  !isLast
-                                    ? "border-b border-white/60 dark:border-gray-800/70"
-                                    : ""
-                                } ${
-                                  isEven
+                                className={`group relative pl-24 pr-8 py-8 transition-colors ${!isLast
+                                  ? "border-b border-white/60 dark:border-gray-800/70"
+                                  : ""
+                                  } ${isEven
                                     ? "bg-white/80 dark:bg-gray-900/30"
                                     : "bg-white/60 dark:bg-gray-900/10"
-                                }`}
+                                  }`}
                               >
                                 <div
                                   className={`absolute left-8 top-8 w-8 h-8 rounded-full ${config.bgColor} ${config.color} flex items-center justify-center ring-4 ring-white dark:ring-gray-900 shadow-sm`}
@@ -4057,21 +4125,21 @@ export default function ItineraryPlanner() {
 
                                   {(segment.provider_name ||
                                     segment.transport_number) && (
-                                    <div className="flex flex-wrap gap-2">
-                                      {segment.provider_name && (
-                                        <span className="inline-flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 rounded-lg px-2 py-1">
-                                          <Hotel className="h-3 w-3" />
-                                          {segment.provider_name}
-                                        </span>
-                                      )}
-                                      {segment.transport_number && (
-                                        <span className="inline-flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 rounded-lg px-2 py-1">
-                                          <Plane className="h-3 w-3" />
-                                          {segment.transport_number}
-                                        </span>
-                                      )}
-                                    </div>
-                                  )}
+                                      <div className="flex flex-wrap gap-2">
+                                        {segment.provider_name && (
+                                          <span className="inline-flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 rounded-lg px-2 py-1">
+                                            <Hotel className="h-3 w-3" />
+                                            {segment.provider_name}
+                                          </span>
+                                        )}
+                                        {segment.transport_number && (
+                                          <span className="inline-flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 rounded-lg px-2 py-1">
+                                            <Plane className="h-3 w-3" />
+                                            {segment.transport_number}
+                                          </span>
+                                        )}
+                                      </div>
+                                    )}
 
                                   {(() => {
                                     const flightDetails =
@@ -4240,11 +4308,10 @@ export default function ItineraryPlanner() {
                                               className="h-4 w-4 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500 dark:bg-gray-800"
                                             />
                                             <span
-                                              className={`flex-1 text-sm ${
-                                                item.completed
-                                                  ? "line-through text-gray-400 dark:text-gray-500"
-                                                  : "text-gray-700 dark:text-gray-300"
-                                              }`}
+                                              className={`flex-1 text-sm ${item.completed
+                                                ? "line-through text-gray-400 dark:text-gray-500"
+                                                : "text-gray-700 dark:text-gray-300"
+                                                }`}
                                             >
                                               {item.text}
                                             </span>
@@ -4381,11 +4448,10 @@ export default function ItineraryPlanner() {
                                       className="h-4 w-4 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500"
                                     />
                                     <span
-                                      className={`text-sm ${
-                                        task.status === "completed"
-                                          ? "text-gray-400 line-through"
-                                          : "text-gray-700 dark:text-gray-300"
-                                      }`}
+                                      className={`text-sm ${task.status === "completed"
+                                        ? "text-gray-400 line-through"
+                                        : "text-gray-700 dark:text-gray-300"
+                                        }`}
                                     >
                                       {task.title}
                                     </span>
@@ -4482,7 +4548,7 @@ export default function ItineraryPlanner() {
                             <div className="h-11 w-11 shrink-0 rounded-full bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/10 dark:to-indigo-900/10 border border-blue-100 dark:border-blue-900/30 flex items-center justify-center text-sm font-black text-blue-600 dark:text-blue-400 shadow-sm transition-transform group-hover:scale-110">
                               {avatarInitials(
                                 comment.author?.preferred_name ||
-                                  comment.author?.name,
+                                comment.author?.name,
                                 comment.author?.username
                               )}
                             </div>
@@ -4505,8 +4571,8 @@ export default function ItineraryPlanner() {
                                   <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 dark:text-gray-500">
                                     {comment.created_at
                                       ? new Date(
-                                          comment.created_at
-                                        ).toLocaleDateString()
+                                        comment.created_at
+                                      ).toLocaleDateString()
                                       : "Just now"}
                                   </span>
                                   {canModify && !isEditing && (
