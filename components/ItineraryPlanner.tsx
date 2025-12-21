@@ -858,6 +858,14 @@ export default function ItineraryPlanner() {
   const [smartFillLoading, setSmartFillLoading] = useState(false);
   const [smartFillError, setSmartFillError] = useState<string | null>(null);
   const [creatingSegment, setCreatingSegment] = useState(false);
+  const [editSmartFillInput, setEditSmartFillInput] = useState("");
+  const [editSmartFillDate, setEditSmartFillDate] = useState("");
+  const [editSmartFillSuggestion, setEditSmartFillSuggestion] =
+    useState<SegmentAutofillSuggestion | null>(null);
+  const [editSmartFillLoading, setEditSmartFillLoading] = useState(false);
+  const [editSmartFillError, setEditSmartFillError] = useState<string | null>(
+    null
+  );
   const [isEditingHeader, setIsEditingHeader] = useState(false);
   const [editHeaderForm, setEditHeaderForm] = useState<CreateFormState>(
     getInitialForm()
@@ -1402,6 +1410,98 @@ export default function ItineraryPlanner() {
     setSmartFillError(null);
   };
 
+  const handleEditSmartFill = async (event?: React.FormEvent) => {
+    if (event) event.preventDefault();
+    setEditSmartFillError(null);
+    if (!editSegmentForm.type) {
+      setEditSmartFillError("Select a segment type first.");
+      return;
+    }
+    if (!editSmartFillSupported) {
+      setEditSmartFillError(
+        "Smart fill is only available for flights, trains, stays, meals, and activities right now."
+      );
+      return;
+    }
+
+    const fallbackQuery =
+      editSegmentForm.transportNumber.trim() ||
+      editSegmentForm.title.trim() ||
+      editSegmentForm.locationName.trim();
+    const query = editSmartFillInput.trim() || fallbackQuery;
+    if (!query) {
+      setEditSmartFillError("Add a quick description or code to smart fill.");
+      return;
+    }
+
+    const dateCandidate =
+      editSmartFillDate ||
+      (editSegmentForm.startTime
+        ? editSegmentForm.startTime.slice(0, 10)
+        : undefined);
+    const latValue = Number.parseFloat(editSegmentForm.locationLat);
+    const lngValue = Number.parseFloat(editSegmentForm.locationLng);
+    const hasContext = Number.isFinite(latValue) && Number.isFinite(lngValue);
+    const autofillType = toAutofillType(editSegmentForm.type);
+
+    setEditSmartFillLoading(true);
+    try {
+      const response = await fetch("/api/segments/autofill", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          type: autofillType,
+          query,
+          date: dateCandidate,
+          context: hasContext
+            ? { lat: latValue, lng: lngValue, radiusMeters: 20000 }
+            : undefined,
+        }),
+      });
+
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        console.error(
+          "[Smart Fill] /api/segments/autofill responded with",
+          response.status,
+          payload
+        );
+        throw new Error(
+          (payload as { error?: string })?.error ||
+            "Unable to fetch smart fill data."
+        );
+      }
+
+      const suggestion = (payload as { data?: SegmentAutofillSuggestion })
+        ?.data;
+      if (!suggestion) {
+        throw new Error("No suggestions were returned for that input.");
+      }
+
+      setEditSegmentForm((prev) => mergeSmartSuggestion(prev, suggestion));
+      setEditSmartFillSuggestion(suggestion);
+      setEditSmartFillError(null);
+      setFeedback({
+        type: "success",
+        text: "Smart fill applied. Feel free to tweak the details.",
+      });
+    } catch (error) {
+      console.error(error);
+      setEditSmartFillError(
+        error instanceof Error
+          ? error.message
+          : "Unable to complete smart fill."
+      );
+    } finally {
+      setEditSmartFillLoading(false);
+    }
+  };
+
+  const clearEditSmartFillSuggestion = () => {
+    setEditSmartFillSuggestion(null);
+    setEditSmartFillError(null);
+  };
+
   const handleEndpointFieldChange = useCallback(
     (endpoint: EndpointKey, field: EndpointMetadataField, value: string) => {
       setSegmentForm((prev) =>
@@ -1600,6 +1700,11 @@ export default function ItineraryPlanner() {
       legs: parseLegsFromMetadata(segmentMetadata),
       metadata: segmentMetadata,
     });
+    setEditSmartFillInput("");
+    setEditSmartFillDate("");
+    setEditSmartFillSuggestion(null);
+    setEditSmartFillError(null);
+    setEditSmartFillLoading(false);
     setEditingSegmentId(segment.id);
   };
 
@@ -1686,6 +1791,10 @@ export default function ItineraryPlanner() {
     () => getTypeConfig(editSegmentForm.type),
     [editSegmentForm.type]
   );
+  const editSmartFillSupported = SMART_FILL_SUPPORTED_TYPES.has(
+    editSegmentForm.type
+  );
+  const editSmartFillPlaceholder = editFormTypeConfig.smartFillHint;
   const editTitlePlaceholderText =
     editFormTypeConfig.titlePlaceholder || "Segment title";
   const editLocationLabelText = editFormTypeConfig.locationLabel || "Location";
@@ -2223,6 +2332,97 @@ export default function ItineraryPlanner() {
                       onSubmit={handleUpdateSegment}
                       className="p-6 lg:p-8 space-y-6"
                     >
+                      {editSmartFillSupported && (
+                        <div className="rounded-2xl border border-dashed border-blue-200/70 dark:border-blue-800/70 bg-blue-50/50 dark:bg-blue-900/10 p-4 space-y-3">
+                          <div className="flex items-center justify-between gap-3">
+                            <div>
+                              <p className="text-sm font-semibold text-blue-900 dark:text-blue-100">
+                                Smart fill
+                              </p>
+                              <p className="text-xs text-blue-700/80 dark:text-blue-200/70">
+                                Use free data sources to pre-fill this segment,
+                                then tweak anything.
+                              </p>
+                            </div>
+                            {editSmartFillSuggestion && (
+                              <button
+                                type="button"
+                                onClick={clearEditSmartFillSuggestion}
+                                className="text-xs font-semibold text-blue-700 hover:text-blue-900 dark:text-blue-300"
+                              >
+                                Clear
+                              </button>
+                            )}
+                          </div>
+                          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                            <input
+                              type="text"
+                              value={editSmartFillInput}
+                              onChange={(event) =>
+                                setEditSmartFillInput(event.target.value)
+                              }
+                              placeholder={editSmartFillPlaceholder}
+                              className="w-full rounded-lg border border-blue-200/70 dark:border-blue-800/70 bg-white dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            />
+                            <div className="flex gap-2">
+                              <input
+                                type="date"
+                                value={editSmartFillDate}
+                                onChange={(event) =>
+                                  setEditSmartFillDate(event.target.value)
+                                }
+                                className="flex-1 rounded-lg border border-blue-200/70 dark:border-blue-800/70 bg-white dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              />
+                              <button
+                                type="button"
+                                onClick={handleEditSmartFill}
+                                disabled={editSmartFillLoading}
+                                className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 disabled:opacity-50"
+                              >
+                                {editSmartFillLoading
+                                  ? "Filling..."
+                                  : "Auto fill"}
+                              </button>
+                            </div>
+                          </div>
+                          {editSmartFillError && (
+                            <p className="text-xs font-semibold text-red-600 dark:text-red-400">
+                              {editSmartFillError}
+                            </p>
+                          )}
+                          {editSmartFillSuggestion && (
+                            <div className="rounded-xl border border-blue-200/70 dark:border-blue-800/70 bg-white/80 dark:bg-gray-900/40 px-3 py-3">
+                              <p className="text-xs font-semibold text-blue-900 dark:text-blue-100">
+                                Filled via{" "}
+                                {editSmartFillSuggestion.source ?? "smart fill"}
+                              </p>
+                              {editSmartFillSuggestion.highlights?.length ? (
+                                <div className="mt-2 flex flex-wrap gap-2">
+                                  {editSmartFillSuggestion.highlights!.map(
+                                    (highlight) => (
+                                      <span
+                                        key={`${highlight.label}-${highlight.value}`}
+                                        className="inline-flex items-center rounded-full bg-blue-100/70 px-2 py-0.5 text-[11px] font-semibold text-blue-800 dark:bg-blue-900/40 dark:text-blue-200"
+                                      >
+                                        <span className="mr-1 text-blue-500">
+                                          ●
+                                        </span>
+                                        {highlight.label}: {highlight.value}
+                                      </span>
+                                    )
+                                  )}
+                                </div>
+                              ) : (
+                                <p className="mt-2 text-[11px] text-blue-900/70 dark:text-blue-200/70">
+                                  We filled the available fields – you can still
+                                  edit before saving.
+                                </p>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      )}
+
                       <div className="space-y-6">
                         <div className="grid gap-3 md:grid-cols-3">
                           <div>
