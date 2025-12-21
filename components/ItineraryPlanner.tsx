@@ -2399,6 +2399,43 @@ export default function ItineraryPlanner() {
       setEditStayData(stayData);
       setEditingStaySegmentId(segment.id);
       setShowStayModal(true);
+    } else if (
+      segment.type === "transport" ||
+      segment.type === "ground" ||
+      segment.type === "custom"
+    ) {
+      // Prepare ride data
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const departure = (segmentMetadata.departure as any) || {};
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const arrival = (segmentMetadata.arrival as any) || {};
+
+      const rideData: Partial<RideFormData> = {
+        type: "transport",
+        title: segment.title || "",
+        costAmount:
+          segment.cost_amount !== null && segment.cost_amount !== undefined
+            ? segment.cost_amount.toString()
+            : "",
+
+        departureAddress: segment.location_address || departure.address || "",
+        departureTime: isoToLocalInput(segment.start_time),
+        departureTimezone: departure.timezone || "",
+        departureLat:
+          segment.location_lat?.toString() || departure.lat?.toString() || "",
+        departureLng:
+          segment.location_lng?.toString() || departure.lng?.toString() || "",
+
+        arrivalAddress: arrival.address || "",
+        arrivalTime: isoToLocalInput(segment.end_time),
+        arrivalTimezone: arrival.timezone || "",
+        arrivalLat: arrival.lat?.toString() || "",
+        arrivalLng: arrival.lng?.toString() || "",
+      };
+
+      setEditRideData(rideData as RideFormData);
+      setEditingRideSegmentId(segment.id);
+      setShowRideModal(true);
     }
   };
 
@@ -4377,6 +4414,85 @@ export default function ItineraryPlanner() {
                                       </div>
                                     );
                                   })()}
+
+                                  {/* Ride Details Rendering */}
+                                  {["transport", "ground", "custom"].includes(
+                                    segment.type
+                                  ) &&
+                                    (() => {
+                                      const metadata =
+                                        (segment.metadata as Record<
+                                          string,
+                                          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                                          any
+                                        >) || {};
+                                      const departure = metadata.departure || {};
+                                      const arrival = metadata.arrival || {};
+
+                                      // Fallback to top-level fields if metadata is empty (backward compatibility)
+                                      const depAddr =
+                                        departure.address ||
+                                        segment.location_address;
+                                      const arrAddr = arrival.address;
+
+                                      if (!depAddr && !arrAddr) return null;
+
+                                      return (
+                                        <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-gradient-to-br from-green-50/50 to-white dark:from-green-900/10 dark:to-gray-900/30 p-4 space-y-3">
+                                          {depAddr && (
+                                            <div className="space-y-1">
+                                              <p className="text-[10px] font-black uppercase tracking-wider text-green-600 dark:text-green-400 flex items-center gap-1">
+                                                <MapPin className="h-3 w-3" />
+                                                Pickup
+                                              </p>
+                                              <div className="flex flex-wrap gap-2 items-center">
+                                                <a
+                                                  href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+                                                    depAddr
+                                                  )}`}
+                                                  target="_blank"
+                                                  rel="noopener noreferrer"
+                                                  className="inline-flex items-center gap-1 text-xs font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800/80 rounded-lg px-2.5 py-1 border border-gray-200 dark:border-gray-700 hover:border-green-400 hover:bg-green-50 dark:hover:bg-green-900/20 transition-colors cursor-pointer"
+                                                >
+                                                  {depAddr}
+                                                </a>
+                                                {departure.timezone && (
+                                                  <span className="inline-flex items-center gap-1 text-[10px] text-gray-500 dark:text-gray-500 bg-gray-100 dark:bg-gray-900/50 rounded px-1.5 py-0.5">
+                                                    {departure.timezone}
+                                                  </span>
+                                                )}
+                                              </div>
+                                            </div>
+                                          )}
+
+                                          {arrAddr && (
+                                            <div className="space-y-1">
+                                              <p className="text-[10px] font-black uppercase tracking-wider text-green-600 dark:text-green-400 flex items-center gap-1">
+                                                <MapPin className="h-3 w-3" />
+                                                Drop-off
+                                              </p>
+                                              <div className="flex flex-wrap gap-2 items-center">
+                                                <a
+                                                  href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+                                                    arrAddr
+                                                  )}`}
+                                                  target="_blank"
+                                                  rel="noopener noreferrer"
+                                                  className="inline-flex items-center gap-1 text-xs font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800/80 rounded-lg px-2.5 py-1 border border-gray-200 dark:border-gray-700 hover:border-green-400 hover:bg-green-50 dark:hover:bg-green-900/20 transition-colors cursor-pointer"
+                                                >
+                                                  {arrAddr}
+                                                </a>
+                                                {arrival.timezone && (
+                                                  <span className="inline-flex items-center gap-1 text-[10px] text-gray-500 dark:text-gray-500 bg-gray-100 dark:bg-gray-900/50 rounded px-1.5 py-0.5">
+                                                    {arrival.timezone}
+                                                  </span>
+                                                )}
+                                              </div>
+                                            </div>
+                                          )}
+                                        </div>
+                                      );
+                                    })()}
 
                                   {segment.type === "stay" &&
                                     segment.location_address && (
