@@ -822,25 +822,17 @@ export default function ItineraryPlanner() {
   const [smartFillLoading, setSmartFillLoading] = useState(false);
   const [smartFillError, setSmartFillError] = useState<string | null>(null);
   const [creatingSegment, setCreatingSegment] = useState(false);
-  const [editSmartFillInput, setEditSmartFillInput] = useState("");
-  const [editSmartFillDate, setEditSmartFillDate] = useState("");
-  const [editSmartFillSuggestion, setEditSmartFillSuggestion] =
-    useState<SegmentAutofillSuggestion | null>(null);
-  const [editSmartFillLoading, setEditSmartFillLoading] = useState(false);
-  const [editSmartFillError, setEditSmartFillError] = useState<string | null>(
-    null
-  );
+  // Removed unused edit smart fill state - now handled by AddFlightModal/AddStayModal
   const [isEditingHeader, setIsEditingHeader] = useState(false);
   const [editHeaderForm, setEditHeaderForm] = useState<CreateFormState>(
     getInitialForm()
   );
   const [updatingHeader, setUpdatingHeader] = useState(false);
   const [isEditingTitle, setIsEditingTitle] = useState(false);
-  const [editingSegmentId, setEditingSegmentId] = useState<string | null>(null);
-  const [editSegmentForm, setEditSegmentForm] = useState<SegmentFormState>(
-    getInitialSegmentForm()
-  );
-  const [updatingSegment, setUpdatingSegment] = useState(false);
+  const [editingFlightSegmentId, setEditingFlightSegmentId] = useState<string | null>(null);
+  const [editingStaySegmentId, setEditingStaySegmentId] = useState<string | null>(null);
+  const [editFlightData, setEditFlightData] = useState<Partial<FlightFormData> | null>(null);
+  const [editStayData, setEditStayData] = useState<Partial<StayFormData> | null>(null);
   const [feedback, setFeedback] = useState<{
     type: "success" | "error";
     text: string;
@@ -1528,51 +1520,60 @@ export default function ItineraryPlanner() {
       throw new Error("Missing user or itinerary");
     }
 
-    const response = await fetch(
-      `/api/itineraries/${encodeURIComponent(selectedId)}/segments`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          user_id: userId,
-          type: "flight",
-          title: data.title.trim(),
-          description: data.description.trim() || null,
-          start_time: data.departureTime || null,
-          end_time: data.arrivalTime || null,
-          provider_name: data.airline.trim() || null,
-          confirmation_code: data.confirmationCode.trim() || null,
-          transport_number: data.flightNumber.trim() || null,
-          seat_info: data.seatInfo.trim() || null,
-          cost_amount: data.costAmount ? parseFloat(data.costAmount) : null,
-          cost_currency: data.costAmount ? "USD" : null,
-          metadata: {
-            departure: {
-              airport: data.departureAirport,
-              terminal: data.departureTerminal,
-              gate: data.departureGate,
-              timezone: data.departureTimezone,
-            },
-            arrival: {
-              airport: data.arrivalAirport,
-              terminal: data.arrivalTerminal,
-              gate: data.arrivalGate,
-              timezone: data.arrivalTimezone,
-            },
+    const isEdit = !!editingFlightSegmentId;
+    const url = isEdit
+      ? `/api/itineraries/${encodeURIComponent(selectedId)}/segments/${encodeURIComponent(editingFlightSegmentId)}`
+      : `/api/itineraries/${encodeURIComponent(selectedId)}/segments`;
+    const method = isEdit ? "PATCH" : "POST";
+
+    const response = await fetch(url, {
+      method,
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        user_id: userId,
+        type: "flight",
+        title: data.title.trim(),
+        description: data.description.trim() || null,
+        start_time: data.departureTime || null,
+        end_time: data.arrivalTime || null,
+        provider_name: data.airline.trim() || null,
+        confirmation_code: data.confirmationCode.trim() || null,
+        transport_number: data.flightNumber.trim() || null,
+        seat_info: data.seatInfo.trim() || null,
+        cost_amount: data.costAmount ? parseFloat(data.costAmount) : null,
+        cost_currency: data.costAmount ? "USD" : null,
+        metadata: {
+          departure: {
+            airport: data.departureAirport,
+            terminal: data.departureTerminal,
+            gate: data.departureGate,
+            timezone: data.departureTimezone,
           },
-        }),
-      }
-    );
+          arrival: {
+            airport: data.arrivalAirport,
+            terminal: data.arrivalTerminal,
+            gate: data.arrivalGate,
+            timezone: data.arrivalTimezone,
+          },
+        },
+      }),
+    });
 
     if (!response.ok) {
       const payload = await response.json().catch(() => ({}));
-      throw new Error(payload?.error || "Failed to create flight segment");
+      throw new Error(payload?.error || `Failed to ${isEdit ? 'update' : 'create'} flight segment`);
     }
 
     setFeedback({
       type: "success",
-      text: "Flight added to your itinerary!",
+      text: isEdit ? "Flight updated!" : "Flight added to your itinerary!",
     });
+    
+    if (isEdit) {
+      setEditingFlightSegmentId(null);
+      setEditFlightData(null);
+    }
+    
     await loadItineraryDetail(selectedId, userId);
   };
 
@@ -1581,36 +1582,45 @@ export default function ItineraryPlanner() {
       throw new Error("Missing user or itinerary");
     }
 
-    const response = await fetch(
-      `/api/itineraries/${encodeURIComponent(selectedId)}/segments`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          user_id: userId,
-          type: "stay",
-          title: data.title.trim(),
-          description: data.description.trim() || null,
-          location_address: data.locationAddress.trim() || null,
-          start_time: data.checkInTime || null,
-          end_time: data.checkOutTime || null,
-          provider_name: data.property.trim() || null,
-          confirmation_code: data.confirmationCode.trim() || null,
-          cost_amount: data.costAmount ? parseFloat(data.costAmount) : null,
-          cost_currency: data.costAmount ? "USD" : null,
-        }),
-      }
-    );
+    const isEdit = !!editingStaySegmentId;
+    const url = isEdit
+      ? `/api/itineraries/${encodeURIComponent(selectedId)}/segments/${encodeURIComponent(editingStaySegmentId)}`
+      : `/api/itineraries/${encodeURIComponent(selectedId)}/segments`;
+    const method = isEdit ? "PATCH" : "POST";
+
+    const response = await fetch(url, {
+      method,
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        user_id: userId,
+        type: "stay",
+        title: data.title.trim(),
+        description: data.description.trim() || null,
+        location_address: data.locationAddress.trim() || null,
+        start_time: data.checkInTime || null,
+        end_time: data.checkOutTime || null,
+        provider_name: data.property.trim() || null,
+        confirmation_code: data.confirmationCode.trim() || null,
+        cost_amount: data.costAmount ? parseFloat(data.costAmount) : null,
+        cost_currency: data.costAmount ? "USD" : null,
+      }),
+    });
 
     if (!response.ok) {
       const payload = await response.json().catch(() => ({}));
-      throw new Error(payload?.error || "Failed to create stay segment");
+      throw new Error(payload?.error || `Failed to ${isEdit ? 'update' : 'create'} stay segment`);
     }
 
     setFeedback({
       type: "success",
-      text: "Stay added to your itinerary!",
+      text: isEdit ? "Stay updated!" : "Stay added to your itinerary!",
     });
+    
+    if (isEdit) {
+      setEditingStaySegmentId(null);
+      setEditStayData(null);
+    }
+    
     await loadItineraryDetail(selectedId, userId);
   };
 
@@ -1704,6 +1714,7 @@ export default function ItineraryPlanner() {
     setSmartFillError(null);
   };
 
+  /*
   const handleEditSmartFill = async (event?: React.FormEvent) => {
     if (event) event.preventDefault();
     setEditSmartFillError(null);
@@ -1795,6 +1806,7 @@ export default function ItineraryPlanner() {
     setEditSmartFillSuggestion(null);
     setEditSmartFillError(null);
   };
+  */
 
   const handleEndpointFieldChange = useCallback(
     (endpoint: EndpointKey, field: EndpointMetadataField, value: string) => {
@@ -1834,6 +1846,8 @@ export default function ItineraryPlanner() {
     }
   };
 
+  // Old edit functions - removed, now using AddFlightModal/AddStayModal for edit
+  /*
   const handleUpdateSegment = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!userId || !selectedId || !editingSegmentId) return;
@@ -1886,7 +1900,9 @@ export default function ItineraryPlanner() {
       setUpdatingSegment(false);
     }
   };
+  */
 
+  /*
   const handleEditEndpointFieldChange = useCallback(
     (endpoint: EndpointKey, field: EndpointMetadataField, value: string) => {
       setEditSegmentForm((prev) =>
@@ -1921,6 +1937,7 @@ export default function ItineraryPlanner() {
       legs: prev.legs.filter((leg) => leg.id !== legId),
     }));
   }, []);
+  */
 
   const handleDeleteSegment = async (segmentId: string) => {
     if (
@@ -1960,46 +1977,62 @@ export default function ItineraryPlanner() {
       segment.metadata && typeof segment.metadata === "object"
         ? (segment.metadata as Record<string, unknown>)
         : {};
-    const timezoneFromMetadata =
-      typeof segmentMetadata.timezone === "string"
-        ? (segmentMetadata.timezone as string)
-        : DEFAULT_TIMEZONE;
 
-    setEditSegmentForm({
-      type: normalizeSegmentType(segment.type),
-      title: segment.title || "",
-      description: segment.description || "",
-      locationName: segment.location_name || "",
-      locationAddress: segment.location_address || "",
-      locationLat:
-        typeof segment.location_lat === "number"
-          ? segment.location_lat.toString()
-          : "",
-      locationLng:
-        typeof segment.location_lng === "number"
-          ? segment.location_lng.toString()
-          : "",
-      startTime: isoToLocalInput(segment.start_time),
-      endTime: isoToLocalInput(segment.end_time),
-      isAllDay: segment.is_all_day || false,
-      providerName: segment.provider_name || "",
-      confirmationCode: segment.confirmation_code || "",
-      transportNumber: segment.transport_number || "",
-      costAmount:
-        segment.cost_amount !== null && segment.cost_amount !== undefined
+    if (segment.type === "flight") {
+      // Prepare flight data
+      const departure = typeof segmentMetadata.departure === "object" && segmentMetadata.departure !== null
+        ? (segmentMetadata.departure as Record<string, unknown>)
+        : {};
+      const arrival = typeof segmentMetadata.arrival === "object" && segmentMetadata.arrival !== null
+        ? (segmentMetadata.arrival as Record<string, unknown>)
+        : {};
+
+      const flightData: Partial<FlightFormData> = {
+        type: "flight",
+        title: segment.title || "",
+        description: segment.description || "",
+        costAmount: segment.cost_amount !== null && segment.cost_amount !== undefined
           ? segment.cost_amount.toString()
           : "",
-      timezone: timezoneFromMetadata,
-      seatInfo: segment.seat_info || "",
-      legs: parseLegsFromMetadata(segmentMetadata),
-      metadata: segmentMetadata,
-    });
-    setEditSmartFillInput("");
-    setEditSmartFillDate("");
-    setEditSmartFillSuggestion(null);
-    setEditSmartFillError(null);
-    setEditSmartFillLoading(false);
-    setEditingSegmentId(segment.id);
+        departureAirport: typeof departure.airport === "string" ? departure.airport : "",
+        departureTerminal: typeof departure.terminal === "string" ? departure.terminal : "",
+        departureGate: typeof departure.gate === "string" ? departure.gate : "",
+        departureTime: isoToLocalInput(segment.start_time),
+        departureTimezone: typeof departure.timezone === "string" ? departure.timezone : "",
+        arrivalAirport: typeof arrival.airport === "string" ? arrival.airport : "",
+        arrivalTerminal: typeof arrival.terminal === "string" ? arrival.terminal : "",
+        arrivalGate: typeof arrival.gate === "string" ? arrival.gate : "",
+        arrivalTime: isoToLocalInput(segment.end_time),
+        arrivalTimezone: typeof arrival.timezone === "string" ? arrival.timezone : "",
+        airline: segment.provider_name || "",
+        confirmationCode: segment.confirmation_code || "",
+        flightNumber: segment.transport_number || "",
+        seatInfo: segment.seat_info || "",
+      };
+
+      setEditFlightData(flightData);
+      setEditingFlightSegmentId(segment.id);
+      setShowFlightModal(true);
+    } else if (segment.type === "stay") {
+      // Prepare stay data
+      const stayData: Partial<StayFormData> = {
+        type: "stay",
+        title: segment.title || "",
+        description: segment.description || "",
+        costAmount: segment.cost_amount !== null && segment.cost_amount !== undefined
+          ? segment.cost_amount.toString()
+          : "",
+        locationAddress: segment.location_address || "",
+        checkInTime: isoToLocalInput(segment.start_time),
+        checkOutTime: isoToLocalInput(segment.end_time),
+        property: segment.provider_name || "",
+        confirmationCode: segment.confirmation_code || "",
+      };
+
+      setEditStayData(stayData);
+      setEditingStaySegmentId(segment.id);
+      setShowStayModal(true);
+    }
   };
 
   const travelerCount = detail?.travelers?.length ?? 0;
@@ -2076,6 +2109,7 @@ export default function ItineraryPlanner() {
   const seatLabelText = seatLabel || "Seat";
   const showLegsEditor = supportsLegsForType(segmentForm.type);
   const smartFillSupported = SMART_FILL_SUPPORTED_TYPES.has(segmentForm.type);
+  /*
   const editFormTypeConfig = useMemo(
     () => getTypeConfig(editSegmentForm.type),
     [editSegmentForm.type]
@@ -2147,6 +2181,7 @@ export default function ItineraryPlanner() {
     "arrival",
     "timezone"
   );
+  */
   const isFlightSegment = segmentForm.type === "flight";
   const isStaySegment = segmentForm.type === "stay";
   const departureAirportValue = getEndpointFieldValueFromState(
@@ -2585,555 +2620,6 @@ export default function ItineraryPlanner() {
 
           {detail && (
             <div className="space-y-6">
-              {editingSegmentId && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-                  <div
-                    className="absolute inset-0 bg-black/50 backdrop-blur-sm"
-                    onClick={() => setEditingSegmentId(null)}
-                  />
-                  <div className="relative w-full max-w-4xl lg:max-w-5xl max-h-[90vh] overflow-y-auto rounded-3xl bg-white dark:bg-gray-900 shadow-2xl border border-gray-200 dark:border-gray-800">
-                    <div className="sticky top-0 z-10 bg-white dark:bg-gray-900 px-8 py-5 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between">
-                      <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-                        Edit Segment
-                      </h3>
-                      <button
-                        type="button"
-                        onClick={() => setEditingSegmentId(null)}
-                        className="p-2 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:text-gray-300 dark:hover:bg-gray-800 transition"
-                      >
-                        <svg
-                          className="h-5 w-5"
-                          fill="none"
-                          viewBox="0 0 24 24"
-                          stroke="currentColor"
-                          strokeWidth={1.5}
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            d="M6 18L18 6M6 6l12 12"
-                          />
-                        </svg>
-                      </button>
-                    </div>
-                    <form
-                      onSubmit={handleUpdateSegment}
-                      className="p-6 lg:p-8 space-y-6"
-                    >
-                      {editSmartFillSupported && (
-                        <div className="rounded-2xl border border-dashed border-blue-200/70 dark:border-blue-800/70 bg-blue-50/50 dark:bg-blue-900/10 p-4 space-y-3">
-                          <div className="flex items-center justify-between gap-3">
-                            <div>
-                              <p className="text-sm font-semibold text-blue-900 dark:text-blue-100">
-                                Smart fill
-                              </p>
-                              <p className="text-xs text-blue-700/80 dark:text-blue-200/70">
-                                Use free data sources to pre-fill this segment,
-                                then tweak anything.
-                              </p>
-                            </div>
-                            {editSmartFillSuggestion && (
-                              <button
-                                type="button"
-                                onClick={clearEditSmartFillSuggestion}
-                                className="text-xs font-semibold text-blue-700 hover:text-blue-900 dark:text-blue-300"
-                              >
-                                Clear
-                              </button>
-                            )}
-                          </div>
-                          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                            <input
-                              type="text"
-                              value={editSmartFillInput}
-                              onChange={(event) =>
-                                setEditSmartFillInput(event.target.value)
-                              }
-                              placeholder={editSmartFillPlaceholder}
-                              className="w-full rounded-lg border border-blue-200/70 dark:border-blue-800/70 bg-white dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            />
-                            <div className="flex gap-2">
-                              <input
-                                type="date"
-                                value={editSmartFillDate}
-                                onChange={(event) =>
-                                  setEditSmartFillDate(event.target.value)
-                                }
-                                className="flex-1 rounded-lg border border-blue-200/70 dark:border-blue-800/70 bg-white dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                              />
-                              <button
-                                type="button"
-                                onClick={handleEditSmartFill}
-                                disabled={editSmartFillLoading}
-                                className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 disabled:opacity-50"
-                              >
-                                {editSmartFillLoading
-                                  ? "Filling..."
-                                  : "Auto fill"}
-                              </button>
-                            </div>
-                          </div>
-                          {editSmartFillError && (
-                            <p className="text-xs font-semibold text-red-600 dark:text-red-400">
-                              {editSmartFillError}
-                            </p>
-                          )}
-                          {editSmartFillSuggestion && (
-                            <div className="rounded-xl border border-blue-200/70 dark:border-blue-800/70 bg-white/80 dark:bg-gray-900/40 px-3 py-3">
-                              <p className="text-xs font-semibold text-blue-900 dark:text-blue-100">
-                                Filled via{" "}
-                                {editSmartFillSuggestion.source ?? "smart fill"}
-                              </p>
-                              {editSmartFillSuggestion.highlights?.length ? (
-                                <div className="mt-2 flex flex-wrap gap-2">
-                                  {editSmartFillSuggestion.highlights!.map(
-                                    (highlight) => (
-                                      <span
-                                        key={`${highlight.label}-${highlight.value}`}
-                                        className="inline-flex items-center rounded-full bg-blue-100/70 px-2 py-0.5 text-[11px] font-semibold text-blue-800 dark:bg-blue-900/40 dark:text-blue-200"
-                                      >
-                                        <span className="mr-1 text-blue-500">
-                                          ●
-                                        </span>
-                                        {highlight.label}: {highlight.value}
-                                      </span>
-                                    )
-                                  )}
-                                </div>
-                              ) : (
-                                <p className="mt-2 text-[11px] text-blue-900/70 dark:text-blue-200/70">
-                                  We filled the available fields – you can still
-                                  edit before saving.
-                                </p>
-                              )}
-                            </div>
-                          )}
-                        </div>
-                      )}
-
-                      <div className="space-y-6">
-                        <div className="grid gap-3 md:grid-cols-3">
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                              Type
-                            </label>
-                            <select
-                              value={editSegmentForm.type}
-                              onChange={(e) =>
-                                setEditSegmentForm({
-                                  ...editSegmentForm,
-                                  type: e.target.value as SegmentType,
-                                })
-                              }
-                              className="w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            >
-                              {SEGMENT_TYPE_OPTIONS.map((t) => (
-                                <option key={t.value} value={t.value}>
-                                  {t.label}
-                                </option>
-                              ))}
-                            </select>
-                          </div>
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                              Title
-                            </label>
-                            <input
-                              type="text"
-                              value={editSegmentForm.title}
-                              onChange={(e) =>
-                                setEditSegmentForm({
-                                  ...editSegmentForm,
-                                  title: e.target.value,
-                                })
-                              }
-                              placeholder={editTitlePlaceholderText}
-                              className="w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                              required
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                              Cost (USD)
-                            </label>
-                            <div className="relative">
-                              <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-sm font-semibold text-gray-500 dark:text-gray-400">
-                                $
-                              </span>
-                              <input
-                                type="number"
-                                step="0.01"
-                                min="0"
-                                value={editSegmentForm.costAmount}
-                                onChange={(e) =>
-                                  setEditSegmentForm({
-                                    ...editSegmentForm,
-                                    costAmount: e.target.value,
-                                  })
-                                }
-                                className="w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 pl-7 pr-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                placeholder="0.00"
-                              />
-                            </div>
-                          </div>
-                        </div>
-
-                        <section className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white/60 dark:bg-gray-950/40 p-4 sm:p-5 space-y-4">
-                          <div className="flex items-center justify-between">
-                            <p className="text-[11px] font-black uppercase tracking-[0.2em] text-gray-400 dark:text-gray-500">
-                              Location & timing
-                            </p>
-                          </div>
-                          <div className="space-y-4">
-                            {editIsFlightSegment && (
-                              <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
-                                <div className="rounded-2xl border border-gray-200 dark:border-gray-700 bg-white/80 dark:bg-gray-900/40 px-4 py-4 space-y-3">
-                                  <div className="flex items-center justify-between">
-                                    <p className="text-[11px] font-black uppercase tracking-[0.2em] text-gray-400 dark:text-gray-500">
-                                      Departure
-                                    </p>
-                                    <span className="text-[11px] text-gray-400 dark:text-gray-500">
-                                      Takeoff details
-                                    </span>
-                                  </div>
-                                  <div className="space-y-3">
-                                    <div>
-                                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                                        Airport or city
-                                      </label>
-                                      <input
-                                        type="text"
-                                        value={editDepartureAirportValue}
-                                        onChange={(e) =>
-                                          handleEditEndpointFieldChange(
-                                            "departure",
-                                            "airport",
-                                            e.target.value
-                                          )
-                                        }
-                                        className="w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                        placeholder="e.g., SFO · International"
-                                      />
-                                    </div>
-                                    <div className="grid grid-cols-2 gap-3">
-                                      <div>
-                                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                                          Terminal
-                                        </label>
-                                        <input
-                                          type="text"
-                                          value={editDepartureTerminalValue}
-                                          onChange={(e) =>
-                                            handleEditEndpointFieldChange(
-                                              "departure",
-                                              "terminal",
-                                              e.target.value
-                                            )
-                                          }
-                                          className="w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                          placeholder="Terminal / concourse"
-                                        />
-                                      </div>
-                                      <div>
-                                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                                          Gate
-                                        </label>
-                                        <input
-                                          type="text"
-                                          value={editDepartureGateValue}
-                                          onChange={(e) =>
-                                            handleEditEndpointFieldChange(
-                                              "departure",
-                                              "gate",
-                                              e.target.value
-                                            )
-                                          }
-                                          className="w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                          placeholder="Gate"
-                                        />
-                                      </div>
-                                    </div>
-                                    <div>
-                                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                                        Timezone
-                                      </label>
-                                      <input
-                                        type="text"
-                                        value={editDepartureTimezoneValue}
-                                        onChange={(e) =>
-                                          handleEditEndpointFieldChange(
-                                            "departure",
-                                            "timezone",
-                                            e.target.value
-                                          )
-                                        }
-                                        className="w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                        placeholder="America/Los_Angeles"
-                                      />
-                                    </div>
-                                  </div>
-                                </div>
-                                <div className="rounded-2xl border border-gray-200 dark:border-gray-700 bg-white/80 dark:bg-gray-900/40 px-4 py-4 space-y-3">
-                                  <div className="flex items-center justify-between">
-                                    <p className="text-[11px] font-black uppercase tracking-[0.2em] text-gray-400 dark:text-gray-500">
-                                      Arrival
-                                    </p>
-                                    <span className="text-[11px] text-gray-400 dark:text-gray-500">
-                                      Landing details
-                                    </span>
-                                  </div>
-                                  <div className="space-y-3">
-                                    <div>
-                                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                                        Airport or city
-                                      </label>
-                                      <input
-                                        type="text"
-                                        value={editArrivalAirportValue}
-                                        onChange={(e) =>
-                                          handleEditEndpointFieldChange(
-                                            "arrival",
-                                            "airport",
-                                            e.target.value
-                                          )
-                                        }
-                                        className="w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                        placeholder="e.g., Haneda · Terminal 3"
-                                      />
-                                    </div>
-                                    <div className="grid grid-cols-2 gap-3">
-                                      <div>
-                                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                                          Terminal
-                                        </label>
-                                        <input
-                                          type="text"
-                                          value={editArrivalTerminalValue}
-                                          onChange={(e) =>
-                                            handleEditEndpointFieldChange(
-                                              "arrival",
-                                              "terminal",
-                                              e.target.value
-                                            )
-                                          }
-                                          className="w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                          placeholder="Terminal / customs"
-                                        />
-                                      </div>
-                                      <div>
-                                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                                          Gate / carousel
-                                        </label>
-                                        <input
-                                          type="text"
-                                          value={editArrivalGateValue}
-                                          onChange={(e) =>
-                                            handleEditEndpointFieldChange(
-                                              "arrival",
-                                              "gate",
-                                              e.target.value
-                                            )
-                                          }
-                                          className="w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                          placeholder="Gate or belt"
-                                        />
-                                      </div>
-                                    </div>
-                                    <div>
-                                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                                        Timezone
-                                      </label>
-                                      <input
-                                        type="text"
-                                        value={editArrivalTimezoneValue}
-                                        onChange={(e) =>
-                                          handleEditEndpointFieldChange(
-                                            "arrival",
-                                            "timezone",
-                                            e.target.value
-                                          )
-                                        }
-                                        className="w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                        placeholder="Asia/Tokyo"
-                                      />
-                                    </div>
-                                  </div>
-                                </div>
-                              </div>
-                            )}
-
-                            {editIsStaySegment && (
-                              <div className="space-y-4">
-                                <AddressAutocomplete
-                                  value={editSegmentForm.locationAddress}
-                                  onChange={(value) =>
-                                    setEditSegmentForm({
-                                      ...editSegmentForm,
-                                      locationAddress: value,
-                                    })
-                                  }
-                                  onPlaceSelect={(place) =>
-                                    setEditSegmentForm({
-                                      ...editSegmentForm,
-                                      locationAddress: place.address,
-                                      locationName: place.name,
-                                      locationLat: place.lat.toString(),
-                                      locationLng: place.lng.toString(),
-                                      timezone:
-                                        place.timezone ||
-                                        editSegmentForm.timezone,
-                                    })
-                                  }
-                                  label="Address"
-                                  placeholder="Search for hotel or address..."
-                                />
-                              </div>
-                            )}
-
-                            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                              <div>
-                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                                  {editIsStaySegment
-                                    ? "Check-in"
-                                    : "Start time"}
-                                </label>
-                                <input
-                                  type="datetime-local"
-                                  value={editSegmentForm.startTime}
-                                  onChange={(e) =>
-                                    setEditSegmentForm({
-                                      ...editSegmentForm,
-                                      startTime: e.target.value,
-                                    })
-                                  }
-                                  disabled={editSegmentForm.isAllDay}
-                                  className="w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                />
-                              </div>
-                              <div>
-                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                                  {editIsStaySegment ? "Check-out" : "End time"}
-                                </label>
-                                <input
-                                  type="datetime-local"
-                                  value={editSegmentForm.endTime}
-                                  onChange={(e) =>
-                                    setEditSegmentForm({
-                                      ...editSegmentForm,
-                                      endTime: e.target.value,
-                                    })
-                                  }
-                                  disabled={editSegmentForm.isAllDay}
-                                  className="w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                />
-                              </div>
-                            </div>
-                          </div>
-                        </section>
-
-                        <section className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white/60 dark:bg-gray-950/40 p-4 sm:p-5 space-y-4">
-                          <div className="flex items-center justify-between">
-                            <p className="text-[11px] font-black uppercase tracking-[0.2em] text-gray-400 dark:text-gray-500">
-                              Info
-                            </p>
-                          </div>
-                          <div className="grid gap-3 md:grid-cols-4">
-                            <div>
-                              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                                {editProviderLabelText}
-                              </label>
-                              <input
-                                type="text"
-                                value={editSegmentForm.providerName}
-                                onChange={(e) =>
-                                  setEditSegmentForm({
-                                    ...editSegmentForm,
-                                    providerName: e.target.value,
-                                  })
-                                }
-                                placeholder={editProviderPlaceholderText}
-                                className="w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                              />
-                            </div>
-                            <div>
-                              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                                {editConfirmationLabelText}
-                              </label>
-                              <input
-                                type="text"
-                                value={editSegmentForm.confirmationCode}
-                                onChange={(e) =>
-                                  setEditSegmentForm({
-                                    ...editSegmentForm,
-                                    confirmationCode: e.target.value,
-                                  })
-                                }
-                                placeholder={editConfirmationPlaceholderText}
-                                className="w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                              />
-                            </div>
-                            {editShowReferenceField && (
-                              <div>
-                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                                  {editReferenceLabelText}
-                                </label>
-                                <input
-                                  type="text"
-                                  value={editSegmentForm.transportNumber}
-                                  onChange={(e) =>
-                                    setEditSegmentForm({
-                                      ...editSegmentForm,
-                                      transportNumber: e.target.value,
-                                    })
-                                  }
-                                  placeholder={editReferencePlaceholderText}
-                                  className="w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                />
-                              </div>
-                            )}
-                            {editShowSeatField && (
-                              <div>
-                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                                  {editSeatLabelText}
-                                </label>
-                                <input
-                                  type="text"
-                                  value={editSegmentForm.seatInfo}
-                                  onChange={(e) =>
-                                    setEditSegmentForm({
-                                      ...editSegmentForm,
-                                      seatInfo: e.target.value,
-                                    })
-                                  }
-                                  placeholder={editSeatPlaceholderText}
-                                  className="w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                />
-                              </div>
-                            )}
-                          </div>
-                        </section>
-                      </div>
-                      <div className="flex justify-end gap-3 pt-4 border-t border-gray-200 dark:border-gray-800">
-                        <button
-                          type="button"
-                          onClick={() => setEditingSegmentId(null)}
-                          className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition"
-                        >
-                          Cancel
-                        </button>
-                        <button
-                          type="submit"
-                          disabled={updatingSegment}
-                          className="px-4 py-2 text-sm font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                          {updatingSegment ? "Saving..." : "Save Changes"}
-                        </button>
-                      </div>
-                    </form>
-                  </div>
-                </div>
-              )}
-
               <div className="group relative rounded-[2rem] border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-xl shadow-gray-200/50 dark:shadow-none overflow-hidden transition-all duration-500">
                 <div className="h-3 bg-gradient-to-r from-blue-600 to-indigo-600 w-full" />
 
@@ -3520,8 +3006,13 @@ export default function ItineraryPlanner() {
                   {/* Modals */}
                   <AddFlightModal
                     isOpen={showFlightModal}
-                    onClose={() => setShowFlightModal(false)}
+                    onClose={() => {
+                      setShowFlightModal(false);
+                      setEditingFlightSegmentId(null);
+                      setEditFlightData(null);
+                    }}
                     onSubmit={handleFlightSubmit}
+                    initialData={editFlightData || undefined}
                     smartFillEnabled={smartFillSupported}
                     onSmartFill={async (_query, _date) => {
                       // TODO: Implement smart fill
@@ -3533,8 +3024,13 @@ export default function ItineraryPlanner() {
                   />
                   <AddStayModal
                     isOpen={showStayModal}
-                    onClose={() => setShowStayModal(false)}
+                    onClose={() => {
+                      setShowStayModal(false);
+                      setEditingStaySegmentId(null);
+                      setEditStayData(null);
+                    }}
                     onSubmit={handleStaySubmit}
+                    initialData={editStayData || undefined}
                   />
 
                   {false && (

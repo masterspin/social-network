@@ -6,6 +6,7 @@ interface AddStayModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSubmit: (data: StayFormData) => Promise<void>;
+  initialData?: Partial<StayFormData>;
 }
 
 export interface StayFormData {
@@ -24,17 +25,19 @@ export default function AddStayModal({
   isOpen,
   onClose,
   onSubmit,
+  initialData,
 }: AddStayModalProps) {
+  const isEdit = !!initialData;
   const [formData, setFormData] = useState<StayFormData>({
     type: "stay",
-    title: "",
-    description: "",
-    costAmount: "",
-    locationAddress: "",
-    checkInTime: "",
-    checkOutTime: "",
-    property: "",
-    confirmationCode: "",
+    title: initialData?.title || "",
+    description: initialData?.description || "",
+    costAmount: initialData?.costAmount || "",
+    locationAddress: initialData?.locationAddress || "",
+    checkInTime: initialData?.checkInTime || "",
+    checkOutTime: initialData?.checkOutTime || "",
+    property: initialData?.property || "",
+    confirmationCode: initialData?.confirmationCode || "",
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -79,7 +82,7 @@ export default function AddStayModal({
       <div className="relative w-full max-w-4xl lg:max-w-5xl max-h-[90vh] overflow-y-auto rounded-3xl bg-white dark:bg-gray-900 shadow-2xl border border-gray-200 dark:border-gray-800">
         <div className="sticky top-0 z-10 bg-white dark:bg-gray-900 px-8 py-5 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between">
           <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-            Add Stay Segment
+            {isEdit ? "Edit Stay Segment" : "Add Stay Segment"}
           </h3>
           <button
             type="button"
@@ -262,9 +265,15 @@ export default function AddStayModal({
             <button
               type="submit"
               disabled={isSubmitting}
-              className="px-4 py-2 text-sm font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-4 py-2 text-sm font-medium bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {isSubmitting ? "Adding..." : "Add Stay"}
+              {isSubmitting
+                ? isEdit
+                  ? "Saving..."
+                  : "Adding..."
+                : isEdit
+                ? "Save Changes"
+                : "Add Stay"}
             </button>
           </div>
         </form>

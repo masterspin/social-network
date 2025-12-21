@@ -6,6 +6,7 @@ interface AddFlightModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSubmit: (data: FlightFormData) => Promise<void>;
+  initialData?: Partial<FlightFormData>;
   smartFillEnabled?: boolean;
   onSmartFill?: (query: string, date: string) => Promise<void>;
   smartFillSuggestion?: {
@@ -45,6 +46,7 @@ export default function AddFlightModal({
   isOpen,
   onClose,
   onSubmit,
+  initialData,
   smartFillEnabled = false,
   onSmartFill,
   smartFillSuggestion,
@@ -52,25 +54,26 @@ export default function AddFlightModal({
   smartFillLoading = false,
   smartFillError = null,
 }: AddFlightModalProps) {
+  const isEdit = !!initialData;
   const [formData, setFormData] = useState<FlightFormData>({
     type: "flight",
-    title: "",
-    description: "",
-    costAmount: "",
-    departureAirport: "",
-    departureTerminal: "",
-    departureGate: "",
-    departureTime: "",
-    departureTimezone: "",
-    arrivalAirport: "",
-    arrivalTerminal: "",
-    arrivalGate: "",
-    arrivalTime: "",
-    arrivalTimezone: "",
-    airline: "",
-    confirmationCode: "",
-    flightNumber: "",
-    seatInfo: "",
+    title: initialData?.title || "",
+    description: initialData?.description || "",
+    costAmount: initialData?.costAmount || "",
+    departureAirport: initialData?.departureAirport || "",
+    departureTerminal: initialData?.departureTerminal || "",
+    departureGate: initialData?.departureGate || "",
+    departureTime: initialData?.departureTime || "",
+    departureTimezone: initialData?.departureTimezone || "",
+    arrivalAirport: initialData?.arrivalAirport || "",
+    arrivalTerminal: initialData?.arrivalTerminal || "",
+    arrivalGate: initialData?.arrivalGate || "",
+    arrivalTime: initialData?.arrivalTime || "",
+    arrivalTimezone: initialData?.arrivalTimezone || "",
+    airline: initialData?.airline || "",
+    confirmationCode: initialData?.confirmationCode || "",
+    flightNumber: initialData?.flightNumber || "",
+    seatInfo: initialData?.seatInfo || "",
   });
 
   const [smartFillInput, setSmartFillInput] = useState("");
@@ -132,7 +135,7 @@ export default function AddFlightModal({
       <div className="relative w-full max-w-4xl lg:max-w-5xl max-h-[90vh] overflow-y-auto rounded-3xl bg-white dark:bg-gray-900 shadow-2xl border border-gray-200 dark:border-gray-800">
         <div className="sticky top-0 z-10 bg-white dark:bg-gray-900 px-8 py-5 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between">
           <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-            Add Flight Segment
+            {isEdit ? "Edit Flight Segment" : "Add Flight Segment"}
           </h3>
           <button
             type="button"
@@ -549,7 +552,13 @@ export default function AddFlightModal({
               disabled={isSubmitting}
               className="px-4 py-2 text-sm font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {isSubmitting ? "Adding..." : "Add Flight"}
+              {isSubmitting
+                ? isEdit
+                  ? "Saving..."
+                  : "Adding..."
+                : isEdit
+                ? "Save Changes"
+                : "Add Flight"}
             </button>
           </div>
         </form>
