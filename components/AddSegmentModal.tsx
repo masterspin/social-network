@@ -138,8 +138,6 @@ export default function AddSegmentModal({
   const {
     titlePlaceholder,
     descriptionPlaceholder,
-    locationLabel,
-    locationPlaceholder,
     providerLabel,
     providerPlaceholder,
     confirmationLabel,
@@ -150,14 +148,11 @@ export default function AddSegmentModal({
     seatPlaceholder,
   } = createFormTypeConfig;
 
-  const locationLabelText = locationLabel || "Location";
   const providerLabelText = providerLabel || "Provider";
   const confirmationLabelText = confirmationLabel || "Confirmation";
   const titlePlaceholderText = titlePlaceholder || "Segment title";
   const descriptionPlaceholderText =
     descriptionPlaceholder || "Add any notes or details";
-  const locationPlaceholderText =
-    locationPlaceholder || "Where is this happening?";
   const providerPlaceholderText = providerPlaceholder || "Company or host";
   const confirmationPlaceholderText =
     confirmationPlaceholder || "Confirmation or booking code";
@@ -185,24 +180,7 @@ export default function AddSegmentModal({
   );
   const departureGateValue = getEndpointFieldValueFromState(
     segmentForm,
-    "departure",
-    "gate"
-  );
-  const departureTimezoneValue = getEndpointFieldValueFromState(
-    segmentForm,
-    "departure",
-    "timezone"
-  );
-  const arrivalAirportValue = getEndpointFieldValueFromState(
-    segmentForm,
-    "arrival",
-    "airport",
-    segmentForm.locationAddress
-  );
-  const arrivalTerminalValue = getEndpointFieldValueFromState(
-    segmentForm,
-    "arrival",
-    "terminal"
+    "departure"
   );
   const arrivalGateValue = getEndpointFieldValueFromState(
     segmentForm,

@@ -90,8 +90,6 @@ type SegmentTypeConfig = {
   smartFillHint: string;
   titlePlaceholder: string;
   descriptionPlaceholder: string;
-  locationLabel: string;
-  locationPlaceholder: string;
   providerLabel: string;
   providerPlaceholder: string;
   confirmationLabel: string;
@@ -110,8 +108,6 @@ const SEGMENT_TYPE_CONFIG: Record<SegmentType, SegmentTypeConfig> = {
     smartFillHint: "Flight number · e.g., UA 120",
     titlePlaceholder: "UA120 · SFO → NRT",
     descriptionPlaceholder: "Cabin, seat, baggage, or lounge notes",
-    locationLabel: "Primary airport / terminal",
-    locationPlaceholder: "San Francisco Intl · Terminal G",
     providerLabel: "Airline",
     providerPlaceholder: "United Airlines",
     confirmationLabel: "Confirmation",
@@ -550,8 +546,88 @@ function formatSegmentTime(segment: SegmentRow): string {
     hour: "numeric",
     minute: "2-digit",
   });
+
+  // Add timezone info for flights
+  if (segment.type === "flight" && segment.metadata) {
+    const metadata = segment.metadata as Record<string, unknown>;
+    const depTz = getEndpointFieldValueFromMetadata(
+      metadata,
+      "departure",
+      "timezone"
+    );
+    const arrTz = getEndpointFieldValueFromMetadata(
+      metadata,
+      "arrival",
+      "timezone"
+    );
+
+    if (start && end) {
+      let result = start;
+      if (depTz) result += ` ${depTz}`;
+      result += ` → ${end}`;
+      if (arrTz) result += ` ${arrTz}`;
+      return result;
+    }
+  }
+
   if (start && end) return `${start} → ${end}`;
   return start ?? end ?? "Timing TBD";
+}
+
+function formatFlightDetails(segment: SegmentRow): {
+  departure: {
+    airport: string | null;
+    terminal: string | null;
+    gate: string | null;
+    timezone: string | null;
+  };
+  arrival: {
+    airport: string | null;
+    terminal: string | null;
+    gate: string | null;
+    timezone: string | null;
+  };
+} | null {
+  if (segment.type !== "flight" || !segment.metadata) return null;
+  const metadata = segment.metadata as Record<string, unknown>;
+  return {
+    departure: {
+      airport: getEndpointFieldValueFromMetadata(
+        metadata,
+        "departure",
+        "airport"
+      ),
+      terminal: getEndpointFieldValueFromMetadata(
+        metadata,
+        "departure",
+        "terminal"
+      ),
+      gate: getEndpointFieldValueFromMetadata(metadata, "departure", "gate"),
+      timezone: getEndpointFieldValueFromMetadata(
+        metadata,
+        "departure",
+        "timezone"
+      ),
+    },
+    arrival: {
+      airport: getEndpointFieldValueFromMetadata(
+        metadata,
+        "arrival",
+        "airport"
+      ),
+      terminal: getEndpointFieldValueFromMetadata(
+        metadata,
+        "arrival",
+        "terminal"
+      ),
+      gate: getEndpointFieldValueFromMetadata(metadata, "arrival", "gate"),
+      timezone: getEndpointFieldValueFromMetadata(
+        metadata,
+        "arrival",
+        "timezone"
+      ),
+    },
+  };
 }
 
 type EndpointKey = "departure" | "arrival";
@@ -1623,8 +1699,6 @@ export default function ItineraryPlanner() {
     label: createTypeLabel,
     titlePlaceholder,
     descriptionPlaceholder,
-    locationLabel,
-    locationPlaceholder,
     providerLabel,
     providerPlaceholder,
     confirmationLabel,
@@ -1637,14 +1711,11 @@ export default function ItineraryPlanner() {
   const titlePlaceholderText = titlePlaceholder || "Segment title";
   const descriptionPlaceholderText =
     descriptionPlaceholder || "Add any notes or details";
-  const locationPlaceholderText =
-    locationPlaceholder || "Where is this happening?";
   const providerPlaceholderText = providerPlaceholder || "Company or host";
   const confirmationPlaceholderText =
     confirmationPlaceholder || "Confirmation or booking code";
   const referencePlaceholderText = referencePlaceholder || "Reference";
   const seatPlaceholderText = seatPlaceholder || "Seat info";
-  const locationLabelText = locationLabel || "Location";
   const providerLabelText = providerLabel || "Provider";
   const confirmationLabelText = confirmationLabel || "Confirmation";
   const showReferenceField = Boolean(referenceLabel);
@@ -1663,9 +1734,6 @@ export default function ItineraryPlanner() {
   const editSmartFillPlaceholder = editFormTypeConfig.smartFillHint;
   const editTitlePlaceholderText =
     editFormTypeConfig.titlePlaceholder || "Segment title";
-  const editLocationLabelText = editFormTypeConfig.locationLabel || "Location";
-  const editLocationPlaceholderText =
-    editFormTypeConfig.locationPlaceholder || "Where is this happening?";
   const editProviderLabelText = editFormTypeConfig.providerLabel || "Provider";
   const editProviderPlaceholderText =
     editFormTypeConfig.providerPlaceholder || "Company or host";
@@ -2361,31 +2429,8 @@ export default function ItineraryPlanner() {
                             <p className="text-[11px] font-black uppercase tracking-[0.2em] text-gray-400 dark:text-gray-500">
                               Location & timing
                             </p>
-                            {editSegmentForm.locationAddress && (
-                              <span className="text-xs text-gray-500 dark:text-gray-400 truncate">
-                                {editSegmentForm.locationAddress}
-                              </span>
-                            )}
                           </div>
                           <div className="space-y-4">
-                            <div>
-                              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                                {editLocationLabelText}
-                              </label>
-                              <input
-                                type="text"
-                                value={editSegmentForm.locationName}
-                                onChange={(e) =>
-                                  setEditSegmentForm({
-                                    ...editSegmentForm,
-                                    locationName: e.target.value,
-                                  })
-                                }
-                                placeholder={editLocationPlaceholderText}
-                                className="w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                              />
-                            </div>
-
                             {editIsFlightSegment && (
                               <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
                                 <div className="rounded-2xl border border-gray-200 dark:border-gray-700 bg-white/80 dark:bg-gray-900/40 px-4 py-4 space-y-3">
@@ -2608,7 +2653,7 @@ export default function ItineraryPlanner() {
                               Info
                             </p>
                           </div>
-                          <div className="grid gap-3 md:grid-cols-3">
+                          <div className="grid gap-3 md:grid-cols-4">
                             <div>
                               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                                 {editProviderLabelText}
@@ -2643,25 +2688,6 @@ export default function ItineraryPlanner() {
                                 className="w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
                               />
                             </div>
-                            <div>
-                              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                                Reference / number
-                              </label>
-                              <input
-                                type="text"
-                                value={editSegmentForm.transportNumber}
-                                onChange={(e) =>
-                                  setEditSegmentForm({
-                                    ...editSegmentForm,
-                                    transportNumber: e.target.value,
-                                  })
-                                }
-                                className="w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                placeholder="Ticket, booking, or reference"
-                              />
-                            </div>
-                          </div>
-                          <div className="grid gap-3 md:grid-cols-2">
                             {editShowReferenceField && (
                               <div>
                                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -3295,30 +3321,8 @@ export default function ItineraryPlanner() {
                                   <p className="text-[11px] font-black uppercase tracking-[0.2em] text-gray-400 dark:text-gray-500">
                                     Location & timing
                                   </p>
-                                  {segmentForm.locationAddress && (
-                                    <span className="text-xs text-gray-500 dark:text-gray-400 truncate">
-                                      {segmentForm.locationAddress}
-                                    </span>
-                                  )}
                                 </div>
                                 <div className="space-y-4">
-                                  <div>
-                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                                      {locationLabelText}
-                                    </label>
-                                    <input
-                                      type="text"
-                                      value={segmentForm.locationName}
-                                      onChange={(e) =>
-                                        setSegmentForm((prev) => ({
-                                          ...prev,
-                                          locationName: e.target.value,
-                                        }))
-                                      }
-                                      className="w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                      placeholder={locationPlaceholderText}
-                                    />
-                                  </div>
                                   {isFlightSegment && (
                                     <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
                                       <div className="rounded-2xl border border-gray-200 dark:border-gray-700 bg-white/80 dark:bg-gray-900/40 px-4 py-4 space-y-3">
@@ -4070,29 +4074,6 @@ export default function ItineraryPlanner() {
                                       <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
                                         {formatSegmentTime(segment)}
                                       </p>
-                                      {segment.location_name && (
-                                        <p className="text-sm text-gray-500 dark:text-gray-400 flex items-center gap-1 mt-1">
-                                          <svg
-                                            className="h-3.5 w-3.5"
-                                            fill="none"
-                                            viewBox="0 0 24 24"
-                                            stroke="currentColor"
-                                            strokeWidth={1.5}
-                                          >
-                                            <path
-                                              strokeLinecap="round"
-                                              strokeLinejoin="round"
-                                              d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z"
-                                            />
-                                            <path
-                                              strokeLinecap="round"
-                                              strokeLinejoin="round"
-                                              d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z"
-                                            />
-                                          </svg>
-                                          {segment.location_name}
-                                        </p>
-                                      )}
                                     </div>
                                     <div className="flex items-center gap-1">
                                       {costDisplay && (
@@ -4153,12 +4134,6 @@ export default function ItineraryPlanner() {
                                     </div>
                                   </div>
 
-                                  {segment.description && (
-                                    <p className="text-sm text-gray-600 dark:text-gray-300">
-                                      {segment.description}
-                                    </p>
-                                  )}
-
                                   {(segment.provider_name ||
                                     segment.transport_number) && (
                                     <div className="flex flex-wrap gap-2">
@@ -4200,6 +4175,165 @@ export default function ItineraryPlanner() {
                                       )}
                                     </div>
                                   )}
+
+                                  {(() => {
+                                    const flightDetails =
+                                      formatFlightDetails(segment);
+                                    if (!flightDetails) return null;
+                                    const { departure, arrival } =
+                                      flightDetails;
+                                    const hasDepDetails =
+                                      departure.airport ||
+                                      departure.terminal ||
+                                      departure.gate ||
+                                      departure.timezone;
+                                    const hasArrDetails =
+                                      arrival.airport ||
+                                      arrival.terminal ||
+                                      arrival.gate ||
+                                      arrival.timezone;
+                                    if (!hasDepDetails && !hasArrDetails)
+                                      return null;
+
+                                    return (
+                                      <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-gradient-to-br from-blue-50/50 to-white dark:from-blue-900/10 dark:to-gray-900/30 p-4 space-y-3">
+                                        {hasDepDetails && (
+                                          <div className="space-y-1">
+                                            <p className="text-[10px] font-black uppercase tracking-wider text-blue-600 dark:text-blue-400 flex items-center gap-1">
+                                              <svg
+                                                className="h-3 w-3"
+                                                fill="none"
+                                                viewBox="0 0 24 24"
+                                                stroke="currentColor"
+                                                strokeWidth={2}
+                                              >
+                                                <path
+                                                  strokeLinecap="round"
+                                                  strokeLinejoin="round"
+                                                  d="M15.59 14.37a6 6 0 01-5.84 7.38v-4.8m5.84-2.58a14.98 14.98 0 006.16-12.12A14.98 14.98 0 009.631 8.41m5.96 5.96a14.926 14.926 0 01-5.841 2.58m-.119-8.54a6 6 0 00-7.381 5.84h4.8m2.581-5.84a14.927 14.927 0 00-2.58 5.84m2.699 2.7c-.103.021-.207.041-.311.06a15.09 15.09 0 01-2.448-2.448 14.9 14.9 0 01.06-.312m-2.24 2.39a4.493 4.493 0 00-1.757 4.306 4.493 4.493 0 004.306-1.758M16.5 9a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0z"
+                                                />
+                                              </svg>
+                                              Departure
+                                            </p>
+                                            <div className="flex flex-wrap gap-2">
+                                              {departure.airport && (
+                                                <a
+                                                  href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+                                                    departure.airport
+                                                  )}`}
+                                                  target="_blank"
+                                                  rel="noopener noreferrer"
+                                                  className="inline-flex items-center gap-1 text-xs font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800/80 rounded-lg px-2.5 py-1 border border-gray-200 dark:border-gray-700 hover:border-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors cursor-pointer"
+                                                >
+                                                  <svg
+                                                    className="h-3 w-3 text-blue-500"
+                                                    fill="none"
+                                                    viewBox="0 0 24 24"
+                                                    stroke="currentColor"
+                                                    strokeWidth={2}
+                                                  >
+                                                    <path
+                                                      strokeLinecap="round"
+                                                      strokeLinejoin="round"
+                                                      d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z"
+                                                    />
+                                                    <path
+                                                      strokeLinecap="round"
+                                                      strokeLinejoin="round"
+                                                      d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z"
+                                                    />
+                                                  </svg>
+                                                  {departure.airport}
+                                                </a>
+                                              )}
+                                              {departure.terminal && (
+                                                <span className="inline-flex items-center gap-1 text-xs text-gray-600 dark:text-gray-400 bg-white dark:bg-gray-800/80 rounded-lg px-2.5 py-1 border border-gray-200 dark:border-gray-700">
+                                                  Terminal {departure.terminal}
+                                                </span>
+                                              )}
+                                              {departure.gate && (
+                                                <span className="inline-flex items-center gap-1 text-xs text-gray-600 dark:text-gray-400 bg-white dark:bg-gray-800/80 rounded-lg px-2.5 py-1 border border-gray-200 dark:border-gray-700">
+                                                  Gate {departure.gate}
+                                                </span>
+                                              )}
+                                              {departure.timezone && (
+                                                <span className="inline-flex items-center gap-1 text-[10px] text-gray-500 dark:text-gray-500 bg-gray-100 dark:bg-gray-900/50 rounded px-1.5 py-0.5">
+                                                  {departure.timezone}
+                                                </span>
+                                              )}
+                                            </div>
+                                          </div>
+                                        )}
+                                        {hasArrDetails && (
+                                          <div className="space-y-1">
+                                            <p className="text-[10px] font-black uppercase tracking-wider text-green-600 dark:text-green-400 flex items-center gap-1">
+                                              <svg
+                                                className="h-3 w-3"
+                                                fill="none"
+                                                viewBox="0 0 24 24"
+                                                stroke="currentColor"
+                                                strokeWidth={2}
+                                              >
+                                                <path
+                                                  strokeLinecap="round"
+                                                  strokeLinejoin="round"
+                                                  d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z"
+                                                />
+                                              </svg>
+                                              Arrival
+                                            </p>
+                                            <div className="flex flex-wrap gap-2">
+                                              {arrival.airport && (
+                                                <a
+                                                  href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+                                                    arrival.airport
+                                                  )}`}
+                                                  target="_blank"
+                                                  rel="noopener noreferrer"
+                                                  className="inline-flex items-center gap-1 text-xs font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800/80 rounded-lg px-2.5 py-1 border border-gray-200 dark:border-gray-700 hover:border-green-400 hover:bg-green-50 dark:hover:bg-green-900/20 transition-colors cursor-pointer"
+                                                >
+                                                  <svg
+                                                    className="h-3 w-3 text-green-500"
+                                                    fill="none"
+                                                    viewBox="0 0 24 24"
+                                                    stroke="currentColor"
+                                                    strokeWidth={2}
+                                                  >
+                                                    <path
+                                                      strokeLinecap="round"
+                                                      strokeLinejoin="round"
+                                                      d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z"
+                                                    />
+                                                    <path
+                                                      strokeLinecap="round"
+                                                      strokeLinejoin="round"
+                                                      d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z"
+                                                    />
+                                                  </svg>
+                                                  {arrival.airport}
+                                                </a>
+                                              )}
+                                              {arrival.terminal && (
+                                                <span className="inline-flex items-center gap-1 text-xs text-gray-600 dark:text-gray-400 bg-white dark:bg-gray-800/80 rounded-lg px-2.5 py-1 border border-gray-200 dark:border-gray-700">
+                                                  Terminal {arrival.terminal}
+                                                </span>
+                                              )}
+                                              {arrival.gate && (
+                                                <span className="inline-flex items-center gap-1 text-xs text-gray-600 dark:text-gray-400 bg-white dark:bg-gray-800/80 rounded-lg px-2.5 py-1 border border-gray-200 dark:border-gray-700">
+                                                  Gate {arrival.gate}
+                                                </span>
+                                              )}
+                                              {arrival.timezone && (
+                                                <span className="inline-flex items-center gap-1 text-[10px] text-gray-500 dark:text-gray-500 bg-gray-100 dark:bg-gray-900/50 rounded px-1.5 py-0.5">
+                                                  {arrival.timezone}
+                                                </span>
+                                              )}
+                                            </div>
+                                          </div>
+                                        )}
+                                      </div>
+                                    );
+                                  })()}
 
                                   <details className="rounded-2xl border border-dashed border-gray-200 dark:border-gray-800 bg-white/40 dark:bg-transparent">
                                     <summary className="px-4 py-3 cursor-pointer text-sm font-medium text-gray-700 dark:text-gray-300 flex items-center justify-between">

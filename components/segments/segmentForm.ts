@@ -45,8 +45,6 @@ export type SegmentTypeConfig = {
   smartFillHint: string;
   titlePlaceholder: string;
   descriptionPlaceholder: string;
-  locationLabel: string;
-  locationPlaceholder: string;
   providerLabel: string;
   providerPlaceholder: string;
   confirmationLabel: string;
@@ -65,8 +63,6 @@ export const SEGMENT_TYPE_CONFIG: Record<SegmentType, SegmentTypeConfig> = {
     smartFillHint: "Flight number · e.g., UA 120",
     titlePlaceholder: "UA120 · SFO → NRT",
     descriptionPlaceholder: "Cabin, seat, baggage, or lounge notes",
-    locationLabel: "Primary airport / terminal",
-    locationPlaceholder: "San Francisco Intl · Terminal G",
     providerLabel: "Airline",
     providerPlaceholder: "United Airlines",
     confirmationLabel: "Confirmation",
