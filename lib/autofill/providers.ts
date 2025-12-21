@@ -83,6 +83,7 @@ export async function fetchFlightSuggestion(
   url.searchParams.set("withOperationalLeg", "true");
   url.searchParams.set("withLocations", "true");
   url.searchParams.set("withAircraftImage", "false");
+  url.searchParams.set("dateLocalRole", "Departure");
 
   const response = await fetch(url.toString(), {
     headers: {
@@ -104,8 +105,8 @@ export async function fetchFlightSuggestion(
   const flightCandidate = Array.isArray(payload)
     ? payload[0]
     : Array.isArray(payload?.data)
-    ? payload.data[0]
-    : payload?.flight || payload?.[0] || null;
+      ? payload.data[0]
+      : payload?.flight || payload?.[0] || null;
 
   if (!flightCandidate) {
     return null;
