@@ -1493,6 +1493,15 @@ export default function ItineraryPlanner() {
     }
   };
 
+  const handleEditEndpointFieldChange = useCallback(
+    (endpoint: EndpointKey, field: EndpointMetadataField, value: string) => {
+      setEditSegmentForm((prev) =>
+        updateEndpointFieldState(prev, endpoint, field, value)
+      );
+    },
+    []
+  );
+
   const handleEditLegAdd = useCallback(() => {
     setEditSegmentForm((prev) => ({
       ...prev,
@@ -1677,6 +1686,73 @@ export default function ItineraryPlanner() {
     () => getTypeConfig(editSegmentForm.type),
     [editSegmentForm.type]
   );
+  const editTitlePlaceholderText =
+    editFormTypeConfig.titlePlaceholder || "Segment title";
+  const editLocationLabelText = editFormTypeConfig.locationLabel || "Location";
+  const editLocationPlaceholderText =
+    editFormTypeConfig.locationPlaceholder || "Where is this happening?";
+  const editProviderLabelText = editFormTypeConfig.providerLabel || "Provider";
+  const editProviderPlaceholderText =
+    editFormTypeConfig.providerPlaceholder || "Company or host";
+  const editConfirmationLabelText =
+    editFormTypeConfig.confirmationLabel || "Confirmation";
+  const editConfirmationPlaceholderText =
+    editFormTypeConfig.confirmationPlaceholder ||
+    "Confirmation or booking code";
+  const editShowReferenceField = Boolean(editFormTypeConfig.referenceLabel);
+  const editReferenceLabelText =
+    editFormTypeConfig.referenceLabel || "Reference";
+  const editReferencePlaceholderText =
+    editFormTypeConfig.referencePlaceholder || "Reference";
+  const editShowSeatField = Boolean(editFormTypeConfig.showSeatInput);
+  const editSeatLabelText = editFormTypeConfig.seatLabel || "Seat";
+  const editSeatPlaceholderText =
+    editFormTypeConfig.seatPlaceholder || "Seat info";
+  const editIsFlightSegment = editSegmentForm.type === "flight";
+  const editDepartureAirportValue = getEndpointFieldValueFromState(
+    editSegmentForm,
+    "departure",
+    "airport",
+    editSegmentForm.locationName
+  );
+  const editDepartureTerminalValue = getEndpointFieldValueFromState(
+    editSegmentForm,
+    "departure",
+    "terminal"
+  );
+  const editDepartureGateValue = getEndpointFieldValueFromState(
+    editSegmentForm,
+    "departure",
+    "gate"
+  );
+  const editDepartureTimezoneValue = getEndpointFieldValueFromState(
+    editSegmentForm,
+    "departure",
+    "timezone"
+  );
+  const editArrivalAirportValue = getEndpointFieldValueFromState(
+    editSegmentForm,
+    "arrival",
+    "airport",
+    editSegmentForm.locationAddress
+  );
+  const editArrivalTerminalValue = getEndpointFieldValueFromState(
+    editSegmentForm,
+    "arrival",
+    "terminal"
+  );
+  const editArrivalGateValue = getEndpointFieldValueFromState(
+    editSegmentForm,
+    "arrival",
+    "gate"
+  );
+  const editArrivalTimezoneValue = getEndpointFieldValueFromState(
+    editSegmentForm,
+    "arrival",
+    "timezone"
+  );
+  const editInfoColumnCount =
+    (editShowReferenceField ? 1 : 0) + (editShowSeatField ? 1 : 0) + 2;
   const isFlightSegment = segmentForm.type === "flight";
   const departureAirportValue = getEndpointFieldValueFromState(
     segmentForm,
@@ -2124,125 +2200,419 @@ export default function ItineraryPlanner() {
                     <h3 className="text-2xl font-black text-gray-900 dark:text-white mb-6">
                       Edit Segment
                     </h3>
-                    <form onSubmit={handleUpdateSegment} className="space-y-6">
-                      <div className="grid grid-cols-2 gap-6">
-                        <div className="col-span-2">
-                          <label className="block text-sm font-bold text-gray-400 uppercase tracking-widest mb-2">
-                            Title
-                          </label>
-                          <input
-                            type="text"
-                            value={editSegmentForm.title}
-                            onChange={(e) =>
-                              setEditSegmentForm({
-                                ...editSegmentForm,
-                                title: e.target.value,
-                              })
-                            }
-                            className="w-full rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 px-5 py-3 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none"
-                            required
-                          />
+                    <form onSubmit={handleUpdateSegment} className="space-y-8">
+                      <div className="space-y-6">
+                        <div className="grid gap-4 md:grid-cols-3">
+                          <div className="md:col-span-2">
+                            <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-[0.3em] mb-2">
+                              Title
+                            </label>
+                            <input
+                              type="text"
+                              value={editSegmentForm.title}
+                              onChange={(e) =>
+                                setEditSegmentForm({
+                                  ...editSegmentForm,
+                                  title: e.target.value,
+                                })
+                              }
+                              placeholder={editTitlePlaceholderText}
+                              className="w-full rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 px-5 py-3 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none"
+                              required
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-[0.3em] mb-2">
+                              Type
+                            </label>
+                            <select
+                              value={editSegmentForm.type}
+                              onChange={(e) =>
+                                setEditSegmentForm({
+                                  ...editSegmentForm,
+                                  type: e.target.value as SegmentType,
+                                })
+                              }
+                              className="w-full rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 px-5 py-3 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none"
+                            >
+                              {SEGMENT_TYPE_OPTIONS.map((t) => (
+                                <option key={t.value} value={t.value}>
+                                  {t.label}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
                         </div>
+
                         <div>
-                          <label className="block text-sm font-bold text-gray-400 uppercase tracking-widest mb-2">
-                            Type
+                          <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-[0.3em] mb-2">
+                            Cost (USD)
                           </label>
-                          <select
-                            value={editSegmentForm.type}
-                            onChange={(e) =>
-                              setEditSegmentForm({
-                                ...editSegmentForm,
-                                type: e.target.value,
-                              })
-                            }
-                            className="w-full rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 px-5 py-3 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none"
+                          <div className="relative">
+                            <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4 text-sm font-semibold text-gray-500 dark:text-gray-400">
+                              $
+                            </span>
+                            <input
+                              type="number"
+                              step="0.01"
+                              min="0"
+                              value={editSegmentForm.costAmount}
+                              onChange={(e) =>
+                                setEditSegmentForm({
+                                  ...editSegmentForm,
+                                  costAmount: e.target.value,
+                                })
+                              }
+                              className="w-full rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 pl-8 pr-4 py-3 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none"
+                              placeholder="0.00"
+                            />
+                          </div>
+                        </div>
+
+                        <section className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white/70 dark:bg-gray-950/40 p-6 space-y-5">
+                          <div className="flex items-center justify-between">
+                            <p className="text-[11px] font-black uppercase tracking-[0.3em] text-gray-400 dark:text-gray-500">
+                              Location & timing
+                            </p>
+                            {editSegmentForm.locationAddress && (
+                              <span className="text-xs text-gray-500 dark:text-gray-400 truncate max-w-[60%]">
+                                {editSegmentForm.locationAddress}
+                              </span>
+                            )}
+                          </div>
+                          <div className="space-y-4">
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                {editLocationLabelText}
+                              </label>
+                              <input
+                                type="text"
+                                value={editSegmentForm.locationName}
+                                onChange={(e) =>
+                                  setEditSegmentForm({
+                                    ...editSegmentForm,
+                                    locationName: e.target.value,
+                                  })
+                                }
+                                placeholder={editLocationPlaceholderText}
+                                className="w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              />
+                            </div>
+
+                            {editIsFlightSegment && (
+                              <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+                                <div className="rounded-2xl border border-gray-200 dark:border-gray-700 bg-white/90 dark:bg-gray-950/40 px-4 py-4 space-y-3">
+                                  <div className="flex items-center justify-between">
+                                    <p className="text-[11px] font-black uppercase tracking-[0.3em] text-gray-400 dark:text-gray-500">
+                                      Departure
+                                    </p>
+                                    <span className="text-[11px] text-gray-400">
+                                      Takeoff details
+                                    </span>
+                                  </div>
+                                  <div className="space-y-3">
+                                    <div>
+                                      <label className="block text-xs font-semibold text-gray-600 dark:text-gray-400 mb-1">
+                                        Airport or city
+                                      </label>
+                                      <input
+                                        type="text"
+                                        value={editDepartureAirportValue}
+                                        onChange={(e) =>
+                                          handleEditEndpointFieldChange(
+                                            "departure",
+                                            "airport",
+                                            e.target.value
+                                          )
+                                        }
+                                        className="w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        placeholder="e.g., SFO · International"
+                                      />
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-3">
+                                      <div>
+                                        <label className="block text-xs font-semibold text-gray-600 dark:text-gray-400 mb-1">
+                                          Terminal
+                                        </label>
+                                        <input
+                                          type="text"
+                                          value={editDepartureTerminalValue}
+                                          onChange={(e) =>
+                                            handleEditEndpointFieldChange(
+                                              "departure",
+                                              "terminal",
+                                              e.target.value
+                                            )
+                                          }
+                                          className="w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                          placeholder="Terminal / concourse"
+                                        />
+                                      </div>
+                                      <div>
+                                        <label className="block text-xs font-semibold text-gray-600 dark:text-gray-400 mb-1">
+                                          Gate
+                                        </label>
+                                        <input
+                                          type="text"
+                                          value={editDepartureGateValue}
+                                          onChange={(e) =>
+                                            handleEditEndpointFieldChange(
+                                              "departure",
+                                              "gate",
+                                              e.target.value
+                                            )
+                                          }
+                                          className="w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                          placeholder="Gate"
+                                        />
+                                      </div>
+                                    </div>
+                                    <div>
+                                      <label className="block text-xs font-semibold text-gray-600 dark:text-gray-400 mb-1">
+                                        Timezone
+                                      </label>
+                                      <input
+                                        type="text"
+                                        value={editDepartureTimezoneValue}
+                                        onChange={(e) =>
+                                          handleEditEndpointFieldChange(
+                                            "departure",
+                                            "timezone",
+                                            e.target.value
+                                          )
+                                        }
+                                        className="w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        placeholder="America/Los_Angeles"
+                                      />
+                                    </div>
+                                  </div>
+                                </div>
+                                <div className="rounded-2xl border border-gray-200 dark:border-gray-700 bg-white/90 dark:bg-gray-950/40 px-4 py-4 space-y-3">
+                                  <div className="flex items-center justify-between">
+                                    <p className="text-[11px] font-black uppercase tracking-[0.3em] text-gray-400 dark:text-gray-500">
+                                      Arrival
+                                    </p>
+                                    <span className="text-[11px] text-gray-400">
+                                      Landing details
+                                    </span>
+                                  </div>
+                                  <div className="space-y-3">
+                                    <div>
+                                      <label className="block text-xs font-semibold text-gray-600 dark:text-gray-400 mb-1">
+                                        Airport or city
+                                      </label>
+                                      <input
+                                        type="text"
+                                        value={editArrivalAirportValue}
+                                        onChange={(e) =>
+                                          handleEditEndpointFieldChange(
+                                            "arrival",
+                                            "airport",
+                                            e.target.value
+                                          )
+                                        }
+                                        className="w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        placeholder="e.g., Haneda · Terminal 3"
+                                      />
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-3">
+                                      <div>
+                                        <label className="block text-xs font-semibold text-gray-600 dark:text-gray-400 mb-1">
+                                          Terminal
+                                        </label>
+                                        <input
+                                          type="text"
+                                          value={editArrivalTerminalValue}
+                                          onChange={(e) =>
+                                            handleEditEndpointFieldChange(
+                                              "arrival",
+                                              "terminal",
+                                              e.target.value
+                                            )
+                                          }
+                                          className="w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                          placeholder="Terminal / customs"
+                                        />
+                                      </div>
+                                      <div>
+                                        <label className="block text-xs font-semibold text-gray-600 dark:text-gray-400 mb-1">
+                                          Gate / carousel
+                                        </label>
+                                        <input
+                                          type="text"
+                                          value={editArrivalGateValue}
+                                          onChange={(e) =>
+                                            handleEditEndpointFieldChange(
+                                              "arrival",
+                                              "gate",
+                                              e.target.value
+                                            )
+                                          }
+                                          className="w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                          placeholder="Gate or belt"
+                                        />
+                                      </div>
+                                    </div>
+                                    <div>
+                                      <label className="block text-xs font-semibold text-gray-600 dark:text-gray-400 mb-1">
+                                        Timezone
+                                      </label>
+                                      <input
+                                        type="text"
+                                        value={editArrivalTimezoneValue}
+                                        onChange={(e) =>
+                                          handleEditEndpointFieldChange(
+                                            "arrival",
+                                            "timezone",
+                                            e.target.value
+                                          )
+                                        }
+                                        className="w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        placeholder="Asia/Tokyo"
+                                      />
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+
+                            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                              <div>
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                  Start time
+                                </label>
+                                <input
+                                  type="datetime-local"
+                                  value={editSegmentForm.startTime}
+                                  onChange={(e) =>
+                                    setEditSegmentForm({
+                                      ...editSegmentForm,
+                                      startTime: e.target.value,
+                                    })
+                                  }
+                                  className="w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                  End time
+                                </label>
+                                <input
+                                  type="datetime-local"
+                                  value={editSegmentForm.endTime}
+                                  onChange={(e) =>
+                                    setEditSegmentForm({
+                                      ...editSegmentForm,
+                                      endTime: e.target.value,
+                                    })
+                                  }
+                                  className="w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                />
+                              </div>
+                            </div>
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                Timezone
+                              </label>
+                              <input
+                                type="text"
+                                value={editSegmentForm.timezone}
+                                onChange={(e) =>
+                                  setEditSegmentForm({
+                                    ...editSegmentForm,
+                                    timezone: e.target.value,
+                                  })
+                                }
+                                className="w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                placeholder="e.g., America/Detroit"
+                              />
+                            </div>
+                          </div>
+                        </section>
+
+                        <section className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white/70 dark:bg-gray-950/40 p-6 space-y-4">
+                          <div className="flex items-center justify-between">
+                            <p className="text-[11px] font-black uppercase tracking-[0.3em] text-gray-400 dark:text-gray-500">
+                              Info
+                            </p>
+                          </div>
+                          <div
+                            className={`grid grid-cols-1 gap-3 sm:grid-cols-${editInfoColumnCount}`}
                           >
-                            {SEGMENT_TYPE_OPTIONS.map((t) => (
-                              <option key={t.value} value={t.value}>
-                                {t.label}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-                        <div>
-                          <label className="block text-sm font-bold text-gray-400 uppercase tracking-widest mb-2">
-                            Timezone
-                          </label>
-                          <input
-                            type="text"
-                            value={editSegmentForm.timezone}
-                            onChange={(e) =>
-                              setEditSegmentForm({
-                                ...editSegmentForm,
-                                timezone: e.target.value,
-                              })
-                            }
-                            className="w-full rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 px-5 py-3 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-sm font-bold text-gray-400 uppercase tracking-widest mb-2">
-                            Location
-                          </label>
-                          <input
-                            type="text"
-                            value={editSegmentForm.locationName}
-                            onChange={(e) =>
-                              setEditSegmentForm({
-                                ...editSegmentForm,
-                                locationName: e.target.value,
-                              })
-                            }
-                            className="w-full rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 px-5 py-3 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-sm font-bold text-gray-400 uppercase tracking-widest mb-2">
-                            Start Time
-                          </label>
-                          <input
-                            type="datetime-local"
-                            value={editSegmentForm.startTime}
-                            onChange={(e) =>
-                              setEditSegmentForm({
-                                ...editSegmentForm,
-                                startTime: e.target.value,
-                              })
-                            }
-                            className="w-full rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 px-5 py-3 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-sm font-bold text-gray-400 uppercase tracking-widest mb-2">
-                            End Time
-                          </label>
-                          <input
-                            type="datetime-local"
-                            value={editSegmentForm.endTime}
-                            onChange={(e) =>
-                              setEditSegmentForm({
-                                ...editSegmentForm,
-                                endTime: e.target.value,
-                              })
-                            }
-                            className="w-full rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 px-5 py-3 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none"
-                          />
-                        </div>
-                        <div className="col-span-2">
-                          <label className="block text-sm font-bold text-gray-400 uppercase tracking-widest mb-2">
-                            Description
-                          </label>
-                          <textarea
-                            value={editSegmentForm.description}
-                            onChange={(e) =>
-                              setEditSegmentForm({
-                                ...editSegmentForm,
-                                description: e.target.value,
-                              })
-                            }
-                            className="w-full rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 px-5 py-3 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none h-24"
-                          />
-                        </div>
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                {editProviderLabelText}
+                              </label>
+                              <input
+                                type="text"
+                                value={editSegmentForm.providerName}
+                                onChange={(e) =>
+                                  setEditSegmentForm({
+                                    ...editSegmentForm,
+                                    providerName: e.target.value,
+                                  })
+                                }
+                                placeholder={editProviderPlaceholderText}
+                                className="w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                {editConfirmationLabelText}
+                              </label>
+                              <input
+                                type="text"
+                                value={editSegmentForm.confirmationCode}
+                                onChange={(e) =>
+                                  setEditSegmentForm({
+                                    ...editSegmentForm,
+                                    confirmationCode: e.target.value,
+                                  })
+                                }
+                                placeholder={editConfirmationPlaceholderText}
+                                className="w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              />
+                            </div>
+                            {editShowReferenceField && (
+                              <div>
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                  {editReferenceLabelText}
+                                </label>
+                                <input
+                                  type="text"
+                                  value={editSegmentForm.transportNumber}
+                                  onChange={(e) =>
+                                    setEditSegmentForm({
+                                      ...editSegmentForm,
+                                      transportNumber: e.target.value,
+                                    })
+                                  }
+                                  placeholder={editReferencePlaceholderText}
+                                  className="w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                />
+                              </div>
+                            )}
+                            {editShowSeatField && (
+                              <div>
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                  {editSeatLabelText}
+                                </label>
+                                <input
+                                  type="text"
+                                  value={editSegmentForm.seatInfo}
+                                  onChange={(e) =>
+                                    setEditSegmentForm({
+                                      ...editSegmentForm,
+                                      seatInfo: e.target.value,
+                                    })
+                                  }
+                                  placeholder={editSeatPlaceholderText}
+                                  className="w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                />
+                              </div>
+                            )}
+                          </div>
+                        </section>
                       </div>
                       <div className="flex justify-end gap-4 pt-6 border-t border-gray-100 dark:border-gray-800">
                         <button
