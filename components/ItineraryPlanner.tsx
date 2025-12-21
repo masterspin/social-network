@@ -691,17 +691,6 @@ function formatSegmentTime(segment: SegmentRow): string {
 type EndpointKey = "departure" | "arrival";
 type EndpointMetadataField = "airport" | "terminal" | "timezone" | "gate";
 
-type SegmentEndpointCard = {
-  key: EndpointKey;
-  label: string;
-  name: string;
-  code?: string | null;
-  locationLine?: string | null;
-  timeLabel?: string | null;
-  timezoneLabel?: string | null;
-  terminalLabel?: string | null;
-};
-
 function isPlainObject(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
 }
@@ -710,66 +699,6 @@ function getStringValue(value: unknown): string | null {
   if (typeof value !== "string") return null;
   const trimmed = value.trim();
   return trimmed ? trimmed : null;
-}
-
-function extractScheduleTimestamp(
-  record: Record<string, unknown>
-): string | null {
-  const prioritizedKeys = [
-    "scheduledTimeUtc",
-    "scheduledTimeUTC",
-    "scheduled_time_utc",
-    "scheduledTimeLocal",
-    "scheduled_time_local",
-    "actualTimeUtc",
-    "actualTimeUTC",
-    "estimatedTimeUtc",
-    "estimatedTimeUTC",
-    "timeUtc",
-    "timeUTC",
-    "timestamp",
-  ];
-
-  for (const key of prioritizedKeys) {
-    const value = getStringValue(record[key]);
-    if (value) {
-      return value;
-    }
-  }
-
-  const scheduleValue = record.schedule;
-  if (isPlainObject(scheduleValue)) {
-    const nested = extractScheduleTimestamp(
-      scheduleValue as Record<string, unknown>
-    );
-    if (nested) {
-      return nested;
-    }
-  }
-
-  return null;
-}
-
-function formatEndpointTimeLabel(
-  timestamp: string | null,
-  timeZone?: string
-): string | null {
-  if (!timestamp) return null;
-  const date = new Date(timestamp);
-  if (Number.isNaN(date.getTime())) return timestamp;
-  try {
-    const formatter = new Intl.DateTimeFormat(undefined, {
-      month: "short",
-      day: "numeric",
-      hour: "numeric",
-      minute: "2-digit",
-      ...(timeZone ? { timeZone } : {}),
-    });
-    return formatter.format(date);
-  } catch (error) {
-    console.warn("Failed to format endpoint timestamp", error);
-    return formatDate(timestamp);
-  }
 }
 
 function getEndpointFieldValueFromMetadata(
@@ -830,83 +759,6 @@ function getEndpointFieldValueFromMetadata(
     default:
       return null;
   }
-}
-
-function buildEndpointDisplay(
-  key: EndpointKey,
-  record: Record<string, unknown>
-): SegmentEndpointCard | null {
-  const rawValue = record[key];
-  const raw = isPlainObject(rawValue)
-    ? (rawValue as Record<string, unknown>)
-    : undefined;
-
-  const airportName =
-    getEndpointFieldValueFromMetadata(record, key, "airport") || null;
-
-  const airportRecord = isPlainObject(raw?.airport)
-    ? (raw?.airport as Record<string, unknown>)
-    : undefined;
-  const airportCode =
-    getStringValue(airportRecord?.iata) ||
-    getStringValue(airportRecord?.icao) ||
-    getStringValue(raw?.airportCode);
-
-  const city =
-    getStringValue(airportRecord?.municipalityName) ||
-    getStringValue(airportRecord?.municipality) ||
-    getStringValue(raw?.city);
-  const country =
-    getStringValue(airportRecord?.countryCode) ||
-    getStringValue(airportRecord?.countryName) ||
-    getStringValue(raw?.countryCode);
-  const locationLine = [city, country].filter(Boolean).join(", ") || null;
-
-  const timezone =
-    getEndpointFieldValueFromMetadata(record, key, "timezone") || null;
-  const terminal =
-    getEndpointFieldValueFromMetadata(record, key, "terminal") || null;
-  const gate = getEndpointFieldValueFromMetadata(record, key, "gate") || null;
-  const terminalLabel =
-    [terminal, gate ? `Gate ${gate}` : null].filter(Boolean).join(" · ") ||
-    null;
-
-  const scheduleTimestamp = raw ? extractScheduleTimestamp(raw) : null;
-  const timeLabel = formatEndpointTimeLabel(
-    scheduleTimestamp,
-    timezone || undefined
-  );
-
-  const name =
-    airportName ||
-    airportCode ||
-    (key === "departure" ? "Departure" : "Arrival");
-
-  return {
-    key,
-    label: key === "departure" ? "Departure" : "Arrival",
-    name,
-    code: airportName && airportCode ? airportCode : null,
-    locationLine,
-    timeLabel,
-    timezoneLabel: timezone,
-    terminalLabel,
-  };
-}
-
-function extractTravelEndpoints(metadata: unknown): SegmentEndpointCard[] {
-  if (!isPlainObject(metadata)) return [];
-  const record = metadata as Record<string, unknown>;
-  const endpoints: SegmentEndpointCard[] = [];
-  const departure = buildEndpointDisplay("departure", record);
-  if (departure) endpoints.push(departure);
-  const arrival = buildEndpointDisplay("arrival", record);
-  if (arrival) endpoints.push(arrival);
-  return endpoints;
-}
-
-function getSegmentEndpoints(segment: SegmentRow): SegmentEndpointCard[] {
-  return extractTravelEndpoints(segment.metadata);
 }
 
 function getEndpointFieldValueFromState(
@@ -1824,10 +1676,6 @@ export default function ItineraryPlanner() {
   const editFormTypeConfig = useMemo(
     () => getTypeConfig(editSegmentForm.type),
     [editSegmentForm.type]
-  );
-  const createFormEndpoints = useMemo(
-    () => extractTravelEndpoints(segmentForm.metadata),
-    [segmentForm.metadata]
   );
   const isFlightSegment = segmentForm.type === "flight";
   const departureAirportValue = getEndpointFieldValueFromState(
@@ -3158,58 +3006,6 @@ export default function ItineraryPlanner() {
                                       </div>
                                     </div>
                                   )}
-                                  {createFormEndpoints.length > 0 && (
-                                    <div
-                                      className={`grid gap-3 ${
-                                        createFormEndpoints.length > 1
-                                          ? "sm:grid-cols-2"
-                                          : ""
-                                      }`}
-                                    >
-                                      {createFormEndpoints.map((endpoint) => (
-                                        <div
-                                          key={`create-${endpoint.key}`}
-                                          className="rounded-2xl border border-gray-200 dark:border-gray-700 bg-white/80 dark:bg-gray-900/50 px-4 py-3 shadow-sm"
-                                        >
-                                          <div className="flex items-center justify-between gap-2">
-                                            <p className="text-[11px] font-black uppercase tracking-[0.2em] text-gray-400 dark:text-gray-500">
-                                              {endpoint.label}
-                                            </p>
-                                            {endpoint.timezoneLabel && (
-                                              <span className="text-[11px] text-gray-400 dark:text-gray-500 truncate">
-                                                {endpoint.timezoneLabel}
-                                              </span>
-                                            )}
-                                          </div>
-                                          <div className="mt-2">
-                                            <p className="text-sm font-semibold text-gray-900 dark:text-white">
-                                              {endpoint.name}
-                                              {endpoint.code && (
-                                                <span className="ml-1 text-xs font-medium text-gray-500 dark:text-gray-400">
-                                                  {endpoint.code}
-                                                </span>
-                                              )}
-                                            </p>
-                                            {endpoint.locationLine && (
-                                              <p className="text-xs text-gray-500 dark:text-gray-400">
-                                                {endpoint.locationLine}
-                                              </p>
-                                            )}
-                                          </div>
-                                          {endpoint.timeLabel && (
-                                            <p className="mt-3 text-sm font-medium text-gray-900 dark:text-gray-100">
-                                              {endpoint.timeLabel}
-                                            </p>
-                                          )}
-                                          {endpoint.terminalLabel && (
-                                            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                                              {endpoint.terminalLabel}
-                                            </p>
-                                          )}
-                                        </div>
-                                      ))}
-                                    </div>
-                                  )}
                                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                                     <div>
                                       <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -3247,22 +3043,6 @@ export default function ItineraryPlanner() {
                                     </div>
                                   </div>
                                   <div className="flex flex-col gap-2">
-                                    <label className="flex items-center gap-2 cursor-pointer">
-                                      <input
-                                        type="checkbox"
-                                        checked={segmentForm.isAllDay}
-                                        onChange={(e) =>
-                                          setSegmentForm((prev) => ({
-                                            ...prev,
-                                            isAllDay: e.target.checked,
-                                          }))
-                                        }
-                                        className="h-4 w-4 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500"
-                                      />
-                                      <span className="text-sm text-gray-700 dark:text-gray-300">
-                                        All day event
-                                      </span>
-                                    </label>
                                     <div>
                                       <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                                         Timezone
@@ -3792,9 +3572,6 @@ export default function ItineraryPlanner() {
                             };
 
                             const costDisplay = getSegmentCostDisplay(segment);
-                            const travelEndpoints =
-                              getSegmentEndpoints(segment);
-
                             return (
                               <div
                                 key={segment.id}
@@ -3836,30 +3613,29 @@ export default function ItineraryPlanner() {
                                       <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
                                         {formatSegmentTime(segment)}
                                       </p>
-                                      {segment.location_name &&
-                                        travelEndpoints.length === 0 && (
-                                          <p className="text-sm text-gray-500 dark:text-gray-400 flex items-center gap-1 mt-1">
-                                            <svg
-                                              className="h-3.5 w-3.5"
-                                              fill="none"
-                                              viewBox="0 0 24 24"
-                                              stroke="currentColor"
-                                              strokeWidth={1.5}
-                                            >
-                                              <path
-                                                strokeLinecap="round"
-                                                strokeLinejoin="round"
-                                                d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z"
-                                              />
-                                              <path
-                                                strokeLinecap="round"
-                                                strokeLinejoin="round"
-                                                d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z"
-                                              />
-                                            </svg>
-                                            {segment.location_name}
-                                          </p>
-                                        )}
+                                      {segment.location_name && (
+                                        <p className="text-sm text-gray-500 dark:text-gray-400 flex items-center gap-1 mt-1">
+                                          <svg
+                                            className="h-3.5 w-3.5"
+                                            fill="none"
+                                            viewBox="0 0 24 24"
+                                            stroke="currentColor"
+                                            strokeWidth={1.5}
+                                          >
+                                            <path
+                                              strokeLinecap="round"
+                                              strokeLinejoin="round"
+                                              d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z"
+                                            />
+                                            <path
+                                              strokeLinecap="round"
+                                              strokeLinejoin="round"
+                                              d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z"
+                                            />
+                                          </svg>
+                                          {segment.location_name}
+                                        </p>
+                                      )}
                                     </div>
                                     <div className="flex items-center gap-1">
                                       {costDisplay && (
@@ -3919,59 +3695,6 @@ export default function ItineraryPlanner() {
                                       </div>
                                     </div>
                                   </div>
-
-                                  {travelEndpoints.length > 0 && (
-                                    <div
-                                      className={`grid gap-3 ${
-                                        travelEndpoints.length > 1
-                                          ? "sm:grid-cols-2"
-                                          : ""
-                                      }`}
-                                    >
-                                      {travelEndpoints.map((endpoint) => (
-                                        <div
-                                          key={endpoint.key}
-                                          className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white/70 dark:bg-gray-950/40 px-4 py-3 shadow-sm"
-                                        >
-                                          <div className="flex items-center justify-between gap-2">
-                                            <p className="text-[11px] font-black uppercase tracking-[0.2em] text-gray-400 dark:text-gray-500">
-                                              {endpoint.label}
-                                            </p>
-                                            {endpoint.timezoneLabel && (
-                                              <span className="text-[11px] text-gray-400 dark:text-gray-500 truncate">
-                                                {endpoint.timezoneLabel}
-                                              </span>
-                                            )}
-                                          </div>
-                                          <div className="mt-2">
-                                            <p className="text-sm font-semibold text-gray-900 dark:text-white">
-                                              {endpoint.name}
-                                              {endpoint.code && (
-                                                <span className="ml-1 text-xs font-medium text-gray-500 dark:text-gray-400">
-                                                  {endpoint.code}
-                                                </span>
-                                              )}
-                                            </p>
-                                            {endpoint.locationLine && (
-                                              <p className="text-xs text-gray-500 dark:text-gray-400">
-                                                {endpoint.locationLine}
-                                              </p>
-                                            )}
-                                          </div>
-                                          {endpoint.timeLabel && (
-                                            <p className="mt-3 text-sm font-medium text-gray-900 dark:text-gray-100">
-                                              {endpoint.timeLabel}
-                                            </p>
-                                          )}
-                                          {endpoint.terminalLabel && (
-                                            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                                              {endpoint.terminalLabel}
-                                            </p>
-                                          )}
-                                        </div>
-                                      ))}
-                                    </div>
-                                  )}
 
                                   {segment.description && (
                                     <p className="text-sm text-gray-600 dark:text-gray-300">
