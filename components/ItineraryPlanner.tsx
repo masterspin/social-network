@@ -1751,8 +1751,6 @@ export default function ItineraryPlanner() {
     "arrival",
     "timezone"
   );
-  const editInfoColumnCount =
-    (editShowReferenceField ? 1 : 0) + (editShowSeatField ? 1 : 0) + 2;
   const isFlightSegment = segmentForm.type === "flight";
   const departureAirportValue = getEndpointFieldValueFromState(
     segmentForm,
@@ -2191,20 +2189,65 @@ export default function ItineraryPlanner() {
           {detail && (
             <div className="space-y-6">
               {editingSegmentId && (
-                <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
                   <div
-                    className="absolute inset-0 bg-black/60 backdrop-blur-md"
+                    className="absolute inset-0 bg-black/50 backdrop-blur-sm"
                     onClick={() => setEditingSegmentId(null)}
                   />
-                  <div className="relative w-full max-w-2xl bg-white dark:bg-gray-900 rounded-[2.5rem] shadow-2xl p-8 overflow-y-auto max-h-[90vh]">
-                    <h3 className="text-2xl font-black text-gray-900 dark:text-white mb-6">
-                      Edit Segment
-                    </h3>
-                    <form onSubmit={handleUpdateSegment} className="space-y-8">
+                  <div className="relative w-full max-w-4xl lg:max-w-5xl max-h-[90vh] overflow-y-auto rounded-3xl bg-white dark:bg-gray-900 shadow-2xl border border-gray-200 dark:border-gray-800">
+                    <div className="sticky top-0 z-10 bg-white dark:bg-gray-900 px-8 py-5 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between">
+                      <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                        Edit Segment
+                      </h3>
+                      <button
+                        type="button"
+                        onClick={() => setEditingSegmentId(null)}
+                        className="p-2 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:text-gray-300 dark:hover:bg-gray-800 transition"
+                      >
+                        <svg
+                          className="h-5 w-5"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                          strokeWidth={1.5}
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            d="M6 18L18 6M6 6l12 12"
+                          />
+                        </svg>
+                      </button>
+                    </div>
+                    <form
+                      onSubmit={handleUpdateSegment}
+                      className="p-6 lg:p-8 space-y-6"
+                    >
                       <div className="space-y-6">
-                        <div className="grid gap-4 md:grid-cols-3">
-                          <div className="md:col-span-2">
-                            <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-[0.3em] mb-2">
+                        <div className="grid gap-3 md:grid-cols-3">
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                              Type
+                            </label>
+                            <select
+                              value={editSegmentForm.type}
+                              onChange={(e) =>
+                                setEditSegmentForm({
+                                  ...editSegmentForm,
+                                  type: e.target.value as SegmentType,
+                                })
+                              }
+                              className="w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            >
+                              {SEGMENT_TYPE_OPTIONS.map((t) => (
+                                <option key={t.value} value={t.value}>
+                                  {t.label}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                               Title
                             </label>
                             <input
@@ -2217,65 +2260,43 @@ export default function ItineraryPlanner() {
                                 })
                               }
                               placeholder={editTitlePlaceholderText}
-                              className="w-full rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 px-5 py-3 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none"
+                              className="w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
                               required
                             />
                           </div>
                           <div>
-                            <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-[0.3em] mb-2">
-                              Type
+                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                              Cost (USD)
                             </label>
-                            <select
-                              value={editSegmentForm.type}
-                              onChange={(e) =>
-                                setEditSegmentForm({
-                                  ...editSegmentForm,
-                                  type: e.target.value as SegmentType,
-                                })
-                              }
-                              className="w-full rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 px-5 py-3 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none"
-                            >
-                              {SEGMENT_TYPE_OPTIONS.map((t) => (
-                                <option key={t.value} value={t.value}>
-                                  {t.label}
-                                </option>
-                              ))}
-                            </select>
+                            <div className="relative">
+                              <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-sm font-semibold text-gray-500 dark:text-gray-400">
+                                $
+                              </span>
+                              <input
+                                type="number"
+                                step="0.01"
+                                min="0"
+                                value={editSegmentForm.costAmount}
+                                onChange={(e) =>
+                                  setEditSegmentForm({
+                                    ...editSegmentForm,
+                                    costAmount: e.target.value,
+                                  })
+                                }
+                                className="w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 pl-7 pr-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                placeholder="0.00"
+                              />
+                            </div>
                           </div>
                         </div>
 
-                        <div>
-                          <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-[0.3em] mb-2">
-                            Cost (USD)
-                          </label>
-                          <div className="relative">
-                            <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4 text-sm font-semibold text-gray-500 dark:text-gray-400">
-                              $
-                            </span>
-                            <input
-                              type="number"
-                              step="0.01"
-                              min="0"
-                              value={editSegmentForm.costAmount}
-                              onChange={(e) =>
-                                setEditSegmentForm({
-                                  ...editSegmentForm,
-                                  costAmount: e.target.value,
-                                })
-                              }
-                              className="w-full rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 pl-8 pr-4 py-3 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none"
-                              placeholder="0.00"
-                            />
-                          </div>
-                        </div>
-
-                        <section className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white/70 dark:bg-gray-950/40 p-6 space-y-5">
+                        <section className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white/60 dark:bg-gray-950/40 p-4 sm:p-5 space-y-4">
                           <div className="flex items-center justify-between">
-                            <p className="text-[11px] font-black uppercase tracking-[0.3em] text-gray-400 dark:text-gray-500">
+                            <p className="text-[11px] font-black uppercase tracking-[0.2em] text-gray-400 dark:text-gray-500">
                               Location & timing
                             </p>
                             {editSegmentForm.locationAddress && (
-                              <span className="text-xs text-gray-500 dark:text-gray-400 truncate max-w-[60%]">
+                              <span className="text-xs text-gray-500 dark:text-gray-400 truncate">
                                 {editSegmentForm.locationAddress}
                               </span>
                             )}
@@ -2300,19 +2321,19 @@ export default function ItineraryPlanner() {
                             </div>
 
                             {editIsFlightSegment && (
-                              <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-                                <div className="rounded-2xl border border-gray-200 dark:border-gray-700 bg-white/90 dark:bg-gray-950/40 px-4 py-4 space-y-3">
+                              <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+                                <div className="rounded-2xl border border-gray-200 dark:border-gray-700 bg-white/80 dark:bg-gray-900/40 px-4 py-4 space-y-3">
                                   <div className="flex items-center justify-between">
-                                    <p className="text-[11px] font-black uppercase tracking-[0.3em] text-gray-400 dark:text-gray-500">
+                                    <p className="text-[11px] font-black uppercase tracking-[0.2em] text-gray-400 dark:text-gray-500">
                                       Departure
                                     </p>
-                                    <span className="text-[11px] text-gray-400">
+                                    <span className="text-[11px] text-gray-400 dark:text-gray-500">
                                       Takeoff details
                                     </span>
                                   </div>
                                   <div className="space-y-3">
                                     <div>
-                                      <label className="block text-xs font-semibold text-gray-600 dark:text-gray-400 mb-1">
+                                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                                         Airport or city
                                       </label>
                                       <input
@@ -2331,7 +2352,7 @@ export default function ItineraryPlanner() {
                                     </div>
                                     <div className="grid grid-cols-2 gap-3">
                                       <div>
-                                        <label className="block text-xs font-semibold text-gray-600 dark:text-gray-400 mb-1">
+                                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                                           Terminal
                                         </label>
                                         <input
@@ -2349,7 +2370,7 @@ export default function ItineraryPlanner() {
                                         />
                                       </div>
                                       <div>
-                                        <label className="block text-xs font-semibold text-gray-600 dark:text-gray-400 mb-1">
+                                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                                           Gate
                                         </label>
                                         <input
@@ -2368,7 +2389,7 @@ export default function ItineraryPlanner() {
                                       </div>
                                     </div>
                                     <div>
-                                      <label className="block text-xs font-semibold text-gray-600 dark:text-gray-400 mb-1">
+                                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                                         Timezone
                                       </label>
                                       <input
@@ -2387,18 +2408,18 @@ export default function ItineraryPlanner() {
                                     </div>
                                   </div>
                                 </div>
-                                <div className="rounded-2xl border border-gray-200 dark:border-gray-700 bg-white/90 dark:bg-gray-950/40 px-4 py-4 space-y-3">
+                                <div className="rounded-2xl border border-gray-200 dark:border-gray-700 bg-white/80 dark:bg-gray-900/40 px-4 py-4 space-y-3">
                                   <div className="flex items-center justify-between">
-                                    <p className="text-[11px] font-black uppercase tracking-[0.3em] text-gray-400 dark:text-gray-500">
+                                    <p className="text-[11px] font-black uppercase tracking-[0.2em] text-gray-400 dark:text-gray-500">
                                       Arrival
                                     </p>
-                                    <span className="text-[11px] text-gray-400">
+                                    <span className="text-[11px] text-gray-400 dark:text-gray-500">
                                       Landing details
                                     </span>
                                   </div>
                                   <div className="space-y-3">
                                     <div>
-                                      <label className="block text-xs font-semibold text-gray-600 dark:text-gray-400 mb-1">
+                                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                                         Airport or city
                                       </label>
                                       <input
@@ -2417,7 +2438,7 @@ export default function ItineraryPlanner() {
                                     </div>
                                     <div className="grid grid-cols-2 gap-3">
                                       <div>
-                                        <label className="block text-xs font-semibold text-gray-600 dark:text-gray-400 mb-1">
+                                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                                           Terminal
                                         </label>
                                         <input
@@ -2435,7 +2456,7 @@ export default function ItineraryPlanner() {
                                         />
                                       </div>
                                       <div>
-                                        <label className="block text-xs font-semibold text-gray-600 dark:text-gray-400 mb-1">
+                                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                                           Gate / carousel
                                         </label>
                                         <input
@@ -2454,7 +2475,7 @@ export default function ItineraryPlanner() {
                                       </div>
                                     </div>
                                     <div>
-                                      <label className="block text-xs font-semibold text-gray-600 dark:text-gray-400 mb-1">
+                                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                                         Timezone
                                       </label>
                                       <input
@@ -2490,6 +2511,7 @@ export default function ItineraryPlanner() {
                                       startTime: e.target.value,
                                     })
                                   }
+                                  disabled={editSegmentForm.isAllDay}
                                   className="w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
                                 />
                               </div>
@@ -2506,39 +2528,21 @@ export default function ItineraryPlanner() {
                                       endTime: e.target.value,
                                     })
                                   }
+                                  disabled={editSegmentForm.isAllDay}
                                   className="w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
                                 />
                               </div>
                             </div>
-                            <div>
-                              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                                Timezone
-                              </label>
-                              <input
-                                type="text"
-                                value={editSegmentForm.timezone}
-                                onChange={(e) =>
-                                  setEditSegmentForm({
-                                    ...editSegmentForm,
-                                    timezone: e.target.value,
-                                  })
-                                }
-                                className="w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                placeholder="e.g., America/Detroit"
-                              />
-                            </div>
                           </div>
                         </section>
 
-                        <section className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white/70 dark:bg-gray-950/40 p-6 space-y-4">
+                        <section className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white/60 dark:bg-gray-950/40 p-4 sm:p-5 space-y-4">
                           <div className="flex items-center justify-between">
-                            <p className="text-[11px] font-black uppercase tracking-[0.3em] text-gray-400 dark:text-gray-500">
+                            <p className="text-[11px] font-black uppercase tracking-[0.2em] text-gray-400 dark:text-gray-500">
                               Info
                             </p>
                           </div>
-                          <div
-                            className={`grid grid-cols-1 gap-3 sm:grid-cols-${editInfoColumnCount}`}
-                          >
+                          <div className="grid gap-3 md:grid-cols-3">
                             <div>
                               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                                 {editProviderLabelText}
@@ -2573,6 +2577,25 @@ export default function ItineraryPlanner() {
                                 className="w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
                               />
                             </div>
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                Reference / number
+                              </label>
+                              <input
+                                type="text"
+                                value={editSegmentForm.transportNumber}
+                                onChange={(e) =>
+                                  setEditSegmentForm({
+                                    ...editSegmentForm,
+                                    transportNumber: e.target.value,
+                                  })
+                                }
+                                className="w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                placeholder="Ticket, booking, or reference"
+                              />
+                            </div>
+                          </div>
+                          <div className="grid gap-3 md:grid-cols-2">
                             {editShowReferenceField && (
                               <div>
                                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -2614,18 +2637,18 @@ export default function ItineraryPlanner() {
                           </div>
                         </section>
                       </div>
-                      <div className="flex justify-end gap-4 pt-6 border-t border-gray-100 dark:border-gray-800">
+                      <div className="flex justify-end gap-3 pt-4 border-t border-gray-200 dark:border-gray-800">
                         <button
                           type="button"
                           onClick={() => setEditingSegmentId(null)}
-                          className="px-6 py-3 text-sm font-bold text-gray-500 hover:text-gray-900"
+                          className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition"
                         >
                           Cancel
                         </button>
                         <button
                           type="submit"
                           disabled={updatingSegment}
-                          className="px-8 py-3 bg-blue-600 text-white rounded-2xl font-bold shadow-lg shadow-blue-500/30 hover:bg-blue-700 disabled:opacity-50"
+                          className="px-4 py-2 text-sm font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                           {updatingSegment ? "Saving..." : "Save Changes"}
                         </button>
