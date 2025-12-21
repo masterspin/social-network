@@ -8,6 +8,7 @@ import type {
   SegmentAutofillType,
 } from "@/lib/autofill/types";
 import AddressAutocomplete from "./AddressAutocomplete";
+import ChatAssistant from "./ChatAssistant";
 
 const SEGMENT_TYPES = ["flight", "stay"] as const;
 
@@ -5202,6 +5203,56 @@ export default function ItineraryPlanner() {
           )}
         </div>
       </div>
+
+      {/* AI Chat Assistant */}
+      {selectedId && detail && userId && (
+        <ChatAssistant
+          itineraryId={selectedId}
+          userId={userId}
+          onAddSegment={(suggestion) => {
+            // Pre-fill the segment form with AI suggestion
+            setSegmentForm({
+              type: suggestion.type === "flight" ? "flight" : "stay",
+              title: suggestion.title || "",
+              description: suggestion.description || "",
+              locationName: suggestion.location_name || "",
+              locationAddress: suggestion.location_address || "",
+              locationLat: suggestion.location_lat?.toString() || "",
+              locationLng: suggestion.location_lng?.toString() || "",
+              startTime: suggestion.start_time
+                ? isoToLocalInput(suggestion.start_time)
+                : "",
+              endTime: suggestion.end_time
+                ? isoToLocalInput(suggestion.end_time)
+                : "",
+              timezone: suggestion.timezone || "",
+              isAllDay: suggestion.is_all_day || false,
+              providerName: suggestion.provider_name || "",
+              confirmationCode: suggestion.confirmation_code || "",
+              transportNumber: suggestion.transport_number || "",
+              seatInfo: "",
+              costAmount: "",
+              legs: [],
+              metadata: suggestion.metadata || {},
+            });
+            setShowSegmentForm(true);
+            // Show success feedback
+            setFeedback({
+              type: "success",
+              text: "Suggestion added to form. Review and save to add to itinerary.",
+            });
+            setTimeout(() => setFeedback(null), 3000);
+          }}
+          existingSegments={
+            detail.segments?.map((seg) => ({
+              type: seg.type,
+              title: seg.title,
+              start_time: seg.start_time || undefined,
+              location_name: seg.location_name || undefined,
+            })) || []
+          }
+        />
+      )}
     </div>
   );
 }

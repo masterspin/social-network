@@ -228,6 +228,49 @@ export async function fetchFlightSuggestion(
   };
 }
 
+/**
+ * Free flight data fetcher using public aviation APIs
+ * Note: This is a simplified version for demo purposes
+ * For production, consider AviationStack free tier (100 req/month)
+ */
+export async function fetchFlightSuggestionFree(
+  origin: string,
+  destination: string,
+  dateInput?: string
+): Promise<SegmentAutofillSuggestion[]> {
+  // For MVP, return mock data structure
+  // TODO: Integrate AviationStack free tier or FlightAware public data
+  const originUpper = origin.trim().toUpperCase();
+  const destUpper = destination.trim().toUpperCase();
+  const date = dateInput || new Date().toISOString().slice(0, 10);
+
+  // This is placeholder data - in production, fetch from real API
+  const suggestions: SegmentAutofillSuggestion[] = [
+    {
+      type: "flight",
+      title: `${originUpper} → ${destUpper}`,
+      description: "Direct flight available",
+      location_name: originUpper,
+      start_time: `${date}T08:00:00Z`,
+      end_time: `${date}T12:00:00Z`,
+      provider_name: "Various Airlines",
+      transport_number: "Flight search result",
+      metadata: {
+        source: "free-search",
+        origin: originUpper,
+        destination: destUpper,
+      },
+      highlights: [
+        { label: "Route", value: `${originUpper} → ${destUpper}` },
+        { label: "Date", value: date },
+      ],
+      source: "free-search",
+    },
+  ];
+
+  return suggestions;
+}
+
 export async function fetchTrainSuggestion(
   serviceCodeInput: string,
   dateInput?: string
