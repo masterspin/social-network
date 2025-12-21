@@ -35,6 +35,7 @@ import ChatAssistant from "./ChatAssistant";
 import AddFlightModal, { type FlightFormData } from "./AddFlightModal";
 import AddStayModal, { type StayFormData } from "./AddStayModal";
 import AddRideModal, { type RideFormData } from "./AddRideModal";
+import ItineraryTimeline from "./ItineraryTimeline";
 
 const SEGMENT_TYPES = ["flight", "stay", "transport"] as const;
 
@@ -908,6 +909,7 @@ export default function ItineraryPlanner() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [detail, setDetail] = useState<DetailedItinerary | null>(null);
   const [comments, setComments] = useState<CommentWithAuthor[]>([]);
+  const [viewMode, setViewMode] = useState<"list" | "timeline">("list");
   const [commentInput, setCommentInput] = useState("");
   const [commentSubmitting, setCommentSubmitting] = useState(false);
   const [showCreateForm, setShowCreateForm] = useState(false);
@@ -4141,300 +4143,243 @@ export default function ItineraryPlanner() {
                     )}
 
                     {segmentCount > 0 && (
-                      <div className="relative">
-                        <div className="pointer-events-none absolute left-12 top-6 bottom-6 w-0.5 bg-gradient-to-b from-blue-500 via-blue-400 to-blue-300 dark:from-blue-600 dark:via-blue-500 dark:to-blue-400" />
+                      <>
+                        <div className="flex justify-end mb-4 px-1">
+                          <div className="inline-flex bg-gray-100 dark:bg-gray-800 p-1 rounded-lg">
+                            <button
+                              onClick={() => setViewMode("list")}
+                              className={`px-3 py-1.5 text-xs font-medium rounded-md transition ${viewMode === "list"
+                                ? "bg-white dark:bg-gray-700 shadow text-gray-900 dark:text-gray-100"
+                                : "text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200"
+                                }`}
+                            >
+                              List
+                            </button>
+                            <button
+                              onClick={() => setViewMode("timeline")}
+                              className={`px-3 py-1.5 text-xs font-medium rounded-md transition ${viewMode === "timeline"
+                                ? "bg-white dark:bg-gray-700 shadow text-gray-900 dark:text-gray-100"
+                                : "text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200"
+                                }`}
+                            >
+                              Timeline
+                            </button>
+                          </div>
+                        </div>
 
-                        <div className="rounded-[1.75rem] border border-gray-200 dark:border-gray-800 bg-gradient-to-b from-white via-gray-50 to-gray-100/60 dark:from-gray-950 dark:via-gray-900/40 dark:to-gray-900/10 shadow-inner">
-                          {detail.segments?.map((segment, index) => {
-                            const isFirst = index === 0;
-                            const isLast =
-                              index === (detail.segments?.length ?? 0) - 1;
-                            const isEven = index % 2 === 0;
-                            const typeConfig: Record<
-                              string,
-                              {
-                                icon: React.ReactNode;
-                                color: string;
-                                bgColor: string;
-                              }
-                            > = {
-                              flight: {
-                                icon: <Plane className="h-5 w-5" />,
-                                color: "text-sky-600 dark:text-sky-400",
-                                bgColor: "bg-sky-100 dark:bg-sky-900/40",
-                              },
-                              stay: {
-                                icon: <Hotel className="h-5 w-5" />,
-                                color: "text-indigo-600 dark:text-indigo-400",
-                                bgColor: "bg-indigo-100 dark:bg-indigo-900/40",
-                              },
-                              hotel: {
-                                icon: <Hotel className="h-5 w-5" />,
-                                color: "text-purple-600 dark:text-purple-400",
-                                bgColor: "bg-purple-100 dark:bg-purple-900/40",
-                              },
-                              activity: {
-                                icon: <Star className="h-5 w-5" />,
-                                color: "text-amber-600 dark:text-amber-400",
-                                bgColor: "bg-amber-100 dark:bg-amber-900/40",
-                              },
-                              transport: {
-                                icon: <Car className="h-5 w-5" />,
-                                color: "text-green-600 dark:text-green-400",
-                                bgColor: "bg-green-100 dark:bg-green-900/40",
-                              },
-                              meal: {
-                                icon: <Utensils className="h-5 w-5" />,
-                                color: "text-rose-600 dark:text-rose-400",
-                                bgColor: "bg-rose-100 dark:bg-rose-900/40",
-                              },
-                            };
-                            const config = typeConfig[
-                              segment.type.toLowerCase()
-                            ] || {
-                              icon: <CircleDot className="h-5 w-5" />,
-                              color: "text-blue-600 dark:text-blue-400",
-                              bgColor: "bg-blue-100 dark:bg-blue-900/40",
-                            };
-                            const typeLabel =
-                              getTypeConfig(segment.type).label || segment.type;
+                        {viewMode === "timeline" && (
+                          <ItineraryTimeline
+                            segments={detail.segments || []}
+                            onSegmentClick={startEditingSegment}
+                          />
+                        )}
 
-                            const costDisplay = getSegmentCostDisplay(segment);
-                            return (
-                              <div
-                                key={segment.id}
-                                className={`group relative pl-24 pr-8 py-8 transition-colors ${!isLast
-                                  ? "border-b border-white/60 dark:border-gray-800/70"
-                                  : ""
-                                  } ${isEven
-                                    ? "bg-white/80 dark:bg-gray-900/30"
-                                    : "bg-white/60 dark:bg-gray-900/10"
-                                  }`}
-                              >
+                        <div
+                          className={`relative ${viewMode === "timeline" ? "hidden" : ""
+                            }`}
+                        >
+                          <div className="pointer-events-none absolute left-12 top-6 bottom-6 w-0.5 bg-gradient-to-b from-blue-500 via-blue-400 to-blue-300 dark:from-blue-600 dark:via-blue-500 dark:to-blue-400" />
+
+                          <div className="rounded-[1.75rem] border border-gray-200 dark:border-gray-800 bg-gradient-to-b from-white via-gray-50 to-gray-100/60 dark:from-gray-950 dark:via-gray-900/40 dark:to-gray-900/10 shadow-inner">
+                            {detail.segments?.map((segment, index) => {
+                              const isFirst = index === 0;
+                              const isLast =
+                                index === (detail.segments?.length ?? 0) - 1;
+                              const isEven = index % 2 === 0;
+                              const typeConfig: Record<
+                                string,
+                                {
+                                  icon: React.ReactNode;
+                                  color: string;
+                                  bgColor: string;
+                                }
+                              > = {
+                                flight: {
+                                  icon: <Plane className="h-5 w-5" />,
+                                  color: "text-sky-600 dark:text-sky-400",
+                                  bgColor: "bg-sky-100 dark:bg-sky-900/40",
+                                },
+                                stay: {
+                                  icon: <Hotel className="h-5 w-5" />,
+                                  color: "text-indigo-600 dark:text-indigo-400",
+                                  bgColor: "bg-indigo-100 dark:bg-indigo-900/40",
+                                },
+                                hotel: {
+                                  icon: <Hotel className="h-5 w-5" />,
+                                  color: "text-purple-600 dark:text-purple-400",
+                                  bgColor: "bg-purple-100 dark:bg-purple-900/40",
+                                },
+                                activity: {
+                                  icon: <Star className="h-5 w-5" />,
+                                  color: "text-amber-600 dark:text-amber-400",
+                                  bgColor: "bg-amber-100 dark:bg-amber-900/40",
+                                },
+                                transport: {
+                                  icon: <Car className="h-5 w-5" />,
+                                  color: "text-green-600 dark:text-green-400",
+                                  bgColor: "bg-green-100 dark:bg-green-900/40",
+                                },
+                                meal: {
+                                  icon: <Utensils className="h-5 w-5" />,
+                                  color: "text-rose-600 dark:text-rose-400",
+                                  bgColor: "bg-rose-100 dark:bg-rose-900/40",
+                                },
+                              };
+                              const config = typeConfig[
+                                segment.type.toLowerCase()
+                              ] || {
+                                icon: <CircleDot className="h-5 w-5" />,
+                                color: "text-blue-600 dark:text-blue-400",
+                                bgColor: "bg-blue-100 dark:bg-blue-900/40",
+                              };
+                              const typeLabel =
+                                getTypeConfig(segment.type).label || segment.type;
+
+                              const costDisplay = getSegmentCostDisplay(segment);
+                              return (
                                 <div
-                                  className={`absolute left-8 top-8 w-8 h-8 rounded-full ${config.bgColor} ${config.color} flex items-center justify-center ring-4 ring-white dark:ring-gray-900 shadow-sm`}
+                                  key={segment.id}
+                                  className={`group relative pl-24 pr-8 py-8 transition-colors ${!isLast
+                                    ? "border-b border-white/60 dark:border-gray-800/70"
+                                    : ""
+                                    } ${isEven
+                                      ? "bg-white/80 dark:bg-gray-900/30"
+                                      : "bg-white/60 dark:bg-gray-900/10"
+                                    }`}
                                 >
-                                  {config.icon}
-                                </div>
-
-                                {/* Content */}
-                                <div className="flex flex-col gap-4">
-                                  <div className="flex items-start justify-between gap-4">
-                                    <div className="flex-1 min-w-0">
-                                      <div className="flex flex-wrap items-center gap-2 mb-1">
-                                        <span
-                                          className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold uppercase tracking-wide ${config.bgColor} ${config.color}`}
-                                        >
-                                          {typeLabel}
-                                        </span>
-                                        {segment.confirmation_code && (
-                                          <span className="text-xs text-gray-400 dark:text-gray-500">
-                                            #{segment.confirmation_code}
-                                          </span>
-                                        )}
-                                      </div>
-                                      <h4 className="text-base font-semibold text-gray-900 dark:text-white truncate">
-                                        {segment.title}
-                                      </h4>
-                                      <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                                        {formatSegmentTime(segment)}
-                                      </p>
-                                    </div>
-                                    <div className="flex items-center gap-1">
-                                      {costDisplay && (
-                                        <span className="text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 rounded-lg px-2 py-1">
-                                          {costDisplay}
-                                        </span>
-                                      )}
-                                      <div className="flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
-                                        {detail.owner_id === userId && (
-                                          <>
-                                            <button
-                                              type="button"
-                                              onClick={() =>
-                                                startEditingSegment(segment)
-                                              }
-                                              className="p-1.5 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:text-blue-400 dark:hover:bg-blue-900/30 transition"
-                                              title="Edit segment"
-                                            >
-                                              <Edit2 className="h-4 w-4" />
-                                            </button>
-                                            <button
-                                              type="button"
-                                              onClick={() =>
-                                                handleDeleteSegment(segment.id)
-                                              }
-                                              className="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:text-red-400 dark:hover:bg-red-900/30 transition"
-                                              title="Delete segment"
-                                            >
-                                              <Trash2 className="h-4 w-4" />
-                                            </button>
-                                          </>
-                                        )}
-                                      </div>
-                                    </div>
+                                  <div
+                                    className={`absolute left-8 top-8 w-8 h-8 rounded-full ${config.bgColor} ${config.color} flex items-center justify-center ring-4 ring-white dark:ring-gray-900 shadow-sm`}
+                                  >
+                                    {config.icon}
                                   </div>
 
-                                  {(segment.provider_name ||
-                                    segment.transport_number) && (
-                                      <div className="flex flex-wrap gap-2">
-                                        {segment.provider_name && (
-                                          <span className="inline-flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 rounded-lg px-2 py-1">
-                                            <Hotel className="h-3 w-3" />
-                                            {segment.provider_name}
+                                  {/* Content */}
+                                  <div className="flex flex-col gap-4">
+                                    <div className="flex items-start justify-between gap-4">
+                                      <div className="flex-1 min-w-0">
+                                        <div className="flex flex-wrap items-center gap-2 mb-1">
+                                          <span
+                                            className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold uppercase tracking-wide ${config.bgColor} ${config.color}`}
+                                          >
+                                            {typeLabel}
+                                          </span>
+                                          {segment.confirmation_code && (
+                                            <span className="text-xs text-gray-400 dark:text-gray-500">
+                                              #{segment.confirmation_code}
+                                            </span>
+                                          )}
+                                        </div>
+                                        <h4 className="text-base font-semibold text-gray-900 dark:text-white truncate">
+                                          {segment.title}
+                                        </h4>
+                                        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                                          {formatSegmentTime(segment)}
+                                        </p>
+                                      </div>
+                                      <div className="flex items-center gap-1">
+                                        {costDisplay && (
+                                          <span className="text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 rounded-lg px-2 py-1">
+                                            {costDisplay}
                                           </span>
                                         )}
-                                        {segment.transport_number && (
-                                          <span className="inline-flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 rounded-lg px-2 py-1">
-                                            <Plane className="h-3 w-3" />
-                                            {segment.transport_number}
-                                          </span>
-                                        )}
+                                        <div className="flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+                                          {detail.owner_id === userId && (
+                                            <>
+                                              <button
+                                                type="button"
+                                                onClick={() =>
+                                                  startEditingSegment(segment)
+                                                }
+                                                className="p-1.5 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:text-blue-400 dark:hover:bg-blue-900/30 transition"
+                                                title="Edit segment"
+                                              >
+                                                <Edit2 className="h-4 w-4" />
+                                              </button>
+                                              <button
+                                                type="button"
+                                                onClick={() =>
+                                                  handleDeleteSegment(segment.id)
+                                                }
+                                                className="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:text-red-400 dark:hover:bg-red-900/30 transition"
+                                                title="Delete segment"
+                                              >
+                                                <Trash2 className="h-4 w-4" />
+                                              </button>
+                                            </>
+                                          )}
+                                        </div>
                                       </div>
-                                    )}
+                                    </div>
 
-                                  {(() => {
-                                    const flightDetails =
-                                      formatFlightDetails(segment);
-                                    if (!flightDetails) return null;
-                                    const { departure, arrival } =
-                                      flightDetails;
-                                    const hasDepDetails =
-                                      departure.airport ||
-                                      departure.terminal ||
-                                      departure.gate ||
-                                      departure.timezone;
-                                    const hasArrDetails =
-                                      arrival.airport ||
-                                      arrival.terminal ||
-                                      arrival.gate ||
-                                      arrival.timezone;
-                                    if (!hasDepDetails && !hasArrDetails)
-                                      return null;
+                                    {(segment.provider_name ||
+                                      segment.transport_number) && (
+                                        <div className="flex flex-wrap gap-2">
+                                          {segment.provider_name && (
+                                            <span className="inline-flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 rounded-lg px-2 py-1">
+                                              <Hotel className="h-3 w-3" />
+                                              {segment.provider_name}
+                                            </span>
+                                          )}
+                                          {segment.transport_number && (
+                                            <span className="inline-flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 rounded-lg px-2 py-1">
+                                              <Plane className="h-3 w-3" />
+                                              {segment.transport_number}
+                                            </span>
+                                          )}
+                                        </div>
+                                      )}
 
-                                    return (
-                                      <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-gradient-to-br from-blue-50/50 to-white dark:from-blue-900/10 dark:to-gray-900/30 p-4 space-y-3">
-                                        {hasDepDetails && (
-                                          <div className="space-y-1">
-                                            <p className="text-[10px] font-black uppercase tracking-wider text-blue-600 dark:text-blue-400 flex items-center gap-1">
-                                              <PlaneTakeoff className="h-3 w-3" />
-                                              Departure
-                                            </p>
-                                            <div className="flex flex-wrap gap-2">
-                                              {departure.airport && (
-                                                <a
-                                                  href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
-                                                    departure.airport
-                                                  )}`}
-                                                  target="_blank"
-                                                  rel="noopener noreferrer"
-                                                  className="inline-flex items-center gap-1 text-xs font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800/80 rounded-lg px-2.5 py-1 border border-gray-200 dark:border-gray-700 hover:border-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors cursor-pointer"
-                                                >
-                                                  <MapPin className="h-3 w-3 text-blue-500" />
-                                                  {departure.airport}
-                                                </a>
-                                              )}
-                                              {departure.terminal && (
-                                                <span className="inline-flex items-center gap-1 text-xs text-gray-600 dark:text-gray-400 bg-white dark:bg-gray-800/80 rounded-lg px-2.5 py-1 border border-gray-200 dark:border-gray-700">
-                                                  Terminal {departure.terminal}
-                                                </span>
-                                              )}
-                                              {departure.gate && (
-                                                <span className="inline-flex items-center gap-1 text-xs text-gray-600 dark:text-gray-400 bg-white dark:bg-gray-800/80 rounded-lg px-2.5 py-1 border border-gray-200 dark:border-gray-700">
-                                                  Gate {departure.gate}
-                                                </span>
-                                              )}
-                                              {departure.timezone && (
-                                                <span className="inline-flex items-center gap-1 text-[10px] text-gray-500 dark:text-gray-500 bg-gray-100 dark:bg-gray-900/50 rounded px-1.5 py-0.5">
-                                                  {departure.timezone}
-                                                </span>
-                                              )}
-                                            </div>
-                                          </div>
-                                        )}
-                                        {hasArrDetails && (
-                                          <div className="space-y-1">
-                                            <p className="text-[10px] font-black uppercase tracking-wider text-green-600 dark:text-green-400 flex items-center gap-1">
-                                              <PlaneLanding className="h-3 w-3" />
-                                              Arrival
-                                            </p>
-                                            <div className="flex flex-wrap gap-2">
-                                              {arrival.airport && (
-                                                <a
-                                                  href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
-                                                    arrival.airport
-                                                  )}`}
-                                                  target="_blank"
-                                                  rel="noopener noreferrer"
-                                                  className="inline-flex items-center gap-1 text-xs font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800/80 rounded-lg px-2.5 py-1 border border-gray-200 dark:border-gray-700 hover:border-green-400 hover:bg-green-50 dark:hover:bg-green-900/20 transition-colors cursor-pointer"
-                                                >
-                                                  <MapPin className="h-3 w-3 text-green-500" />
-                                                  {arrival.airport}
-                                                </a>
-                                              )}
-                                              {arrival.terminal && (
-                                                <span className="inline-flex items-center gap-1 text-xs text-gray-600 dark:text-gray-400 bg-white dark:bg-gray-800/80 rounded-lg px-2.5 py-1 border border-gray-200 dark:border-gray-700">
-                                                  Terminal {arrival.terminal}
-                                                </span>
-                                              )}
-                                              {arrival.gate && (
-                                                <span className="inline-flex items-center gap-1 text-xs text-gray-600 dark:text-gray-400 bg-white dark:bg-gray-800/80 rounded-lg px-2.5 py-1 border border-gray-200 dark:border-gray-700">
-                                                  Gate {arrival.gate}
-                                                </span>
-                                              )}
-                                              {arrival.timezone && (
-                                                <span className="inline-flex items-center gap-1 text-[10px] text-gray-500 dark:text-gray-500 bg-gray-100 dark:bg-gray-900/50 rounded px-1.5 py-0.5">
-                                                  {arrival.timezone}
-                                                </span>
-                                              )}
-                                            </div>
-                                          </div>
-                                        )}
-                                      </div>
-                                    );
-                                  })()}
-
-                                  {/* Ride Details Rendering */}
-                                  {["transport", "ground", "custom"].includes(
-                                    segment.type
-                                  ) &&
-                                    (() => {
-                                      const metadata =
-                                        (segment.metadata as Record<
-                                          string,
-                                          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                                          any
-                                        >) || {};
-                                      const departure = metadata.departure || {};
-                                      const arrival = metadata.arrival || {};
-
-                                      // Fallback to top-level fields if metadata is empty (backward compatibility)
-                                      const depAddr =
-                                        departure.address ||
-                                        segment.location_address;
-                                      const arrAddr = arrival.address;
-
-                                      if (!depAddr && !arrAddr) return null;
+                                    {(() => {
+                                      const flightDetails =
+                                        formatFlightDetails(segment);
+                                      if (!flightDetails) return null;
+                                      const { departure, arrival } =
+                                        flightDetails;
+                                      const hasDepDetails =
+                                        departure.airport ||
+                                        departure.terminal ||
+                                        departure.gate ||
+                                        departure.timezone;
+                                      const hasArrDetails =
+                                        arrival.airport ||
+                                        arrival.terminal ||
+                                        arrival.gate ||
+                                        arrival.timezone;
+                                      if (!hasDepDetails && !hasArrDetails)
+                                        return null;
 
                                       return (
-                                        <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-gradient-to-br from-green-50/50 to-white dark:from-green-900/10 dark:to-gray-900/30 p-4 space-y-3">
-                                          {depAddr && (
+                                        <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-gradient-to-br from-blue-50/50 to-white dark:from-blue-900/10 dark:to-gray-900/30 p-4 space-y-3">
+                                          {hasDepDetails && (
                                             <div className="space-y-1">
-                                              <p className="text-[10px] font-black uppercase tracking-wider text-green-600 dark:text-green-400 flex items-center gap-1">
-                                                <MapPin className="h-3 w-3" />
-                                                Pickup
+                                              <p className="text-[10px] font-black uppercase tracking-wider text-blue-600 dark:text-blue-400 flex items-center gap-1">
+                                                <PlaneTakeoff className="h-3 w-3" />
+                                                Departure
                                               </p>
-                                              <div className="flex flex-wrap gap-2 items-center">
-                                                <a
-                                                  href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
-                                                    depAddr
-                                                  )}`}
-                                                  target="_blank"
-                                                  rel="noopener noreferrer"
-                                                  className="inline-flex items-center gap-1 text-xs font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800/80 rounded-lg px-2.5 py-1 border border-gray-200 dark:border-gray-700 hover:border-green-400 hover:bg-green-50 dark:hover:bg-green-900/20 transition-colors cursor-pointer"
-                                                >
-                                                  {depAddr}
-                                                </a>
+                                              <div className="flex flex-wrap gap-2">
+                                                {departure.airport && (
+                                                  <a
+                                                    href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+                                                      departure.airport
+                                                    )}`}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="inline-flex items-center gap-1 text-xs font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800/80 rounded-lg px-2.5 py-1 border border-gray-200 dark:border-gray-700 hover:border-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors cursor-pointer"
+                                                  >
+                                                    <MapPin className="h-3 w-3 text-blue-500" />
+                                                    {departure.airport}
+                                                  </a>
+                                                )}
+                                                {departure.terminal && (
+                                                  <span className="inline-flex items-center gap-1 text-xs text-gray-600 dark:text-gray-400 bg-white dark:bg-gray-800/80 rounded-lg px-2.5 py-1 border border-gray-200 dark:border-gray-700">
+                                                    Terminal {departure.terminal}
+                                                  </span>
+                                                )}
+                                                {departure.gate && (
+                                                  <span className="inline-flex items-center gap-1 text-xs text-gray-600 dark:text-gray-400 bg-white dark:bg-gray-800/80 rounded-lg px-2.5 py-1 border border-gray-200 dark:border-gray-700">
+                                                    Gate {departure.gate}
+                                                  </span>
+                                                )}
                                                 {departure.timezone && (
                                                   <span className="inline-flex items-center gap-1 text-[10px] text-gray-500 dark:text-gray-500 bg-gray-100 dark:bg-gray-900/50 rounded px-1.5 py-0.5">
                                                     {departure.timezone}
@@ -4443,24 +4388,36 @@ export default function ItineraryPlanner() {
                                               </div>
                                             </div>
                                           )}
-
-                                          {arrAddr && (
+                                          {hasArrDetails && (
                                             <div className="space-y-1">
                                               <p className="text-[10px] font-black uppercase tracking-wider text-green-600 dark:text-green-400 flex items-center gap-1">
-                                                <MapPin className="h-3 w-3" />
-                                                Drop-off
+                                                <PlaneLanding className="h-3 w-3" />
+                                                Arrival
                                               </p>
-                                              <div className="flex flex-wrap gap-2 items-center">
-                                                <a
-                                                  href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
-                                                    arrAddr
-                                                  )}`}
-                                                  target="_blank"
-                                                  rel="noopener noreferrer"
-                                                  className="inline-flex items-center gap-1 text-xs font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800/80 rounded-lg px-2.5 py-1 border border-gray-200 dark:border-gray-700 hover:border-green-400 hover:bg-green-50 dark:hover:bg-green-900/20 transition-colors cursor-pointer"
-                                                >
-                                                  {arrAddr}
-                                                </a>
+                                              <div className="flex flex-wrap gap-2">
+                                                {arrival.airport && (
+                                                  <a
+                                                    href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+                                                      arrival.airport
+                                                    )}`}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="inline-flex items-center gap-1 text-xs font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800/80 rounded-lg px-2.5 py-1 border border-gray-200 dark:border-gray-700 hover:border-green-400 hover:bg-green-50 dark:hover:bg-green-900/20 transition-colors cursor-pointer"
+                                                  >
+                                                    <MapPin className="h-3 w-3 text-green-500" />
+                                                    {arrival.airport}
+                                                  </a>
+                                                )}
+                                                {arrival.terminal && (
+                                                  <span className="inline-flex items-center gap-1 text-xs text-gray-600 dark:text-gray-400 bg-white dark:bg-gray-800/80 rounded-lg px-2.5 py-1 border border-gray-200 dark:border-gray-700">
+                                                    Terminal {arrival.terminal}
+                                                  </span>
+                                                )}
+                                                {arrival.gate && (
+                                                  <span className="inline-flex items-center gap-1 text-xs text-gray-600 dark:text-gray-400 bg-white dark:bg-gray-800/80 rounded-lg px-2.5 py-1 border border-gray-200 dark:border-gray-700">
+                                                    Gate {arrival.gate}
+                                                  </span>
+                                                )}
                                                 {arrival.timezone && (
                                                   <span className="inline-flex items-center gap-1 text-[10px] text-gray-500 dark:text-gray-500 bg-gray-100 dark:bg-gray-900/50 rounded px-1.5 py-0.5">
                                                     {arrival.timezone}
@@ -4473,175 +4430,255 @@ export default function ItineraryPlanner() {
                                       );
                                     })()}
 
-                                  {segment.type === "stay" &&
-                                    segment.location_address && (
-                                      <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-gradient-to-br from-indigo-50/50 to-white dark:from-indigo-900/10 dark:to-gray-900/30 p-4">
-                                        <div className="space-y-1">
-                                          <p className="text-[10px] font-black uppercase tracking-wider text-indigo-600 dark:text-indigo-400 flex items-center gap-1">
-                                            <MapPin className="h-3 w-3" />
-                                            Address
-                                          </p>
-                                          <div className="flex flex-wrap gap-2">
-                                            <a
-                                              href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
-                                                segment.location_address
-                                              )}`}
-                                              target="_blank"
-                                              rel="noopener noreferrer"
-                                              className="inline-flex items-center gap-1.5 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800/80 rounded-lg px-3 py-1.5 border border-gray-200 dark:border-gray-700 hover:border-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-colors cursor-pointer"
-                                            >
-                                              <MapPin className="h-3.5 w-3.5 text-indigo-500" />
-                                              {segment.location_address}
-                                            </a>
-                                            {segment.timezone && (
-                                              <span className="inline-flex items-center gap-1.5 text-sm font-medium text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-800/60 rounded-lg px-3 py-1.5 border border-gray-200 dark:border-gray-700">
-                                                <Clock className="h-3.5 w-3.5 text-gray-500 dark:text-gray-400" />
-                                                {segment.timezone}
-                                              </span>
+                                    {/* Ride Details Rendering */}
+                                    {["transport", "ground", "custom"].includes(
+                                      segment.type
+                                    ) &&
+                                      (() => {
+                                        const metadata =
+                                          (segment.metadata as Record<
+                                            string,
+                                            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                                            any
+                                          >) || {};
+                                        const departure = metadata.departure || {};
+                                        const arrival = metadata.arrival || {};
+
+                                        // Fallback to top-level fields if metadata is empty (backward compatibility)
+                                        const depAddr =
+                                          departure.address ||
+                                          segment.location_address;
+                                        const arrAddr = arrival.address;
+
+                                        if (!depAddr && !arrAddr) return null;
+
+                                        return (
+                                          <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-gradient-to-br from-green-50/50 to-white dark:from-green-900/10 dark:to-gray-900/30 p-4 space-y-3">
+                                            {depAddr && (
+                                              <div className="space-y-1">
+                                                <p className="text-[10px] font-black uppercase tracking-wider text-green-600 dark:text-green-400 flex items-center gap-1">
+                                                  <MapPin className="h-3 w-3" />
+                                                  Pickup
+                                                </p>
+                                                <div className="flex flex-wrap gap-2 items-center">
+                                                  <a
+                                                    href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+                                                      depAddr
+                                                    )}`}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="inline-flex items-center gap-1 text-xs font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800/80 rounded-lg px-2.5 py-1 border border-gray-200 dark:border-gray-700 hover:border-green-400 hover:bg-green-50 dark:hover:bg-green-900/20 transition-colors cursor-pointer"
+                                                  >
+                                                    {depAddr}
+                                                  </a>
+                                                  {departure.timezone && (
+                                                    <span className="inline-flex items-center gap-1 text-[10px] text-gray-500 dark:text-gray-500 bg-gray-100 dark:bg-gray-900/50 rounded px-1.5 py-0.5">
+                                                      {departure.timezone}
+                                                    </span>
+                                                  )}
+                                                </div>
+                                              </div>
+                                            )}
+
+                                            {arrAddr && (
+                                              <div className="space-y-1">
+                                                <p className="text-[10px] font-black uppercase tracking-wider text-green-600 dark:text-green-400 flex items-center gap-1">
+                                                  <MapPin className="h-3 w-3" />
+                                                  Drop-off
+                                                </p>
+                                                <div className="flex flex-wrap gap-2 items-center">
+                                                  <a
+                                                    href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+                                                      arrAddr
+                                                    )}`}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="inline-flex items-center gap-1 text-xs font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800/80 rounded-lg px-2.5 py-1 border border-gray-200 dark:border-gray-700 hover:border-green-400 hover:bg-green-50 dark:hover:bg-green-900/20 transition-colors cursor-pointer"
+                                                  >
+                                                    {arrAddr}
+                                                  </a>
+                                                  {arrival.timezone && (
+                                                    <span className="inline-flex items-center gap-1 text-[10px] text-gray-500 dark:text-gray-500 bg-gray-100 dark:bg-gray-900/50 rounded px-1.5 py-0.5">
+                                                      {arrival.timezone}
+                                                    </span>
+                                                  )}
+                                                </div>
+                                              </div>
                                             )}
                                           </div>
-                                        </div>
-                                      </div>
-                                    )}
+                                        );
+                                      })()}
 
-                                  <details className="rounded-2xl border border-dashed border-gray-200 dark:border-gray-800 bg-white/40 dark:bg-transparent">
-                                    <summary className="px-4 py-3 cursor-pointer text-sm font-medium text-gray-700 dark:text-gray-300 flex items-center justify-between">
-                                      <span className="flex items-center gap-2">
-                                        <CheckCircle className="h-4 w-4 text-gray-400" />
-                                        Checklist
-                                      </span>
-                                      <span className="text-xs text-gray-400 dark:text-gray-500">
-                                        {checklistItems[segment.id]?.filter(
-                                          (item) => item.completed
-                                        ).length || 0}{" "}
-                                        /{" "}
-                                        {checklistItems[segment.id]?.length ||
-                                          0}{" "}
-                                        complete
-                                      </span>
-                                    </summary>
-                                    <div className="px-4 pb-4 space-y-2">
-                                      {checklistItems[segment.id]?.map(
-                                        (item) => (
-                                          <div
-                                            key={item.id}
-                                            className="flex items-center gap-2 group"
-                                          >
-                                            <input
-                                              type="checkbox"
-                                              checked={item.completed}
-                                              onChange={() =>
-                                                handleToggleChecklistItem(
-                                                  segment.id,
-                                                  item.id
-                                                )
-                                              }
-                                              className="h-4 w-4 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500 dark:bg-gray-800"
-                                            />
-                                            <span
-                                              className={`flex-1 text-sm ${item.completed
-                                                ? "line-through text-gray-400 dark:text-gray-500"
-                                                : "text-gray-700 dark:text-gray-300"
-                                                }`}
-                                            >
-                                              {item.text}
-                                            </span>
-                                            <button
-                                              type="button"
-                                              onClick={() =>
-                                                handleDeleteChecklistItem(
-                                                  segment.id,
-                                                  item.id
-                                                )
-                                              }
-                                              className="opacity-0 group-hover:opacity-100 p-1 rounded text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition"
-                                            >
-                                              <X className="h-3 w-3" />
-                                            </button>
+                                    {segment.type === "stay" &&
+                                      segment.location_address && (
+                                        <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-gradient-to-br from-indigo-50/50 to-white dark:from-indigo-900/10 dark:to-gray-900/30 p-4">
+                                          <div className="space-y-1">
+                                            <p className="text-[10px] font-black uppercase tracking-wider text-indigo-600 dark:text-indigo-400 flex items-center gap-1">
+                                              <MapPin className="h-3 w-3" />
+                                              Address
+                                            </p>
+                                            <div className="flex flex-wrap gap-2">
+                                              <a
+                                                href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+                                                  segment.location_address
+                                                )}`}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="inline-flex items-center gap-1.5 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800/80 rounded-lg px-3 py-1.5 border border-gray-200 dark:border-gray-700 hover:border-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-colors cursor-pointer"
+                                              >
+                                                <MapPin className="h-3.5 w-3.5 text-indigo-500" />
+                                                {segment.location_address}
+                                              </a>
+                                              {segment.timezone && (
+                                                <span className="inline-flex items-center gap-1.5 text-sm font-medium text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-800/60 rounded-lg px-3 py-1.5 border border-gray-200 dark:border-gray-700">
+                                                  <Clock className="h-3.5 w-3.5 text-gray-500 dark:text-gray-400" />
+                                                  {segment.timezone}
+                                                </span>
+                                              )}
+                                            </div>
                                           </div>
-                                        )
-                                      )}
-                                      {addingChecklistItem[segment.id] ? (
-                                        <div className="flex items-center gap-2">
-                                          <input
-                                            type="text"
-                                            value={
-                                              newChecklistText[segment.id] || ""
-                                            }
-                                            onChange={(e) => {
-                                              const value = e.target.value;
-                                              if (value.length <= 50) {
-                                                setNewChecklistText((prev) => ({
-                                                  ...prev,
-                                                  [segment.id]: value,
-                                                }));
-                                              }
-                                            }}
-                                            onKeyDown={(e) => {
-                                              if (e.key === "Enter") {
-                                                handleAddChecklistItem(
-                                                  segment.id
-                                                );
-                                              } else if (e.key === "Escape") {
-                                                setAddingChecklistItem(
-                                                  (prev) => ({
-                                                    ...prev,
-                                                    [segment.id]: false,
-                                                  })
-                                                );
-                                                setNewChecklistText((prev) => ({
-                                                  ...prev,
-                                                  [segment.id]: "",
-                                                }));
-                                              }
-                                            }}
-                                            placeholder="Task name (max 50 chars)"
-                                            autoFocus
-                                            className="flex-1 text-sm rounded-lg border border-blue-300 dark:border-blue-600 bg-white dark:bg-gray-800 px-3 py-2 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                          />
-                                          <span className="text-[10px] text-gray-400">
-                                            {
-                                              (
-                                                newChecklistText[segment.id] ||
-                                                ""
-                                              ).length
-                                            }
-                                            /50
-                                          </span>
                                         </div>
-                                      ) : (
-                                        <button
-                                          type="button"
-                                          onClick={() =>
-                                            setAddingChecklistItem((prev) => ({
-                                              ...prev,
-                                              [segment.id]: true,
-                                            }))
-                                          }
-                                          className="text-xs font-medium text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300"
-                                        >
-                                          + Add task
-                                        </button>
                                       )}
-                                    </div>
-                                  </details>
-                                </div>
 
-                                {
-                                  isFirst && (
-                                    <div className="absolute left-[46px] top-3 w-3 h-3 rounded-full bg-blue-500 ring-4 ring-white dark:ring-gray-900" />
-                                  )
-                                }
-                                {
-                                  isLast && (
-                                    <div className="absolute left-[46px] bottom-3 w-3 h-3 rounded-full bg-blue-300 dark:bg-blue-500 ring-4 ring-white dark:ring-gray-900" />
-                                  )
-                                }
-                              </div>
-                            );
-                          })}
+                                    <details className="rounded-2xl border border-dashed border-gray-200 dark:border-gray-800 bg-white/40 dark:bg-transparent">
+                                      <summary className="px-4 py-3 cursor-pointer text-sm font-medium text-gray-700 dark:text-gray-300 flex items-center justify-between">
+                                        <span className="flex items-center gap-2">
+                                          <CheckCircle className="h-4 w-4 text-gray-400" />
+                                          Checklist
+                                        </span>
+                                        <span className="text-xs text-gray-400 dark:text-gray-500">
+                                          {checklistItems[segment.id]?.filter(
+                                            (item) => item.completed
+                                          ).length || 0}{" "}
+                                          /{" "}
+                                          {checklistItems[segment.id]?.length ||
+                                            0}{" "}
+                                          complete
+                                        </span>
+                                      </summary>
+                                      <div className="px-4 pb-4 space-y-2">
+                                        {checklistItems[segment.id]?.map(
+                                          (item) => (
+                                            <div
+                                              key={item.id}
+                                              className="flex items-center gap-2 group"
+                                            >
+                                              <input
+                                                type="checkbox"
+                                                checked={item.completed}
+                                                onChange={() =>
+                                                  handleToggleChecklistItem(
+                                                    segment.id,
+                                                    item.id
+                                                  )
+                                                }
+                                                className="h-4 w-4 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500 dark:bg-gray-800"
+                                              />
+                                              <span
+                                                className={`flex-1 text-sm ${item.completed
+                                                  ? "line-through text-gray-400 dark:text-gray-500"
+                                                  : "text-gray-700 dark:text-gray-300"
+                                                  }`}
+                                              >
+                                                {item.text}
+                                              </span>
+                                              <button
+                                                type="button"
+                                                onClick={() =>
+                                                  handleDeleteChecklistItem(
+                                                    segment.id,
+                                                    item.id
+                                                  )
+                                                }
+                                                className="opacity-0 group-hover:opacity-100 p-1 rounded text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition"
+                                              >
+                                                <X className="h-3 w-3" />
+                                              </button>
+                                            </div>
+                                          )
+                                        )}
+                                        {addingChecklistItem[segment.id] ? (
+                                          <div className="flex items-center gap-2">
+                                            <input
+                                              type="text"
+                                              value={
+                                                newChecklistText[segment.id] || ""
+                                              }
+                                              onChange={(e) => {
+                                                const value = e.target.value;
+                                                if (value.length <= 50) {
+                                                  setNewChecklistText((prev) => ({
+                                                    ...prev,
+                                                    [segment.id]: value,
+                                                  }));
+                                                }
+                                              }}
+                                              onKeyDown={(e) => {
+                                                if (e.key === "Enter") {
+                                                  handleAddChecklistItem(
+                                                    segment.id
+                                                  );
+                                                } else if (e.key === "Escape") {
+                                                  setAddingChecklistItem(
+                                                    (prev) => ({
+                                                      ...prev,
+                                                      [segment.id]: false,
+                                                    })
+                                                  );
+                                                  setNewChecklistText((prev) => ({
+                                                    ...prev,
+                                                    [segment.id]: "",
+                                                  }));
+                                                }
+                                              }}
+                                              placeholder="Task name (max 50 chars)"
+                                              autoFocus
+                                              className="flex-1 text-sm rounded-lg border border-blue-300 dark:border-blue-600 bg-white dark:bg-gray-800 px-3 py-2 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                            />
+                                            <span className="text-[10px] text-gray-400">
+                                              {
+                                                (
+                                                  newChecklistText[segment.id] ||
+                                                  ""
+                                                ).length
+                                              }
+                                              /50
+                                            </span>
+                                          </div>
+                                        ) : (
+                                          <button
+                                            type="button"
+                                            onClick={() =>
+                                              setAddingChecklistItem((prev) => ({
+                                                ...prev,
+                                                [segment.id]: true,
+                                              }))
+                                            }
+                                            className="text-xs font-medium text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300"
+                                          >
+                                            + Add task
+                                          </button>
+                                        )}
+                                      </div>
+                                    </details>
+                                  </div>
+
+                                  {
+                                    isFirst && (
+                                      <div className="absolute left-[46px] top-3 w-3 h-3 rounded-full bg-blue-500 ring-4 ring-white dark:ring-gray-900" />
+                                    )
+                                  }
+                                  {
+                                    isLast && (
+                                      <div className="absolute left-[46px] bottom-3 w-3 h-3 rounded-full bg-blue-300 dark:bg-blue-500 ring-4 ring-white dark:ring-gray-900" />
+                                    )
+                                  }
+                                </div>
+                              );
+                            })}
+                          </div>
                         </div>
-                      </div>
+                      </>
                     )}
                   </div>
 
@@ -4883,6 +4920,7 @@ export default function ItineraryPlanner() {
                       })}
                     </div>
                   </div>
+
                 </div>
               </div>
             </div>
