@@ -194,7 +194,8 @@ const SEGMENT_TYPE_OPTIONS: SegmentTypeOption[] = SEGMENT_TYPES.map(
 const SMART_FILL_SUPPORTED_TYPES = new Set<SegmentType>(["flight", "stay"]);
 
 function normalizeSegmentType(type: string | null | undefined): SegmentType {
-  if (type === "stay") return "stay";
+  if (type === "stay" || type === "lodging") return "stay";
+  if (type === "transport" || type === "ground" || type === "custom") return "transport";
   return "flight";
 }
 
@@ -1805,7 +1806,7 @@ export default function ItineraryPlanner() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         user_id: userId,
-        type: "ground",
+        type: "transport",
         title: data.title.trim(),
         start_time: data.departureTime || null,
         end_time: data.arrivalTime || null,
