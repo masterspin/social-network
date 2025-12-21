@@ -441,11 +441,9 @@ function buildMetadataPayload(
 
 function isoToLocalInput(value?: string | null): string {
   if (!value) return "";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "";
-  const tzOffset = date.getTimezoneOffset() * 60000;
-  const local = new Date(date.getTime() - tzOffset);
-  return local.toISOString().slice(0, 16);
+  // Just extract the datetime portion without any timezone conversion
+  // Format: "2026-02-27T18:15:00Z" or "2026-02-27T18:15:00" -> "2026-02-27T18:15"
+  return value.slice(0, 16);
 }
 
 function mergeSmartSuggestion(
@@ -539,6 +537,92 @@ function formatDate(
   options?: Intl.DateTimeFormatOptions
 ): string | null {
   if (!value) return null;
+
+  // Check if value has UTC timezone indicator
+  const hasTimezone = value.includes("Z") || value.match(/[+-]\d{2}:\d{2}$/);
+
+  if (!hasTimezone) {
+    // Timezone-naive datetime - format as-is
+    try {
+      const match = value.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/);
+      if (match) {
+        const [, year, month, day, hour, minute] = match;
+
+        if (options?.hour) {
+          const monthNames = [
+            "Jan",
+            "Feb",
+            "Mar",
+            "Apr",
+            "May",
+            "Jun",
+            "Jul",
+            "Aug",
+            "Sep",
+            "Oct",
+            "Nov",
+            "Dec",
+          ];
+          const monthName =
+            options.month === "short" ? monthNames[parseInt(month) - 1] : month;
+          const dayNum = parseInt(day);
+          const hourNum = parseInt(hour);
+          const minuteStr = minute;
+
+          const isPM = hourNum >= 12;
+          const displayHour =
+            hourNum === 0 ? 12 : hourNum > 12 ? hourNum - 12 : hourNum;
+          const ampm = isPM ? "PM" : "AM";
+
+          return `${monthName} ${dayNum}, ${displayHour}:${minuteStr} ${ampm}`;
+        }
+
+        if (options?.month && !options?.hour) {
+          const monthNames = [
+            "Jan",
+            "Feb",
+            "Mar",
+            "Apr",
+            "May",
+            "Jun",
+            "Jul",
+            "Aug",
+            "Sep",
+            "Oct",
+            "Nov",
+            "Dec",
+          ];
+          const monthName =
+            options.month === "short" ? monthNames[parseInt(month) - 1] : month;
+          const dayNum = parseInt(day);
+
+          if (options?.year) {
+            return `${monthName} ${dayNum}, ${year}`;
+          }
+          return `${monthName} ${dayNum}`;
+        }
+
+        const date = new Date(
+          parseInt(year),
+          parseInt(month) - 1,
+          parseInt(day)
+        );
+        const formatter = new Intl.DateTimeFormat(
+          "en-US",
+          options ?? {
+            month: "short",
+            day: "numeric",
+            year: "numeric",
+          }
+        );
+        return formatter.format(date);
+      }
+    } catch (e) {
+      // Fall through to default handling
+    }
+  }
+
+  // Has timezone - use standard Date formatting
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return null;
   const formatter = new Intl.DateTimeFormat(
@@ -568,6 +652,13 @@ function formatDateRange(
 }
 
 function formatSegmentTime(segment: SegmentRow): string {
+  console.log("formatSegmentTime called with:", {
+    type: segment.type,
+    start_time: segment.start_time,
+    end_time: segment.end_time,
+    metadata: segment.metadata,
+  });
+
   if (segment.is_all_day) {
     const day = formatDate(segment.start_time, {
       month: "short",
@@ -575,6 +666,7 @@ function formatSegmentTime(segment: SegmentRow): string {
     });
     return day ? `${day} · All day` : "All day";
   }
+
   const start = formatDate(segment.start_time, {
     month: "short",
     day: "numeric",
@@ -1554,6 +1646,15 @@ export default function ItineraryPlanner() {
       : `/api/itineraries/${encodeURIComponent(selectedId)}/segments`;
     const method = isEdit ? "PATCH" : "POST";
 
+    console.log("Submitting flight with times:", {
+      departureTime: data.departureTime,
+      arrivalTime: data.arrivalTime,
+      withSeconds: {
+        start: data.departureTime ? data.departureTime + ":00" : null,
+        end: data.arrivalTime ? data.arrivalTime + ":00" : null,
+      },
+    });
+
     const response = await fetch(url, {
       method,
       headers: { "Content-Type": "application/json" },
@@ -1561,8 +1662,8 @@ export default function ItineraryPlanner() {
         user_id: userId,
         type: "flight",
         title: data.title.trim(),
-        start_time: data.departureTime || null,
-        end_time: data.arrivalTime || null,
+        start_time: data.departureTime ? data.departureTime + ":00" : null,
+        end_time: data.arrivalTime ? data.arrivalTime + ":00" : null,
         provider_name: data.airline.trim() || null,
         confirmation_code: data.confirmationCode.trim() || null,
         transport_number: data.flightNumber.trim() || null,
@@ -2084,6 +2185,13 @@ export default function ItineraryPlanner() {
         flightNumber: segment.transport_number || "",
         seatInfo: segment.seat_info || "",
       };
+
+      console.log("Raw times from DB:", {
+        start_time: segment.start_time,
+        end_time: segment.end_time,
+        departureTime: isoToLocalInput(segment.start_time),
+        arrivalTime: isoToLocalInput(segment.end_time),
+      });
 
       setEditFlightData(flightData);
       setEditingFlightSegmentId(segment.id);
