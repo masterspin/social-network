@@ -871,57 +871,175 @@ export default function ItineraryPlanner() {
     }));
   }, []);
 
-  const handleAddChecklistItem = useCallback(
-    (segmentId: string) => {
-      const text = newChecklistText[segmentId]?.trim();
-      if (!text || text.length > 50) return;
+  const loadChecklistItems = useCallback(
+    async (
+      itineraryId: string,
+      currentUserId: string,
+      segments: { id: string }[]
+    ) => {
+      if (!segments || segments.length === 0) return;
 
-      const newItem = {
-        id: `temp-${Date.now()}-${Math.random()}`,
-        text,
-        completed: false,
-      };
+      const allItems: Record<
+        string,
+        { id: string; text: string; completed: boolean }[]
+      > = {};
 
-      setChecklistItems((prev) => ({
-        ...prev,
-        [segmentId]: [...(prev[segmentId] || []), newItem],
-      }));
+      for (const segment of segments) {
+        try {
+          const response = await fetch(
+            `/api/itineraries/${encodeURIComponent(
+              itineraryId
+            )}/segments/${encodeURIComponent(
+              segment.id
+            )}/checklist?user_id=${encodeURIComponent(currentUserId)}`,
+            {
+              cache: "no-store",
+              headers: { "x-user-id": currentUserId },
+            }
+          );
+          if (response.ok) {
+            const payload = await response.json();
+            allItems[segment.id] = (payload?.data || []).map(
+              (item: { id: string; title: string; status: string }) => ({
+                id: item.id,
+                text: item.title,
+                completed: item.status === "done",
+              })
+            );
+          }
+        } catch (error) {
+          console.error(
+            `Failed to load checklist for segment ${segment.id}`,
+            error
+          );
+        }
+      }
 
-      setNewChecklistText((prev) => ({
-        ...prev,
-        [segmentId]: "",
-      }));
-
-      setAddingChecklistItem((prev) => ({
-        ...prev,
-        [segmentId]: false,
-      }));
+      setChecklistItems(allItems);
     },
-    [newChecklistText]
+    []
+  );
+
+  const handleAddChecklistItem = useCallback(
+    async (segmentId: string) => {
+      const text = newChecklistText[segmentId]?.trim();
+      if (!text || text.length > 50 || !userId || !selectedId) return;
+
+      try {
+        const response = await fetch(
+          `/api/itineraries/${encodeURIComponent(
+            selectedId
+          )}/segments/${encodeURIComponent(segmentId)}/checklist`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ user_id: userId, text }),
+          }
+        );
+
+        if (!response.ok) throw new Error("Failed to add checklist item");
+
+        const payload = await response.json();
+        const newItem = {
+          id: payload.data.id,
+          text: payload.data.title,
+          completed: payload.data.status === "done",
+        };
+
+        setChecklistItems((prev) => ({
+          ...prev,
+          [segmentId]: [...(prev[segmentId] || []), newItem],
+        }));
+
+        setNewChecklistText((prev) => ({
+          ...prev,
+          [segmentId]: "",
+        }));
+
+        setAddingChecklistItem((prev) => ({
+          ...prev,
+          [segmentId]: false,
+        }));
+      } catch (error) {
+        console.error(error);
+        setFeedback({ type: "error", text: "Failed to add checklist item." });
+      }
+    },
+    [newChecklistText, userId, selectedId]
   );
 
   const handleDeleteChecklistItem = useCallback(
-    (segmentId: string, itemId: string) => {
-      setChecklistItems((prev) => ({
-        ...prev,
-        [segmentId]: (prev[segmentId] || []).filter(
-          (item) => item.id !== itemId
-        ),
-      }));
+    async (segmentId: string, itemId: string) => {
+      if (!userId || !selectedId) return;
+
+      try {
+        const response = await fetch(
+          `/api/itineraries/${encodeURIComponent(
+            selectedId
+          )}/segments/${encodeURIComponent(
+            segmentId
+          )}/checklist/${encodeURIComponent(itemId)}`,
+          {
+            method: "DELETE",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ user_id: userId }),
+          }
+        );
+
+        if (!response.ok) throw new Error("Failed to delete checklist item");
+
+        setChecklistItems((prev) => ({
+          ...prev,
+          [segmentId]: (prev[segmentId] || []).filter(
+            (item) => item.id !== itemId
+          ),
+        }));
+      } catch (error) {
+        console.error(error);
+        setFeedback({
+          type: "error",
+          text: "Failed to delete checklist item.",
+        });
+      }
     },
-    []
+    [userId, selectedId]
   );
 
   const handleToggleChecklistItem = useCallback(
-    (segmentId: string, itemId: string) => {
-      setChecklistItems((prev) => ({
-        ...prev,
-        [segmentId]: (prev[segmentId] || []).map((item) =>
-          item.id === itemId ? { ...item, completed: !item.completed } : item
-        ),
-      }));
+    async (segmentId: string, itemId: string) => {
+      if (!userId || !selectedId) return;
+
+      try {
+        const response = await fetch(
+          `/api/itineraries/${encodeURIComponent(
+            selectedId
+          )}/segments/${encodeURIComponent(
+            segmentId
+          )}/checklist/${encodeURIComponent(itemId)}`,
+          {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ user_id: userId }),
+          }
+        );
+
+        if (!response.ok) throw new Error("Failed to toggle checklist item");
+
+        setChecklistItems((prev) => ({
+          ...prev,
+          [segmentId]: (prev[segmentId] || []).map((item) =>
+            item.id === itemId ? { ...item, completed: !item.completed } : item
+          ),
+        }));
+      } catch (error) {
+        console.error(error);
+        setFeedback({
+          type: "error",
+          text: "Failed to update checklist item.",
+        });
+      }
     },
-    []
+    [userId, selectedId]
   );
 
   const closeSegmentModal = useCallback(() => {
@@ -1075,8 +1193,16 @@ export default function ItineraryPlanner() {
           throw new Error(message);
         }
         const payload = await response.json();
-        setDetail(payload?.data ?? null);
+        const detailData = payload?.data ?? null;
+        setDetail(detailData);
         await loadComments(itineraryId, currentUserId);
+        if (detailData?.segments) {
+          await loadChecklistItems(
+            itineraryId,
+            currentUserId,
+            detailData.segments
+          );
+        }
       } catch (error) {
         console.error(error);
         setFeedback({
@@ -1091,7 +1217,7 @@ export default function ItineraryPlanner() {
         setDetailLoading(false);
       }
     },
-    [loadComments]
+    [loadComments, loadChecklistItems]
   );
 
   useEffect(() => {

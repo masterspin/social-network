@@ -440,6 +440,7 @@ export type Database = {
           itinerary_id: string;
           notes: string | null;
           priority: string | null;
+          segment_id: string | null;
           status: string | null;
           title: string;
           updated_at: string | null;
@@ -455,6 +456,7 @@ export type Database = {
           itinerary_id: string;
           notes?: string | null;
           priority?: string | null;
+          segment_id?: string | null;
           status?: string | null;
           title: string;
           updated_at?: string | null;
@@ -470,6 +472,7 @@ export type Database = {
           itinerary_id?: string;
           notes?: string | null;
           priority?: string | null;
+          segment_id?: string | null;
           status?: string | null;
           title?: string;
           updated_at?: string | null;
@@ -501,6 +504,13 @@ export type Database = {
             columns: ["itinerary_id"];
             isOneToOne: false;
             referencedRelation: "itineraries";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "itinerary_tasks_segment_id_fkey";
+            columns: ["segment_id"];
+            isOneToOne: false;
+            referencedRelation: "itinerary_segments";
             referencedColumns: ["id"];
           }
         ];
