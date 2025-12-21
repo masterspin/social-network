@@ -191,6 +191,7 @@ export default function ItineraryTimeline({
                 }}
                 initialDate={initialDate}
                 events={events}
+                eventDisplay="block"
                 eventContent={renderEventContent}
                 eventClick={(info) => {
                     if (onSegmentClick && info.event.extendedProps.segment) {
