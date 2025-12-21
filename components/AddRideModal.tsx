@@ -1,0 +1,354 @@
+"use client";
+
+import { useState, useEffect } from "react";
+import { X } from "lucide-react";
+import AddressAutocomplete from "./AddressAutocomplete";
+
+interface AddRideModalProps {
+    isOpen: boolean;
+    onClose: () => void;
+    onSubmit: (data: RideFormData) => Promise<void>;
+    initialData?: Partial<RideFormData>;
+}
+
+export interface RideFormData {
+    type: "transport"; // Matches the backend type for cars/rides
+    title: string;
+    costAmount: string;
+    // Departure
+    departureAddress: string;
+    departureTime: string;
+    departureTimezone: string;
+    departureLat: string;
+    departureLng: string;
+    // Arrival
+    arrivalAddress: string;
+    arrivalTime: string;
+    arrivalTimezone: string;
+    arrivalLat: string;
+    arrivalLng: string;
+}
+
+export default function AddRideModal({
+    isOpen,
+    onClose,
+    onSubmit,
+    initialData,
+}: AddRideModalProps) {
+    const isEdit = !!initialData;
+    const [formData, setFormData] = useState<RideFormData>({
+        type: "transport",
+        title: initialData?.title || "",
+        costAmount: initialData?.costAmount || "",
+        departureAddress: initialData?.departureAddress || "",
+        departureTime: initialData?.departureTime || "",
+        departureTimezone: initialData?.departureTimezone || "",
+        departureLat: initialData?.departureLat || "",
+        departureLng: initialData?.departureLng || "",
+        arrivalAddress: initialData?.arrivalAddress || "",
+        arrivalTime: initialData?.arrivalTime || "",
+        arrivalTimezone: initialData?.arrivalTimezone || "",
+        arrivalLat: initialData?.arrivalLat || "",
+        arrivalLng: initialData?.arrivalLng || "",
+    });
+
+    const [isSubmitting, setIsSubmitting] = useState(false);
+
+    // Update form data when modal opens or initialData changes
+    useEffect(() => {
+        if (isOpen) {
+            if (initialData) {
+                setFormData({
+                    type: "transport",
+                    title: initialData.title || "",
+                    costAmount: initialData.costAmount || "",
+                    departureAddress: initialData.departureAddress || "",
+                    departureTime: initialData.departureTime || "",
+                    departureTimezone: initialData.departureTimezone || "",
+                    departureLat: initialData.departureLat || "",
+                    departureLng: initialData.departureLng || "",
+                    arrivalAddress: initialData.arrivalAddress || "",
+                    arrivalTime: initialData.arrivalTime || "",
+                    arrivalTimezone: initialData.arrivalTimezone || "",
+                    arrivalLat: initialData.arrivalLat || "",
+                    arrivalLng: initialData.arrivalLng || "",
+                });
+            } else {
+                setFormData({
+                    type: "transport",
+                    title: "",
+                    costAmount: "",
+                    departureAddress: "",
+                    departureTime: "",
+                    departureTimezone: "",
+                    departureLat: "",
+                    departureLng: "",
+                    arrivalAddress: "",
+                    arrivalTime: "",
+                    arrivalTimezone: "",
+                    arrivalLat: "",
+                    arrivalLng: "",
+                });
+            }
+        }
+    }, [isOpen, initialData]);
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!formData.title.trim()) {
+            alert("Please enter a title");
+            return;
+        }
+        setIsSubmitting(true);
+        try {
+            await onSubmit(formData);
+            // Reset form
+            setFormData({
+                type: "transport",
+                title: "",
+                costAmount: "",
+                departureAddress: "",
+                departureTime: "",
+                departureTimezone: "",
+                departureLat: "",
+                departureLng: "",
+                arrivalAddress: "",
+                arrivalTime: "",
+                arrivalTimezone: "",
+                arrivalLat: "",
+                arrivalLng: "",
+            });
+            onClose();
+        } catch (error) {
+            console.error("Error submitting form:", error);
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
+    if (!isOpen) return null;
+
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div
+                className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+                onClick={onClose}
+            />
+            <div className="relative w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-3xl bg-white dark:bg-gray-900 shadow-2xl border border-gray-200 dark:border-gray-800">
+                <div className="sticky top-0 z-10 bg-white dark:bg-gray-900 px-8 py-5 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between">
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                        {isEdit ? "Edit Car/Ride Segment" : "Add Car/Ride Segment"}
+                    </h3>
+                    <button
+                        type="button"
+                        onClick={onClose}
+                        className="p-2 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:text-gray-300 dark:hover:bg-gray-800 transition"
+                    >
+                        <X className="h-5 w-5" />
+                    </button>
+                </div>
+
+                <form onSubmit={handleSubmit} className="p-6 lg:p-8 space-y-6">
+                    {/* Title and Cost */}
+                    <div className="grid gap-3 md:grid-cols-2">
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                Title *
+                            </label>
+                            <input
+                                type="text"
+                                value={formData.title}
+                                onChange={(e) =>
+                                    setFormData((prev) => ({ ...prev, title: e.target.value }))
+                                }
+                                className="w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                placeholder="Car Rental · Hertz"
+                                required
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                Cost (USD)
+                            </label>
+                            <div className="relative">
+                                <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-sm font-semibold text-gray-500 dark:text-gray-400">
+                                    $
+                                </span>
+                                <input
+                                    type="number"
+                                    step="0.01"
+                                    min="0"
+                                    value={formData.costAmount}
+                                    onChange={(e) =>
+                                        setFormData((prev) => ({
+                                            ...prev,
+                                            costAmount: e.target.value,
+                                        }))
+                                    }
+                                    className="w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 pl-7 pr-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    placeholder="0.00"
+                                />
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Location & Timing */}
+                    <section className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white/60 dark:bg-gray-950/40 p-4 sm:p-5 space-y-4">
+                        <p className="text-[11px] font-black uppercase tracking-[0.2em] text-gray-400 dark:text-gray-500">
+                            Trip Details
+                        </p>
+                        <div className="grid grid-cols-1 gap-6">
+                            {/* Pickup / Departure */}
+                            <div className="space-y-3">
+                                <p className="text-sm font-medium text-blue-600 dark:text-blue-400">
+                                    Pickup / Start
+                                </p>
+                                <div>
+                                    <AddressAutocomplete
+                                        label="Address"
+                                        value={formData.departureAddress}
+                                        onChange={(val) =>
+                                            setFormData((prev) => ({ ...prev, departureAddress: val }))
+                                        }
+                                        onPlaceSelect={(place) => {
+                                            setFormData((prev) => ({
+                                                ...prev,
+                                                departureAddress: place.address || place.name,
+                                                departureLat: place.lat ? place.lat.toString() : "",
+                                                departureLng: place.lng ? place.lng.toString() : "",
+                                                departureTimezone: place.timezone || prev.departureTimezone,
+                                            }));
+                                        }}
+                                        placeholder="Enter pickup address"
+                                    />
+                                </div>
+                                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                            Date & time
+                                        </label>
+                                        <input
+                                            type="datetime-local"
+                                            value={formData.departureTime}
+                                            onChange={(e) =>
+                                                setFormData((prev) => ({
+                                                    ...prev,
+                                                    departureTime: e.target.value,
+                                                }))
+                                            }
+                                            className="w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                            Timezone
+                                        </label>
+                                        <input
+                                            type="text"
+                                            value={formData.departureTimezone}
+                                            onChange={(e) =>
+                                                setFormData((prev) => ({
+                                                    ...prev,
+                                                    departureTimezone: e.target.value,
+                                                }))
+                                            }
+                                            className="w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                            placeholder="e.g. America/Los_Angeles"
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="border-t border-gray-200 dark:border-gray-800" />
+
+                            {/* Dropoff / Arrival */}
+                            <div className="space-y-3">
+                                <p className="text-sm font-medium text-green-600 dark:text-green-400">
+                                    Dropoff / End
+                                </p>
+                                <div>
+                                    <AddressAutocomplete
+                                        label="Address"
+                                        value={formData.arrivalAddress}
+                                        onChange={(val) =>
+                                            setFormData((prev) => ({ ...prev, arrivalAddress: val }))
+                                        }
+                                        onPlaceSelect={(place) => {
+                                            setFormData((prev) => ({
+                                                ...prev,
+                                                arrivalAddress: place.address || place.name,
+                                                arrivalLat: place.lat ? place.lat.toString() : "",
+                                                arrivalLng: place.lng ? place.lng.toString() : "",
+                                                arrivalTimezone: place.timezone || prev.arrivalTimezone,
+                                            }));
+                                        }}
+                                        placeholder="Enter destination address"
+                                    />
+                                </div>
+                                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                            Date & time
+                                        </label>
+                                        <input
+                                            type="datetime-local"
+                                            value={formData.arrivalTime}
+                                            onChange={(e) =>
+                                                setFormData((prev) => ({
+                                                    ...prev,
+                                                    arrivalTime: e.target.value,
+                                                }))
+                                            }
+                                            className="w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                            Timezone
+                                        </label>
+                                        <input
+                                            type="text"
+                                            value={formData.arrivalTimezone}
+                                            onChange={(e) =>
+                                                setFormData((prev) => ({
+                                                    ...prev,
+                                                    arrivalTimezone: e.target.value,
+                                                }))
+                                            }
+                                            className="w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                            placeholder="e.g. America/Los_Angeles"
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+
+                    {/* Submit */}
+                    <div className="flex justify-end gap-3 pt-4 border-t border-gray-200 dark:border-gray-800">
+                        <button
+                            type="button"
+                            onClick={onClose}
+                            className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition"
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            type="submit"
+                            disabled={isSubmitting}
+                            className="px-4 py-2 text-sm font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                            {isSubmitting
+                                ? isEdit
+                                    ? "Saving..."
+                                    : "Adding..."
+                                : isEdit
+                                    ? "Save Changes"
+                                    : "Add Ride"}
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    );
+}

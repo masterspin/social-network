@@ -34,8 +34,9 @@ import AddressAutocomplete from "./AddressAutocomplete";
 import ChatAssistant from "./ChatAssistant";
 import AddFlightModal, { type FlightFormData } from "./AddFlightModal";
 import AddStayModal, { type StayFormData } from "./AddStayModal";
+import AddRideModal, { type RideFormData } from "./AddRideModal";
 
-const SEGMENT_TYPES = ["flight", "stay"] as const;
+const SEGMENT_TYPES = ["flight", "stay", "transport"] as const;
 
 type SegmentType = (typeof SEGMENT_TYPES)[number];
 
@@ -159,6 +160,22 @@ const SEGMENT_TYPE_CONFIG: Record<SegmentType, SegmentTypeConfig> = {
     showSeatInput: true,
     seatLabel: "Room type",
     seatPlaceholder: "King Suite",
+  },
+  transport: {
+    key: "transport",
+    label: "Car / Ride",
+    smartFillHint: "Use standard entry",
+    titlePlaceholder: "Car Rental · Hertz",
+    descriptionPlaceholder: "Pickup instructions, car type",
+    providerLabel: "Provider",
+    providerPlaceholder: "Hertz / Uber",
+    confirmationLabel: "Confirmation",
+    confirmationPlaceholder: "RES123",
+    referenceLabel: "Booking Ref",
+    referencePlaceholder: "123456",
+    showSeatInput: false,
+    seatLabel: "Type",
+    seatPlaceholder: "Standard SUV",
   },
 };
 
@@ -1176,10 +1193,20 @@ export default function ItineraryPlanner() {
     [userId, selectedId]
   );
 
+  /* Ride Modal State */
+  const [showRideModal, setShowRideModal] = useState(false);
+  const [editingRideSegmentId, setEditingRideSegmentId] = useState<
+    string | null
+  >(null);
+  const [editRideData, setEditRideData] = useState<RideFormData | null>(null);
+
   const closeSegmentModal = useCallback(() => {
     resetSegmentForm();
     setShowFlightModal(false);
     setShowStayModal(false);
+    setShowRideModal(false);
+    setEditRideData(null);
+    setEditingRideSegmentId(null);
   }, [resetSegmentForm]);
 
   useEffect(() => {
@@ -1756,6 +1783,68 @@ export default function ItineraryPlanner() {
       setEditStayData(null);
     }
 
+    await loadItineraryDetail(selectedId, userId);
+  };
+
+  /* Ride Handler */
+  const handleRideSubmit = async (data: RideFormData) => {
+    if (!userId || !selectedId) {
+      throw new Error("Missing user or itinerary");
+    }
+
+    const isEdit = !!editingRideSegmentId;
+    const url = isEdit
+      ? `/api/itineraries/${encodeURIComponent(
+        selectedId
+      )}/segments/${encodeURIComponent(editingRideSegmentId)}`
+      : `/api/itineraries/${encodeURIComponent(selectedId)}/segments`;
+    const method = isEdit ? "PATCH" : "POST";
+
+    const response = await fetch(url, {
+      method,
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        user_id: userId,
+        type: "transport",
+        title: data.title.trim(),
+        start_time: data.departureTime || null,
+        end_time: data.arrivalTime || null,
+        location_name: data.departureAddress || null,
+        location_address: data.departureAddress || null,
+        location_lat: data.departureLat ? Number(data.departureLat) : null,
+        location_lng: data.departureLng ? Number(data.departureLng) : null,
+        timezone: data.departureTimezone || null,
+        cost_amount: data.costAmount ? parseFloat(data.costAmount) : null,
+        cost_currency: data.costAmount ? "USD" : null,
+        metadata: {
+          departure: {
+            address: data.departureAddress,
+            timezone: data.departureTimezone,
+            lat: data.departureLat,
+            lng: data.departureLng,
+          },
+          arrival: {
+            address: data.arrivalAddress,
+            timezone: data.arrivalTimezone,
+            lat: data.arrivalLat,
+            lng: data.arrivalLng,
+          },
+        },
+      }),
+    });
+
+    if (!response.ok) {
+      const payload = await response.json().catch(() => ({}));
+      throw new Error(payload?.error || "Failed to save ride segment");
+    }
+
+    setFeedback({
+      type: "success",
+      text: isEdit ? "Ride updated!" : "Ride added!",
+    });
+    setShowRideModal(false);
+    setEditRideData(null);
+    setEditingRideSegmentId(null);
     await loadItineraryDetail(selectedId, userId);
   };
 
@@ -3174,7 +3263,7 @@ export default function ItineraryPlanner() {
                                 setShowSegmentTypeSelector(false);
                                 setShowStayModal(true);
                               }}
-                              className="w-full px-4 py-3 text-left hover:bg-purple-50 dark:hover:bg-purple-900/20 transition flex items-center gap-3"
+                              className="w-full px-4 py-3 text-left hover:bg-purple-50 dark:hover:bg-purple-900/20 transition flex items-center gap-3 border-b border-gray-100 dark:border-gray-800"
                             >
                               <div className="h-10 w-10 rounded-full bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center">
                                 <Hotel className="h-5 w-5 text-purple-600 dark:text-purple-400" />
@@ -3185,6 +3274,26 @@ export default function ItineraryPlanner() {
                                 </div>
                                 <div className="text-xs text-gray-500 dark:text-gray-400">
                                   Add accommodation
+                                </div>
+                              </div>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setShowSegmentTypeSelector(false);
+                                setShowRideModal(true);
+                              }}
+                              className="w-full px-4 py-3 text-left hover:bg-green-50 dark:hover:bg-green-900/20 transition flex items-center gap-3"
+                            >
+                              <div className="h-10 w-10 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
+                                <Car className="h-5 w-5 text-green-600 dark:text-green-400" />
+                              </div>
+                              <div>
+                                <div className="text-sm font-semibold text-gray-900 dark:text-white">
+                                  Car / Ride
+                                </div>
+                                <div className="text-xs text-gray-500 dark:text-gray-400">
+                                  Add car rental or ride
                                 </div>
                               </div>
                             </button>
@@ -3220,6 +3329,16 @@ export default function ItineraryPlanner() {
                     }}
                     onSubmit={handleStaySubmit}
                     initialData={editStayData || undefined}
+                  />
+                  <AddRideModal
+                    isOpen={showRideModal}
+                    onClose={() => {
+                      setShowRideModal(false);
+                      setEditingRideSegmentId(null);
+                      setEditRideData(null);
+                    }}
+                    onSubmit={handleRideSubmit}
+                    initialData={editRideData || undefined}
                   />
 
                   {false && (
