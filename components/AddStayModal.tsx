@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { X } from "lucide-react";
 
 interface AddStayModalProps {
   isOpen: boolean;
@@ -81,38 +82,15 @@ export default function AddStayModal({
       />
       <div className="relative w-full max-w-4xl lg:max-w-5xl max-h-[90vh] overflow-y-auto rounded-3xl bg-white dark:bg-gray-900 shadow-2xl border border-gray-200 dark:border-gray-800">
         <div className="sticky top-0 z-10 bg-white dark:bg-gray-900 px-8 py-5 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-              {isEdit ? "Edit Stay Segment" : "Add Stay Segment"}
-            </h3>
-            {isEdit && onChangeType && (
-              <button
-                type="button"
-                onClick={onChangeType}
-                className="text-xs font-medium text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 px-2 py-1 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/20 transition"
-              >
-                Change Type
-              </button>
-            )}
-          </div>
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+            {isEdit ? "Edit Stay Segment" : "Add Stay Segment"}
+          </h3>
           <button
             type="button"
             onClick={onClose}
             className="p-2 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:text-gray-300 dark:hover:bg-gray-800 transition"
           >
-            <svg
-              className="h-5 w-5"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              strokeWidth={1.5}
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M6 18L18 6M6 6l12 12"
-              />
-            </svg>
+            <X className="h-5 w-5" />
           </button>
         </div>
 
