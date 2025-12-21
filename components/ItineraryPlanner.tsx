@@ -823,6 +823,15 @@ export default function ItineraryPlanner() {
     type: "success" | "error";
     text: string;
   } | null>(null);
+  const [checklistItems, setChecklistItems] = useState<
+    Record<string, { id: string; text: string; completed: boolean }[]>
+  >({});
+  const [addingChecklistItem, setAddingChecklistItem] = useState<
+    Record<string, boolean>
+  >({});
+  const [newChecklistText, setNewChecklistText] = useState<
+    Record<string, string>
+  >({});
 
   const resetSegmentForm = useCallback(() => {
     setSegmentForm(getInitialSegmentForm());
@@ -859,6 +868,59 @@ export default function ItineraryPlanner() {
       legs: prev.legs.filter((leg) => leg.id !== legId),
     }));
   }, []);
+
+  const handleAddChecklistItem = useCallback(
+    (segmentId: string) => {
+      const text = newChecklistText[segmentId]?.trim();
+      if (!text || text.length > 50) return;
+
+      const newItem = {
+        id: `temp-${Date.now()}-${Math.random()}`,
+        text,
+        completed: false,
+      };
+
+      setChecklistItems((prev) => ({
+        ...prev,
+        [segmentId]: [...(prev[segmentId] || []), newItem],
+      }));
+
+      setNewChecklistText((prev) => ({
+        ...prev,
+        [segmentId]: "",
+      }));
+
+      setAddingChecklistItem((prev) => ({
+        ...prev,
+        [segmentId]: false,
+      }));
+    },
+    [newChecklistText]
+  );
+
+  const handleDeleteChecklistItem = useCallback(
+    (segmentId: string, itemId: string) => {
+      setChecklistItems((prev) => ({
+        ...prev,
+        [segmentId]: (prev[segmentId] || []).filter(
+          (item) => item.id !== itemId
+        ),
+      }));
+    },
+    []
+  );
+
+  const handleToggleChecklistItem = useCallback(
+    (segmentId: string, itemId: string) => {
+      setChecklistItems((prev) => ({
+        ...prev,
+        [segmentId]: (prev[segmentId] || []).map((item) =>
+          item.id === itemId ? { ...item, completed: !item.completed } : item
+        ),
+      }));
+    },
+    []
+  );
 
   const closeSegmentModal = useCallback(() => {
     resetSegmentForm();
@@ -4354,21 +4416,131 @@ export default function ItineraryPlanner() {
                                         Checklist
                                       </span>
                                       <span className="text-xs text-gray-400 dark:text-gray-500">
-                                        0 / 0 complete
+                                        {checklistItems[segment.id]?.filter(
+                                          (item) => item.completed
+                                        ).length || 0}{" "}
+                                        /{" "}
+                                        {checklistItems[segment.id]?.length ||
+                                          0}{" "}
+                                        complete
                                       </span>
                                     </summary>
-                                    <div className="px-4 pb-4">
-                                      <div className="rounded-lg border border-dashed border-gray-300 dark:border-gray-700 px-3 py-4 text-center">
-                                        <p className="text-xs text-gray-500 dark:text-gray-400">
-                                          No tasks yet for this segment
-                                        </p>
+                                    <div className="px-4 pb-4 space-y-2">
+                                      {checklistItems[segment.id]?.map(
+                                        (item) => (
+                                          <div
+                                            key={item.id}
+                                            className="flex items-center gap-2 group"
+                                          >
+                                            <input
+                                              type="checkbox"
+                                              checked={item.completed}
+                                              onChange={() =>
+                                                handleToggleChecklistItem(
+                                                  segment.id,
+                                                  item.id
+                                                )
+                                              }
+                                              className="h-4 w-4 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500 dark:bg-gray-800"
+                                            />
+                                            <span
+                                              className={`flex-1 text-sm ${
+                                                item.completed
+                                                  ? "line-through text-gray-400 dark:text-gray-500"
+                                                  : "text-gray-700 dark:text-gray-300"
+                                              }`}
+                                            >
+                                              {item.text}
+                                            </span>
+                                            <button
+                                              type="button"
+                                              onClick={() =>
+                                                handleDeleteChecklistItem(
+                                                  segment.id,
+                                                  item.id
+                                                )
+                                              }
+                                              className="opacity-0 group-hover:opacity-100 p-1 rounded text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition"
+                                            >
+                                              <svg
+                                                className="h-3 w-3"
+                                                fill="none"
+                                                viewBox="0 0 24 24"
+                                                stroke="currentColor"
+                                                strokeWidth={2}
+                                              >
+                                                <path
+                                                  strokeLinecap="round"
+                                                  strokeLinejoin="round"
+                                                  d="M6 18L18 6M6 6l12 12"
+                                                />
+                                              </svg>
+                                            </button>
+                                          </div>
+                                        )
+                                      )}
+                                      {addingChecklistItem[segment.id] ? (
+                                        <div className="flex items-center gap-2">
+                                          <input
+                                            type="text"
+                                            value={
+                                              newChecklistText[segment.id] || ""
+                                            }
+                                            onChange={(e) => {
+                                              const value = e.target.value;
+                                              if (value.length <= 50) {
+                                                setNewChecklistText((prev) => ({
+                                                  ...prev,
+                                                  [segment.id]: value,
+                                                }));
+                                              }
+                                            }}
+                                            onKeyDown={(e) => {
+                                              if (e.key === "Enter") {
+                                                handleAddChecklistItem(
+                                                  segment.id
+                                                );
+                                              } else if (e.key === "Escape") {
+                                                setAddingChecklistItem(
+                                                  (prev) => ({
+                                                    ...prev,
+                                                    [segment.id]: false,
+                                                  })
+                                                );
+                                                setNewChecklistText((prev) => ({
+                                                  ...prev,
+                                                  [segment.id]: "",
+                                                }));
+                                              }
+                                            }}
+                                            placeholder="Task name (max 50 chars)"
+                                            autoFocus
+                                            className="flex-1 text-sm rounded-lg border border-blue-300 dark:border-blue-600 bg-white dark:bg-gray-800 px-3 py-2 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                          />
+                                          <span className="text-[10px] text-gray-400">
+                                            {
+                                              (
+                                                newChecklistText[segment.id] ||
+                                                ""
+                                              ).length
+                                            }
+                                            /50
+                                          </span>
+                                        </div>
+                                      ) : (
                                         <button
                                           type="button"
-                                          className="mt-2 text-xs font-medium text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300"
+                                          onClick={() =>
+                                            setAddingChecklistItem((prev) => ({
+                                              ...prev,
+                                              [segment.id]: true,
+                                            }))
+                                          }
+                                          className="text-xs font-medium text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300"
                                         >
                                           + Add task
                                         </button>
-                                      </div>
+                                      )}
                                     </div>
                                   </details>
                                 </div>
