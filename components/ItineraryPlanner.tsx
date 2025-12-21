@@ -93,7 +93,6 @@ type SegmentLegForm = {
 type SegmentFormState = {
   type: SegmentType;
   title: string;
-  description: string;
   locationName: string;
   locationAddress: string;
   locationLat: string;
@@ -475,7 +474,6 @@ function mergeSmartSuggestion(
   return {
     ...current,
     title: suggestion.title ?? current.title,
-    description: suggestion.description ?? current.description,
     locationName: suggestion.location_name ?? current.locationName,
     locationAddress: suggestion.location_address ?? current.locationAddress,
     locationLat: latValue,
@@ -502,7 +500,6 @@ function getInitialSegmentForm(): SegmentFormState {
   return {
     type: "flight",
     title: "",
-    description: "",
     locationName: "",
     locationAddress: "",
     locationLat: "",
@@ -1502,7 +1499,6 @@ export default function ItineraryPlanner() {
             user_id: userId,
             type: segmentForm.type,
             title: segmentForm.title.trim(),
-            description: segmentForm.description.trim() || null,
             location_name: segmentForm.locationName.trim() || null,
             location_address: segmentForm.locationAddress.trim() || null,
             location_lat: Number.isFinite(latValue) ? latValue : null,
@@ -1565,7 +1561,6 @@ export default function ItineraryPlanner() {
         user_id: userId,
         type: "flight",
         title: data.title.trim(),
-        description: data.description.trim() || null,
         start_time: data.departureTime || null,
         end_time: data.arrivalTime || null,
         provider_name: data.airline.trim() || null,
@@ -1632,11 +1627,9 @@ export default function ItineraryPlanner() {
         user_id: userId,
         type: "stay",
         title: data.title.trim(),
-        description: data.description.trim() || null,
         location_address: data.locationAddress.trim() || null,
         start_time: data.checkInTime || null,
         end_time: data.checkOutTime || null,
-        provider_name: data.property.trim() || null,
         confirmation_code: data.confirmationCode.trim() || null,
         cost_amount: data.costAmount ? parseFloat(data.costAmount) : null,
         cost_currency: data.costAmount ? "USD" : null,
@@ -1909,7 +1902,6 @@ export default function ItineraryPlanner() {
             user_id: userId,
             type: editSegmentForm.type,
             title: editSegmentForm.title,
-            description: editSegmentForm.description,
             location_name: editSegmentForm.locationName,
             location_address: editSegmentForm.locationAddress,
             location_lat: Number.isFinite(latValue) ? latValue : null,
@@ -2034,7 +2026,6 @@ export default function ItineraryPlanner() {
       const flightData: Partial<FlightFormData> = {
         type: "flight",
         title: segment.title || "",
-        description: segment.description || "",
         costAmount:
           segment.cost_amount !== null && segment.cost_amount !== undefined
             ? segment.cost_amount.toString()
@@ -2069,7 +2060,6 @@ export default function ItineraryPlanner() {
       const stayData: Partial<StayFormData> = {
         type: "stay",
         title: segment.title || "",
-        description: segment.description || "",
         costAmount:
           segment.cost_amount !== null && segment.cost_amount !== undefined
             ? segment.cost_amount.toString()
@@ -2077,7 +2067,6 @@ export default function ItineraryPlanner() {
         locationAddress: segment.location_address || "",
         checkInTime: isoToLocalInput(segment.start_time),
         checkOutTime: isoToLocalInput(segment.end_time),
-        property: segment.provider_name || "",
         confirmationCode: segment.confirmation_code || "",
       };
 
@@ -4469,7 +4458,6 @@ export default function ItineraryPlanner() {
             setSegmentForm({
               type: suggestion.type === "flight" ? "flight" : "stay",
               title: suggestion.title || "",
-              description: suggestion.description || "",
               locationName: suggestion.location_name || "",
               locationAddress: suggestion.location_address || "",
               locationLat: suggestion.location_lat?.toString() || "",

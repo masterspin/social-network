@@ -13,12 +13,10 @@ interface AddStayModalProps {
 export interface StayFormData {
   type: "stay";
   title: string;
-  description: string;
   costAmount: string;
   locationAddress: string;
   checkInTime: string;
   checkOutTime: string;
-  property: string;
   confirmationCode: string;
 }
 
@@ -32,12 +30,10 @@ export default function AddStayModal({
   const [formData, setFormData] = useState<StayFormData>({
     type: "stay",
     title: initialData?.title || "",
-    description: initialData?.description || "",
     costAmount: initialData?.costAmount || "",
     locationAddress: initialData?.locationAddress || "",
     checkInTime: initialData?.checkInTime || "",
     checkOutTime: initialData?.checkOutTime || "",
-    property: initialData?.property || "",
     confirmationCode: initialData?.confirmationCode || "",
   });
 
@@ -56,12 +52,10 @@ export default function AddStayModal({
       setFormData({
         type: "stay",
         title: "",
-        description: "",
         costAmount: "",
         locationAddress: "",
         checkInTime: "",
         checkOutTime: "",
-        property: "",
         confirmationCode: "",
       });
       onClose();
@@ -204,41 +198,22 @@ export default function AddStayModal({
             <p className="text-[11px] font-black uppercase tracking-[0.2em] text-gray-400 dark:text-gray-500">
               Info
             </p>
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Property
-                </label>
-                <input
-                  type="text"
-                  value={formData.property}
-                  onChange={(e) =>
-                    setFormData((prev) => ({
-                      ...prev,
-                      property: e.target.value,
-                    }))
-                  }
-                  className="w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="Hilton Garden Inn"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Confirmation
-                </label>
-                <input
-                  type="text"
-                  value={formData.confirmationCode}
-                  onChange={(e) =>
-                    setFormData((prev) => ({
-                      ...prev,
-                      confirmationCode: e.target.value,
-                    }))
-                  }
-                  className="w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="RES123456"
-                />
-              </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Confirmation
+              </label>
+              <input
+                type="text"
+                value={formData.confirmationCode}
+                onChange={(e) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    confirmationCode: e.target.value,
+                  }))
+                }
+                className="w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="RES123456"
+              />
             </div>
           </section>
 

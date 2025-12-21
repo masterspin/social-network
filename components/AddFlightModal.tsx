@@ -22,7 +22,6 @@ interface AddFlightModalProps {
 export interface FlightFormData {
   type: "flight";
   title: string;
-  description: string;
   costAmount: string;
   // Departure
   departureAirport: string;
@@ -59,7 +58,6 @@ export default function AddFlightModal({
   const [formData, setFormData] = useState<FlightFormData>({
     type: "flight",
     title: initialData?.title || "",
-    description: initialData?.description || "",
     costAmount: initialData?.costAmount || "",
     departureAirport: initialData?.departureAirport || "",
     departureTerminal: initialData?.departureTerminal || "",
@@ -94,7 +92,6 @@ export default function AddFlightModal({
       setFormData({
         type: "flight",
         title: "",
-        description: "",
         costAmount: "",
         departureAirport: "",
         departureTerminal: "",
