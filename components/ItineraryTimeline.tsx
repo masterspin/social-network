@@ -97,33 +97,38 @@ export default function ItineraryTimeline({
         let minMinutes = 24 * 60;
         let maxMinutes = 0;
 
-        segments.forEach((seg) => {
-            // Use seg.start_time directly
-            const start = new Date(seg.start_time ?? "");
-            const startMins = start.getHours() * 60 + start.getMinutes();
+        for (const seg of segments) {
+            const start = seg.start_time ? new Date(seg.start_time) : new Date();
+            let end = seg.end_time ? new Date(seg.end_time) : null;
+            if (!end) end = new Date(start.getTime() + 60 * 60 * 1000); // 1h default
 
-            let end = seg.end_time
-                ? new Date(seg.end_time)
-                : new Date(start.getTime() + 60 * 60 * 1000);
-            const endMins = end.getHours() * 60 + end.getMinutes();
+            const isSameDay =
+                start.getDate() === end.getDate() &&
+                start.getMonth() === end.getMonth() &&
+                start.getFullYear() === end.getFullYear();
 
-            if (startMins < minMinutes) minMinutes = startMins;
-            // If end crosses midnight (less than start), we assume next day
-            // But for slotMaxTime on a single day axis, we usually cap at 24:00 unless we want extended
-            if (endMins > maxMinutes) maxMinutes = endMins;
+            if (!isSameDay) {
+                // Spans midnight: maximize range to ensure visibility of both
+                // the late-night portion (day 1) and early-morning portion (day 2)
+                minMinutes = 0;
+                maxMinutes = 24 * 60;
+                break;
+            }
 
-            // Special case: if endMins is small (early morning next day), keep maxMinutes logic simple
-            // or treat it as large.
-            // For simplicity, let's just ensure we cover the day's activities.
-        });
+            const sM = start.getHours() * 60 + start.getMinutes();
+            const eM = end.getHours() * 60 + end.getMinutes();
 
-        // Add 1 hour buffer before and after
-        minMinutes = Math.max(0, minMinutes - 60);
-        maxMinutes = Math.min(24 * 60, maxMinutes + 60);
+            if (sM < minMinutes) minMinutes = sM;
+            if (eM > maxMinutes) maxMinutes = eM;
+        }
 
-        // If range is too small, default to decent day
-        if (maxMinutes - minMinutes < 8 * 60) {
-            maxMinutes = Math.min(24 * 60, minMinutes + 8 * 60);
+        // Add buffer
+        if (minMinutes > 0) minMinutes = Math.max(0, minMinutes - 60);
+        if (maxMinutes < 24 * 60) maxMinutes = Math.min(24 * 60, maxMinutes + 60);
+
+        // Minimum visible height (5 hours)
+        if (maxMinutes - minMinutes < 5 * 60) {
+            maxMinutes = Math.min(24 * 60, minMinutes + 5 * 60);
         }
 
         const formatTime = (minutes: number) => {
@@ -287,7 +292,7 @@ export default function ItineraryTimeline({
             border-color: var(--fc-border-color);
         }
         
-        /* Remove outer border */
+        /* Remove outer border only */
         .fc-theme-standard .fc-scrollgrid {
             border: none !important;
         }
@@ -306,16 +311,24 @@ export default function ItineraryTimeline({
             color: #9ca3af;
         }
         
-        /* Clean Time Axis */
+        /* Cleaner Time Axis & Remove Horizontal Lines */
         .fc-timegrid-slot-label-cushion {
             font-size: 0.75rem;
             color: #9ca3af;
             font-weight: 500;
         }
 
-        /* Lighter Grid Lines */
+        /* Hide horizontal grid lines */
+        .fc-timegrid-slot, 
+        .fc-timegrid-slot-lane,
         .fc-timegrid-slot-minor {
-            border-top-style: none !important; /* Hide minor lines for cleaner look? or make dotted */
+            border-top: none !important;
+            border-bottom: none !important;
+        }
+        
+        /* Keep vertical dividers for days */
+        .fc-day-other .fc-timegrid-col-frame {
+             /* maintain vertical structure */
         }
         
         /* Events */
