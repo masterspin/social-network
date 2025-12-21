@@ -7,8 +7,9 @@ import type {
   SegmentAutofillSuggestion,
   SegmentAutofillType,
 } from "@/lib/autofill/types";
+import AddressAutocomplete from "./AddressAutocomplete";
 
-const SEGMENT_TYPES = ["flight"] as const;
+const SEGMENT_TYPES = ["flight", "stay"] as const;
 
 type SegmentType = (typeof SEGMENT_TYPES)[number];
 
@@ -118,6 +119,22 @@ const SEGMENT_TYPE_CONFIG: Record<SegmentType, SegmentTypeConfig> = {
     seatLabel: "Seat / Cabin",
     seatPlaceholder: "12A · Polaris",
   },
+  stay: {
+    key: "stay",
+    label: "Stay",
+    smartFillHint: "Hotel name or booking · e.g., Hilton Garden Inn",
+    titlePlaceholder: "Hilton Garden Inn Downtown",
+    descriptionPlaceholder: "Room details, amenities, or special requests",
+    providerLabel: "Property",
+    providerPlaceholder: "Hilton Garden Inn",
+    confirmationLabel: "Confirmation",
+    confirmationPlaceholder: "RES123456",
+    referenceLabel: "Room number",
+    referencePlaceholder: "302",
+    showSeatInput: true,
+    seatLabel: "Room type",
+    seatPlaceholder: "King Suite",
+  },
 };
 
 type SegmentTypeOption = {
@@ -134,7 +151,8 @@ const SEGMENT_TYPE_OPTIONS: SegmentTypeOption[] = SEGMENT_TYPES.map(
 
 const SMART_FILL_SUPPORTED_TYPES = new Set<SegmentType>(["flight"]);
 
-function normalizeSegmentType(_: string | null | undefined): SegmentType {
+function normalizeSegmentType(type: string | null | undefined): SegmentType {
+  if (type === "stay") return "stay";
   return "flight";
 }
 
@@ -1865,8 +1883,8 @@ export default function ItineraryPlanner() {
         typeof segment.location_lng === "number"
           ? segment.location_lng.toString()
           : "",
-      startTime: segment.start_time ? segment.start_time.slice(0, 16) : "",
-      endTime: segment.end_time ? segment.end_time.slice(0, 16) : "",
+      startTime: isoToLocalInput(segment.start_time),
+      endTime: isoToLocalInput(segment.end_time),
       isAllDay: segment.is_all_day || false,
       providerName: segment.provider_name || "",
       confirmationCode: segment.confirmation_code || "",
@@ -1990,6 +2008,7 @@ export default function ItineraryPlanner() {
   const editSeatPlaceholderText =
     editFormTypeConfig.seatPlaceholder || "Seat info";
   const editIsFlightSegment = editSegmentForm.type === "flight";
+  const editIsStaySegment = editSegmentForm.type === "stay";
   const editDepartureAirportValue = getEndpointFieldValueFromState(
     editSegmentForm,
     "departure",
@@ -2033,6 +2052,7 @@ export default function ItineraryPlanner() {
     "timezone"
   );
   const isFlightSegment = segmentForm.type === "flight";
+  const isStaySegment = segmentForm.type === "stay";
   const departureAirportValue = getEndpointFieldValueFromState(
     segmentForm,
     "departure",
@@ -2846,10 +2866,40 @@ export default function ItineraryPlanner() {
                               </div>
                             )}
 
+                            {editIsStaySegment && (
+                              <div className="space-y-4">
+                                <AddressAutocomplete
+                                  value={editSegmentForm.locationAddress}
+                                  onChange={(value) =>
+                                    setEditSegmentForm({
+                                      ...editSegmentForm,
+                                      locationAddress: value,
+                                    })
+                                  }
+                                  onPlaceSelect={(place) =>
+                                    setEditSegmentForm({
+                                      ...editSegmentForm,
+                                      locationAddress: place.address,
+                                      locationName: place.name,
+                                      locationLat: place.lat.toString(),
+                                      locationLng: place.lng.toString(),
+                                      timezone:
+                                        place.timezone ||
+                                        editSegmentForm.timezone,
+                                    })
+                                  }
+                                  label="Address"
+                                  placeholder="Search for hotel or address..."
+                                />
+                              </div>
+                            )}
+
                             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                               <div>
                                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                                  Start time
+                                  {editIsStaySegment
+                                    ? "Check-in"
+                                    : "Start time"}
                                 </label>
                                 <input
                                   type="datetime-local"
@@ -2866,7 +2916,7 @@ export default function ItineraryPlanner() {
                               </div>
                               <div>
                                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                                  End time
+                                  {editIsStaySegment ? "Check-out" : "End time"}
                                 </label>
                                 <input
                                   type="datetime-local"
@@ -3733,10 +3783,38 @@ export default function ItineraryPlanner() {
                                       </div>
                                     </div>
                                   )}
+
+                                  {isStaySegment && (
+                                    <div className="space-y-4">
+                                      <AddressAutocomplete
+                                        value={segmentForm.locationAddress}
+                                        onChange={(value) =>
+                                          setSegmentForm((prev) => ({
+                                            ...prev,
+                                            locationAddress: value,
+                                          }))
+                                        }
+                                        onPlaceSelect={(place) =>
+                                          setSegmentForm((prev) => ({
+                                            ...prev,
+                                            locationAddress: place.address,
+                                            locationName: place.name,
+                                            locationLat: place.lat.toString(),
+                                            locationLng: place.lng.toString(),
+                                            timezone:
+                                              place.timezone || prev.timezone,
+                                          }))
+                                        }
+                                        label="Address"
+                                        placeholder="Search for hotel or address..."
+                                      />
+                                    </div>
+                                  )}
+
                                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                                     <div>
                                       <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                                        Start
+                                        {isStaySegment ? "Check-in" : "Start"}
                                       </label>
                                       <input
                                         type="datetime-local"
@@ -3753,7 +3831,7 @@ export default function ItineraryPlanner() {
                                     </div>
                                     <div>
                                       <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                                        End
+                                        {isStaySegment ? "Check-out" : "End"}
                                       </label>
                                       <input
                                         type="datetime-local"
@@ -4164,6 +4242,25 @@ export default function ItineraryPlanner() {
                                 color: "text-sky-600 dark:text-sky-400",
                                 bgColor: "bg-sky-100 dark:bg-sky-900/40",
                               },
+                              stay: {
+                                icon: (
+                                  <svg
+                                    className="h-5 w-5"
+                                    fill="none"
+                                    viewBox="0 0 24 24"
+                                    stroke="currentColor"
+                                    strokeWidth={1.5}
+                                  >
+                                    <path
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                      d="M2.25 21h19.5m-18-18v18m10.5-18v18m6-13.5V21M6.75 6.75h.75m-.75 3h.75m-.75 3h.75m3-6h.75m-.75 3h.75m-.75 3h.75M6.75 21v-3.375c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21M3 3h12m-.75 4.5H21m-3.75 3.75h.008v.008h-.008v-.008zm0 3h.008v.008h-.008v-.008zm0 3h.008v.008h-.008v-.008z"
+                                    />
+                                  </svg>
+                                ),
+                                color: "text-indigo-600 dark:text-indigo-400",
+                                bgColor: "bg-indigo-100 dark:bg-indigo-900/40",
+                              },
                               hotel: {
                                 icon: (
                                   <svg
@@ -4572,6 +4669,83 @@ export default function ItineraryPlanner() {
                                       </div>
                                     );
                                   })()}
+
+                                  {segment.type === "stay" &&
+                                    segment.location_address && (
+                                      <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-gradient-to-br from-indigo-50/50 to-white dark:from-indigo-900/10 dark:to-gray-900/30 p-4">
+                                        <div className="space-y-1">
+                                          <p className="text-[10px] font-black uppercase tracking-wider text-indigo-600 dark:text-indigo-400 flex items-center gap-1">
+                                            <svg
+                                              className="h-3 w-3"
+                                              fill="none"
+                                              viewBox="0 0 24 24"
+                                              stroke="currentColor"
+                                              strokeWidth={2}
+                                            >
+                                              <path
+                                                strokeLinecap="round"
+                                                strokeLinejoin="round"
+                                                d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z"
+                                              />
+                                              <path
+                                                strokeLinecap="round"
+                                                strokeLinejoin="round"
+                                                d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z"
+                                              />
+                                            </svg>
+                                            Address
+                                          </p>
+                                          <div className="flex flex-wrap gap-2">
+                                            <a
+                                              href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+                                                segment.location_address
+                                              )}`}
+                                              target="_blank"
+                                              rel="noopener noreferrer"
+                                              className="inline-flex items-center gap-1.5 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800/80 rounded-lg px-3 py-1.5 border border-gray-200 dark:border-gray-700 hover:border-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-colors cursor-pointer"
+                                            >
+                                              <svg
+                                                className="h-3.5 w-3.5 text-indigo-500"
+                                                fill="none"
+                                                viewBox="0 0 24 24"
+                                                stroke="currentColor"
+                                                strokeWidth={2}
+                                              >
+                                                <path
+                                                  strokeLinecap="round"
+                                                  strokeLinejoin="round"
+                                                  d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z"
+                                                />
+                                                <path
+                                                  strokeLinecap="round"
+                                                  strokeLinejoin="round"
+                                                  d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z"
+                                                />
+                                              </svg>
+                                              {segment.location_address}
+                                            </a>
+                                            {segment.timezone && (
+                                              <span className="inline-flex items-center gap-1.5 text-sm font-medium text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-800/60 rounded-lg px-3 py-1.5 border border-gray-200 dark:border-gray-700">
+                                                <svg
+                                                  className="h-3.5 w-3.5 text-gray-500 dark:text-gray-400"
+                                                  fill="none"
+                                                  viewBox="0 0 24 24"
+                                                  stroke="currentColor"
+                                                  strokeWidth={2}
+                                                >
+                                                  <path
+                                                    strokeLinecap="round"
+                                                    strokeLinejoin="round"
+                                                    d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z"
+                                                  />
+                                                </svg>
+                                                {segment.timezone}
+                                              </span>
+                                            )}
+                                          </div>
+                                        </div>
+                                      </div>
+                                    )}
 
                                   <details className="rounded-2xl border border-dashed border-gray-200 dark:border-gray-800 bg-white/40 dark:bg-transparent">
                                     <summary className="px-4 py-3 cursor-pointer text-sm font-medium text-gray-700 dark:text-gray-300 flex items-center justify-between">

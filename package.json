@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.86.0",
+    "@tubular/time": "^3.10.6",
     "next": "16.0.7",
     "react": "19.2.0",
     "react-dom": "19.2.0",

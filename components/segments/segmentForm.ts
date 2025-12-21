@@ -3,7 +3,7 @@ import type {
   SegmentAutofillType,
 } from "@/lib/autofill/types";
 
-export const SEGMENT_TYPES = ["flight"] as const;
+export const SEGMENT_TYPES = ["flight", "stay"] as const;
 
 export type SegmentType = (typeof SEGMENT_TYPES)[number];
 
@@ -72,6 +72,22 @@ export const SEGMENT_TYPE_CONFIG: Record<SegmentType, SegmentTypeConfig> = {
     showSeatInput: true,
     seatLabel: "Seat / Cabin",
     seatPlaceholder: "12A · Polaris",
+  },
+  stay: {
+    key: "stay",
+    label: "Stay",
+    smartFillHint: "Hotel name or booking · e.g., Hilton Garden Inn",
+    titlePlaceholder: "Hilton Garden Inn Downtown",
+    descriptionPlaceholder: "Room details, amenities, or special requests",
+    providerLabel: "Property",
+    providerPlaceholder: "Hilton Garden Inn",
+    confirmationLabel: "Confirmation",
+    confirmationPlaceholder: "RES123456",
+    referenceLabel: "Room number",
+    referencePlaceholder: "302",
+    showSeatInput: true,
+    seatLabel: "Room type",
+    seatPlaceholder: "King Suite",
   },
 };
 
