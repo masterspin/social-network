@@ -1840,6 +1840,8 @@ export default function ItineraryPlanner() {
     </section>
   );
 
+  const cols = (showReferenceField ? 1 : 0) + (showSeatField ? 1 : 0) + 2;
+
   return (
     <div className="flex flex-col h-full">
       {feedback && (
@@ -2756,7 +2758,7 @@ export default function ItineraryPlanner() {
                           )}
 
                           {/* Segment Type */}
-                          <div className="grid gap-3 md:grid-cols-[minmax(0,320px)_1fr]">
+                          <div className="grid gap-3 md:grid-cols-3">
                             <div>
                               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                                 Type
@@ -2798,6 +2800,30 @@ export default function ItineraryPlanner() {
                                   className="w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
                                   placeholder={titlePlaceholderText}
                                   required
+                                />
+                              </div>
+                            </div>
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                Cost (USD)
+                              </label>
+                              <div className="relative">
+                                <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-sm font-semibold text-gray-500 dark:text-gray-400">
+                                  $
+                                </span>
+                                <input
+                                  type="number"
+                                  step="0.01"
+                                  min="0"
+                                  value={segmentForm.costAmount}
+                                  onChange={(e) =>
+                                    setSegmentForm((prev) => ({
+                                      ...prev,
+                                      costAmount: e.target.value,
+                                    }))
+                                  }
+                                  className="w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 pl-7 pr-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                  placeholder="0.00"
                                 />
                               </div>
                             </div>
@@ -3042,7 +3068,7 @@ export default function ItineraryPlanner() {
                                       />
                                     </div>
                                   </div>
-                                  <div className="flex flex-col gap-2">
+                                  {/* <div className="flex flex-col gap-2">
                                     <div>
                                       <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                                         Timezone
@@ -3060,19 +3086,21 @@ export default function ItineraryPlanner() {
                                         placeholder="e.g., Asia/Tokyo"
                                       />
                                     </div>
-                                  </div>
+                                  </div> */}
                                 </div>
                               </section>
                             </div>
 
-                            <div className="grid gap-5 lg:grid-cols-2">
+                            <div className="grid gap-5">
                               <section className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white/60 dark:bg-gray-950/40 p-4 sm:p-5 space-y-4">
                                 <div className="flex items-center justify-between">
                                   <p className="text-[11px] font-black uppercase tracking-[0.2em] text-gray-400 dark:text-gray-500">
-                                    Partners & references
+                                    Info
                                   </p>
                                 </div>
-                                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                                <div
+                                  className={`grid grid-cols-1 gap-3 sm:grid-cols-${cols}`}
+                                >
                                   <div>
                                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                                       {providerLabelText}
@@ -3107,76 +3135,44 @@ export default function ItineraryPlanner() {
                                       placeholder={confirmationPlaceholderText}
                                     />
                                   </div>
-                                </div>
-                                {showReferenceField && (
-                                  <div>
-                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                                      {referenceLabelText}
-                                    </label>
-                                    <input
-                                      type="text"
-                                      value={segmentForm.transportNumber}
-                                      onChange={(e) =>
-                                        setSegmentForm((prev) => ({
-                                          ...prev,
-                                          transportNumber: e.target.value,
-                                        }))
-                                      }
-                                      className="w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                      placeholder={referencePlaceholderText}
-                                    />
-                                  </div>
-                                )}
-                                {showSeatField && (
-                                  <div>
-                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                                      {seatLabelText}
-                                    </label>
-                                    <input
-                                      type="text"
-                                      value={segmentForm.seatInfo}
-                                      onChange={(e) =>
-                                        setSegmentForm((prev) => ({
-                                          ...prev,
-                                          seatInfo: e.target.value,
-                                        }))
-                                      }
-                                      className="w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                      placeholder={seatPlaceholderText}
-                                    />
-                                  </div>
-                                )}
-                              </section>
-
-                              <section className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white/60 dark:bg-gray-950/40 p-4 sm:p-5 space-y-4">
-                                <div className="flex items-center justify-between">
-                                  <p className="text-[11px] font-black uppercase tracking-[0.2em] text-gray-400 dark:text-gray-500">
-                                    Budget & tracking
-                                  </p>
-                                </div>
-                                <div>
-                                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                                    Cost (USD)
-                                  </label>
-                                  <div className="relative">
-                                    <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-sm font-semibold text-gray-500 dark:text-gray-400">
-                                      $
-                                    </span>
-                                    <input
-                                      type="number"
-                                      step="0.01"
-                                      min="0"
-                                      value={segmentForm.costAmount}
-                                      onChange={(e) =>
-                                        setSegmentForm((prev) => ({
-                                          ...prev,
-                                          costAmount: e.target.value,
-                                        }))
-                                      }
-                                      className="w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 pl-7 pr-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                      placeholder="0.00"
-                                    />
-                                  </div>
+                                  {showReferenceField && (
+                                    <div>
+                                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                        {referenceLabelText}
+                                      </label>
+                                      <input
+                                        type="text"
+                                        value={segmentForm.transportNumber}
+                                        onChange={(e) =>
+                                          setSegmentForm((prev) => ({
+                                            ...prev,
+                                            transportNumber: e.target.value,
+                                          }))
+                                        }
+                                        className="w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        placeholder={referencePlaceholderText}
+                                      />
+                                    </div>
+                                  )}
+                                  {showSeatField && (
+                                    <div>
+                                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                        {seatLabelText}
+                                      </label>
+                                      <input
+                                        type="text"
+                                        value={segmentForm.seatInfo}
+                                        onChange={(e) =>
+                                          setSegmentForm((prev) => ({
+                                            ...prev,
+                                            seatInfo: e.target.value,
+                                          }))
+                                        }
+                                        className="w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        placeholder={seatPlaceholderText}
+                                      />
+                                    </div>
+                                  )}
                                 </div>
                               </section>
                             </div>
@@ -3570,6 +3566,8 @@ export default function ItineraryPlanner() {
                               color: "text-blue-600 dark:text-blue-400",
                               bgColor: "bg-blue-100 dark:bg-blue-900/40",
                             };
+                            const typeLabel =
+                              getTypeConfig(segment.type).label || segment.type;
 
                             const costDisplay = getSegmentCostDisplay(segment);
                             return (
