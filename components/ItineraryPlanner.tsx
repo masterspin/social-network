@@ -2023,6 +2023,43 @@ export default function ItineraryPlanner() {
           ? (segmentMetadata.arrival as Record<string, unknown>)
           : {};
 
+      // Extract airport names and timezones from nested objects
+      const departureAirportName =
+        departure.airport &&
+        typeof departure.airport === "object" &&
+        "name" in departure.airport
+          ? String(departure.airport.name)
+          : typeof departure.airport === "string"
+          ? departure.airport
+          : "";
+
+      const departureTimezone =
+        departure.airport &&
+        typeof departure.airport === "object" &&
+        "timeZone" in departure.airport
+          ? String(departure.airport.timeZone)
+          : typeof departure.timezone === "string"
+          ? departure.timezone
+          : "";
+
+      const arrivalAirportName =
+        arrival.airport &&
+        typeof arrival.airport === "object" &&
+        "name" in arrival.airport
+          ? String(arrival.airport.name)
+          : typeof arrival.airport === "string"
+          ? arrival.airport
+          : "";
+
+      const arrivalTimezone =
+        arrival.airport &&
+        typeof arrival.airport === "object" &&
+        "timeZone" in arrival.airport
+          ? String(arrival.airport.timeZone)
+          : typeof arrival.timezone === "string"
+          ? arrival.timezone
+          : "";
+
       const flightData: Partial<FlightFormData> = {
         type: "flight",
         title: segment.title || "",
@@ -2030,22 +2067,18 @@ export default function ItineraryPlanner() {
           segment.cost_amount !== null && segment.cost_amount !== undefined
             ? segment.cost_amount.toString()
             : "",
-        departureAirport:
-          typeof departure.airport === "string" ? departure.airport : "",
+        departureAirport: departureAirportName,
         departureTerminal:
           typeof departure.terminal === "string" ? departure.terminal : "",
         departureGate: typeof departure.gate === "string" ? departure.gate : "",
         departureTime: isoToLocalInput(segment.start_time),
-        departureTimezone:
-          typeof departure.timezone === "string" ? departure.timezone : "",
-        arrivalAirport:
-          typeof arrival.airport === "string" ? arrival.airport : "",
+        departureTimezone: departureTimezone,
+        arrivalAirport: arrivalAirportName,
         arrivalTerminal:
           typeof arrival.terminal === "string" ? arrival.terminal : "",
         arrivalGate: typeof arrival.gate === "string" ? arrival.gate : "",
         arrivalTime: isoToLocalInput(segment.end_time),
-        arrivalTimezone:
-          typeof arrival.timezone === "string" ? arrival.timezone : "",
+        arrivalTimezone: arrivalTimezone,
         airline: segment.provider_name || "",
         confirmationCode: segment.confirmation_code || "",
         flightNumber: segment.transport_number || "",

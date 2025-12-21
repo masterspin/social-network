@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { X } from "lucide-react";
 import AddressAutocomplete from "./AddressAutocomplete";
 
@@ -39,6 +39,42 @@ export default function AddStayModal({
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Update form data when modal opens or initialData changes
+  useEffect(() => {
+    if (isOpen) {
+      if (initialData) {
+        // Edit mode - populate with existing data
+        setFormData({
+          type: "stay",
+          title: initialData.title || "",
+          costAmount: initialData.costAmount || "",
+          locationAddress: initialData.locationAddress || "",
+          checkInTime: initialData.checkInTime || "",
+          checkOutTime: initialData.checkOutTime || "",
+          confirmationCode: initialData.confirmationCode || "",
+        });
+      } else {
+        // Add mode - reset form
+        setFormData({
+          type: "stay",
+          title: "",
+          costAmount: "",
+          locationAddress: "",
+          checkInTime: "",
+          checkOutTime: "",
+          confirmationCode: "",
+        });
+      }
+    }
+    // Using specific fields from initialData to detect changes reliably
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    isOpen,
+    initialData?.title,
+    initialData?.locationAddress,
+    initialData?.checkInTime,
+  ]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { X } from "lucide-react";
 
 interface AddFlightModalProps {
@@ -78,6 +78,71 @@ export default function AddFlightModal({
   const [smartFillInput, setSmartFillInput] = useState("");
   const [smartFillDate, setSmartFillDate] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Update form data when modal opens or initialData changes
+  useEffect(() => {
+    if (isOpen) {
+      console.log("AddFlightModal - initialData:", initialData);
+      if (initialData) {
+        // Edit mode - populate with existing data
+        console.log("Populating form with:", {
+          departureAirport: initialData.departureAirport,
+          departureTimezone: initialData.departureTimezone,
+          arrivalAirport: initialData.arrivalAirport,
+          arrivalTimezone: initialData.arrivalTimezone,
+        });
+        setFormData({
+          type: "flight",
+          title: initialData.title || "",
+          costAmount: initialData.costAmount || "",
+          departureAirport: initialData.departureAirport || "",
+          departureTerminal: initialData.departureTerminal || "",
+          departureGate: initialData.departureGate || "",
+          departureTime: initialData.departureTime || "",
+          departureTimezone: initialData.departureTimezone || "",
+          arrivalAirport: initialData.arrivalAirport || "",
+          arrivalTerminal: initialData.arrivalTerminal || "",
+          arrivalGate: initialData.arrivalGate || "",
+          arrivalTime: initialData.arrivalTime || "",
+          arrivalTimezone: initialData.arrivalTimezone || "",
+          airline: initialData.airline || "",
+          confirmationCode: initialData.confirmationCode || "",
+          flightNumber: initialData.flightNumber || "",
+          seatInfo: initialData.seatInfo || "",
+        });
+      } else {
+        // Add mode - reset form
+        setFormData({
+          type: "flight",
+          title: "",
+          costAmount: "",
+          departureAirport: "",
+          departureTerminal: "",
+          departureGate: "",
+          departureTime: "",
+          departureTimezone: "",
+          arrivalAirport: "",
+          arrivalTerminal: "",
+          arrivalGate: "",
+          arrivalTime: "",
+          arrivalTimezone: "",
+          airline: "",
+          confirmationCode: "",
+          flightNumber: "",
+          seatInfo: "",
+        });
+      }
+    }
+    // Using specific fields from initialData to detect changes reliably
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    isOpen,
+    initialData?.title,
+    initialData?.departureAirport,
+    initialData?.arrivalAirport,
+    initialData?.departureTime,
+    initialData?.arrivalTime,
+  ]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
