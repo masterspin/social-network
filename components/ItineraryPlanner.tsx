@@ -1886,6 +1886,22 @@ export default function ItineraryPlanner() {
       const arr = meta?.arrival;
       const airline = meta?.airline;
 
+      const getLocalTime = (
+        node: any,
+        fallbackIso: string | null | undefined
+      ) => {
+        // Try to find specific local time property in metadata
+        // Format from provider is often "2026-02-27 10:25+01:00" or similar
+        const localRaw = node?.scheduledTimeLocal || node?.scheduledTime?.local;
+        if (typeof localRaw === "string" && localRaw.length >= 16) {
+          // Normalize to "YYYY-MM-DDTHH:mm" for input type="datetime-local"
+          // Replace first space with T if T is missing
+          const normalized = localRaw.replace(" ", "T");
+          return normalized.slice(0, 16);
+        }
+        return isoToLocalInput(fallbackIso);
+      };
+
       const newFlightData: FlightFormData = {
         type: "flight",
         title: suggestion.title || query,
@@ -1899,13 +1915,13 @@ export default function ItineraryPlanner() {
         departureAirport: dep?.airport?.name || suggestion.location_name || "",
         departureTerminal: dep?.terminal || "",
         departureGate: dep?.gate || "",
-        departureTime: isoToLocalInput(suggestion.start_time),
+        departureTime: getLocalTime(dep, suggestion.start_time),
         departureTimezone: dep?.airport?.timeZone || suggestion.timezone || "",
 
         arrivalAirport: arr?.airport?.name || "", // Often missing in flat fields, check metadata
         arrivalTerminal: arr?.terminal || "",
         arrivalGate: arr?.gate || "",
-        arrivalTime: isoToLocalInput(suggestion.end_time),
+        arrivalTime: getLocalTime(arr, suggestion.end_time),
         arrivalTimezone: arr?.airport?.timeZone || "",
       };
 
