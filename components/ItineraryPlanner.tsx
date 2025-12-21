@@ -699,28 +699,7 @@ function formatSegmentTime(segment: SegmentRow): string {
     minute: "2-digit",
   });
 
-  // Add timezone info for flights
-  if (segment.type === "flight" && segment.metadata) {
-    const metadata = segment.metadata as Record<string, unknown>;
-    const depTz = getEndpointFieldValueFromMetadata(
-      metadata,
-      "departure",
-      "timezone"
-    );
-    const arrTz = getEndpointFieldValueFromMetadata(
-      metadata,
-      "arrival",
-      "timezone"
-    );
 
-    if (start && end) {
-      let result = start;
-      if (depTz) result += ` ${depTz}`;
-      result += ` → ${end}`;
-      if (arrTz) result += ` ${arrTz}`;
-      return result;
-    }
-  }
 
   if (start && end) return `${start} → ${end}`;
   return start ?? end ?? "Timing TBD";
@@ -4648,12 +4627,16 @@ export default function ItineraryPlanner() {
                                   </details>
                                 </div>
 
-                                {isFirst && (
-                                  <div className="absolute left-[46px] top-3 w-3 h-3 rounded-full bg-blue-500 ring-4 ring-white dark:ring-gray-900" />
-                                )}
-                                {isLast && (
-                                  <div className="absolute left-[46px] bottom-3 w-3 h-3 rounded-full bg-blue-300 dark:bg-blue-500 ring-4 ring-white dark:ring-gray-900" />
-                                )}
+                                {
+                                  isFirst && (
+                                    <div className="absolute left-[46px] top-3 w-3 h-3 rounded-full bg-blue-500 ring-4 ring-white dark:ring-gray-900" />
+                                  )
+                                }
+                                {
+                                  isLast && (
+                                    <div className="absolute left-[46px] bottom-3 w-3 h-3 rounded-full bg-blue-300 dark:bg-blue-500 ring-4 ring-white dark:ring-gray-900" />
+                                  )
+                                }
                               </div>
                             );
                           })}
@@ -4908,53 +4891,55 @@ export default function ItineraryPlanner() {
       </div>
 
       {/* AI Chat Assistant */}
-      {selectedId && detail && userId && (
-        <ChatAssistant
-          itineraryId={selectedId}
-          userId={userId}
-          onAddSegment={(suggestion) => {
-            // Pre-fill the segment form with AI suggestion
-            setSegmentForm({
-              type: suggestion.type === "flight" ? "flight" : "stay",
-              title: suggestion.title || "",
-              locationName: suggestion.location_name || "",
-              locationAddress: suggestion.location_address || "",
-              locationLat: suggestion.location_lat?.toString() || "",
-              locationLng: suggestion.location_lng?.toString() || "",
-              startTime: suggestion.start_time
-                ? isoToLocalInput(suggestion.start_time)
-                : "",
-              endTime: suggestion.end_time
-                ? isoToLocalInput(suggestion.end_time)
-                : "",
-              timezone: suggestion.timezone || "",
-              isAllDay: suggestion.is_all_day || false,
-              providerName: suggestion.provider_name || "",
-              confirmationCode: suggestion.confirmation_code || "",
-              transportNumber: suggestion.transport_number || "",
-              seatInfo: "",
-              costAmount: "",
-              legs: [],
-              metadata: suggestion.metadata || {},
-            });
-            setShowFlightModal(true);
-            // Show success feedback
-            setFeedback({
-              type: "success",
-              text: "Suggestion added to form. Review and save to add to itinerary.",
-            });
-            setTimeout(() => setFeedback(null), 3000);
-          }}
-          existingSegments={
-            detail.segments?.map((seg) => ({
-              type: seg.type,
-              title: seg.title,
-              start_time: seg.start_time || undefined,
-              location_name: seg.location_name || undefined,
-            })) || []
-          }
-        />
-      )}
-    </div>
+      {
+        selectedId && detail && userId && (
+          <ChatAssistant
+            itineraryId={selectedId}
+            userId={userId}
+            onAddSegment={(suggestion) => {
+              // Pre-fill the segment form with AI suggestion
+              setSegmentForm({
+                type: suggestion.type === "flight" ? "flight" : "stay",
+                title: suggestion.title || "",
+                locationName: suggestion.location_name || "",
+                locationAddress: suggestion.location_address || "",
+                locationLat: suggestion.location_lat?.toString() || "",
+                locationLng: suggestion.location_lng?.toString() || "",
+                startTime: suggestion.start_time
+                  ? isoToLocalInput(suggestion.start_time)
+                  : "",
+                endTime: suggestion.end_time
+                  ? isoToLocalInput(suggestion.end_time)
+                  : "",
+                timezone: suggestion.timezone || "",
+                isAllDay: suggestion.is_all_day || false,
+                providerName: suggestion.provider_name || "",
+                confirmationCode: suggestion.confirmation_code || "",
+                transportNumber: suggestion.transport_number || "",
+                seatInfo: "",
+                costAmount: "",
+                legs: [],
+                metadata: suggestion.metadata || {},
+              });
+              setShowFlightModal(true);
+              // Show success feedback
+              setFeedback({
+                type: "success",
+                text: "Suggestion added to form. Review and save to add to itinerary.",
+              });
+              setTimeout(() => setFeedback(null), 3000);
+            }}
+            existingSegments={
+              detail.segments?.map((seg) => ({
+                type: seg.type,
+                title: seg.title,
+                start_time: seg.start_time || undefined,
+                location_name: seg.location_name || undefined,
+              })) || []
+            }
+          />
+        )
+      }
+    </div >
   );
 }
