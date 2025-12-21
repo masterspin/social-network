@@ -37,6 +37,23 @@ function safeNavitiaDate(value?: string | null): string | null {
   return safeDate(isoString);
 }
 
+function resolveScheduleTime(value: unknown): string | null {
+  if (!value) return null;
+  if (typeof value === "string") {
+    return value;
+  }
+  if (typeof value === "object") {
+    const record = value as { local?: string; utc?: string };
+    if (typeof record.local === "string" && record.local) {
+      return record.local;
+    }
+    if (typeof record.utc === "string" && record.utc) {
+      return record.utc;
+    }
+  }
+  return null;
+}
+
 export async function fetchFlightSuggestion(
   flightNumberInput: string,
   dateInput?: string
@@ -101,9 +118,13 @@ export async function fetchFlightSuggestion(
   const arrival = leg?.arrival || flightCandidate?.arrival || null;
   const airline = flightCandidate?.airline || flightCandidate?.airlineInfo;
   const scheduledDeparture =
-    departure?.scheduledTimeLocal || departure?.scheduledTimeUtc;
+    resolveScheduleTime(departure?.scheduledTime) ||
+    departure?.scheduledTimeLocal ||
+    departure?.scheduledTimeUtc;
   const scheduledArrival =
-    arrival?.scheduledTimeLocal || arrival?.scheduledTimeUtc;
+    resolveScheduleTime(arrival?.scheduledTime) ||
+    arrival?.scheduledTimeLocal ||
+    arrival?.scheduledTimeUtc;
 
   const departureAirportName =
     departure?.airport?.name || departure?.airportName;
@@ -112,6 +133,30 @@ export async function fetchFlightSuggestion(
   const departureCode =
     departure?.airport?.iata || departure?.airport?.icao || "";
   const arrivalCode = arrival?.airport?.iata || arrival?.airport?.icao || "";
+
+  const departureTerminal =
+    departure?.terminal || leg?.departure?.terminal || null;
+  const arrivalTerminal = arrival?.terminal || leg?.arrival?.terminal || null;
+
+  const departureTimezone =
+    departure?.timezone || departure?.airport?.timeZone || null;
+  const arrivalTimezone =
+    arrival?.timezone || arrival?.airport?.timeZone || null;
+
+  const departureAddress = [
+    departureAirportName,
+    departure?.airport?.municipalityName,
+    departure?.airport?.countryCode,
+  ]
+    .filter(Boolean)
+    .join(", ");
+  const arrivalAddress = [
+    arrivalAirportName,
+    arrival?.airport?.municipalityName,
+    arrival?.airport?.countryCode,
+  ]
+    .filter(Boolean)
+    .join(", ");
 
   const highlights: SegmentAutofillHighlight[] = [];
   if (departureAirportName && departureCode) {
@@ -128,6 +173,12 @@ export async function fetchFlightSuggestion(
   }
   if (airline?.name) {
     highlights.push({ label: "Airline", value: airline.name });
+  }
+  if (departureTerminal) {
+    highlights.push({ label: "Departure Terminal", value: departureTerminal });
+  }
+  if (arrivalTerminal) {
+    highlights.push({ label: "Arrival Terminal", value: arrivalTerminal });
   }
 
   const routeLabel = departureAirportName
@@ -156,8 +207,13 @@ export async function fetchFlightSuggestion(
       flightCandidate?.flight?.iata ||
       flightCandidate?.flight?.icao ||
       flightNumber,
-    timezone: departure?.timezone || arrival?.timezone || null,
-    location_address: departureAirportName || null,
+    timezone: departureTimezone || arrivalTimezone || null,
+    location_address:
+      departureAddress ||
+      arrivalAddress ||
+      departureAirportName ||
+      arrivalAirportName ||
+      null,
     location_lat: departure?.airport?.location?.lat || null,
     location_lng: departure?.airport?.location?.lon || null,
     metadata: {

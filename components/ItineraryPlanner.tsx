@@ -219,157 +219,17 @@ const SEGMENT_TYPE_CONFIG: Record<SegmentType, SegmentTypeConfig> = {
   },
 };
 
-const SEGMENT_TYPE_OPTIONS = SEGMENT_TYPES.map((value) => ({
-  value,
-  label: SEGMENT_TYPE_CONFIG[value].label,
-}));
-
-type TimelineStyle = {
-  icon: JSX.Element;
-  color: string;
-  bgColor: string;
+type SegmentTypeOption = {
+  value: SegmentType;
+  label: string;
 };
 
-const TIMELINE_STYLES: Record<SegmentType, TimelineStyle> = {
-  flight: {
-    icon: (
-      <svg
-        className="h-5 w-5"
-        fill="none"
-        viewBox="0 0 24 24"
-        stroke="currentColor"
-        strokeWidth={1.5}
-      >
-        <path
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5"
-        />
-      </svg>
-    ),
-    color: "text-sky-600 dark:text-sky-400",
-    bgColor: "bg-sky-100 dark:bg-sky-900/40",
-  },
-  train: {
-    icon: (
-      <svg
-        className="h-5 w-5"
-        fill="none"
-        viewBox="0 0 24 24"
-        stroke="currentColor"
-        strokeWidth={1.5}
-      >
-        <path
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          d="M8.25 18.75a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 01-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h1.125c.621 0 1.129-.504 1.09-1.124a17.902 17.902 0 00-3.213-9.193 2.056 2.056 0 00-1.58-.86H14.25M16.5 18.75h-2.25m0-11.177v-.958c0-.568-.422-1.048-.987-1.106a48.554 48.554 0 00-10.026 0 1.106 1.106 0 00-.987 1.106v7.635m12-6.677v6.677m0 4.5v-4.5m0 0h-12"
-        />
-      </svg>
-    ),
-    color: "text-green-600 dark:text-green-400",
-    bgColor: "bg-green-100 dark:bg-green-900/40",
-  },
-  car: {
-    icon: (
-      <svg
-        className="h-5 w-5"
-        fill="none"
-        viewBox="0 0 24 24"
-        stroke="currentColor"
-        strokeWidth={1.5}
-      >
-        <path
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          d="M3 13.5l1.312-3.943A2 2 0 016.214 8h11.572a2 2 0 011.902 1.557L21 13.5M5 18.75a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zm0 0h14m0 0a1.5 1.5 0 103 0 1.5 1.5 0 00-3 0zm-11-6h8"
-        />
-      </svg>
-    ),
-    color: "text-emerald-600 dark:text-emerald-400",
-    bgColor: "bg-emerald-100 dark:bg-emerald-900/40",
-  },
-  activity: {
-    icon: (
-      <svg
-        className="h-5 w-5"
-        fill="none"
-        viewBox="0 0 24 24"
-        stroke="currentColor"
-        strokeWidth={1.5}
-      >
-        <path
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          d="M11.48 3.499a.562.562 0 011.04 0l2.125 5.111a.563.563 0 00.475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 00-.182.557l1.285 5.385a.562.562 0 01-.84.61l-4.725-2.885a.563.563 0 00-.586 0L6.982 20.54a.562.562 0 01-.84-.61l1.285-5.386a.563.563 0 00-.182-.557l-4.204-3.602a.563.563 0 01.321-.988l5.518-.442a.563.563 0 00.475-.345L11.48 3.5z"
-        />
-      </svg>
-    ),
-    color: "text-amber-600 dark:text-amber-400",
-    bgColor: "bg-amber-100 dark:bg-amber-900/40",
-  },
-  meal: {
-    icon: (
-      <svg
-        className="h-5 w-5"
-        fill="none"
-        viewBox="0 0 24 24"
-        stroke="currentColor"
-        strokeWidth={1.5}
-      >
-        <path
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          d="M12 8.25v-1.5m0 1.5c-1.355 0-2.697.056-4.024.166C6.845 8.51 6 9.473 6 10.608v2.513m6-4.87c1.355 0 2.697.055 4.024.165C17.155 8.51 18 9.473 18 10.608v2.513m-3-4.87v-1.5m-6 1.5v-1.5m12 9.75l-1.5.75a3.354 3.354 0 01-3 0 3.354 3.354 0 00-3 0 3.354 3.354 0 01-3 0 3.354 3.354 0 00-3 0 3.354 3.354 0 01-3 0L3 16.5m15-3.38a48.474 48.474 0 00-6-.37c-2.032 0-4.034.125-6 .37m12 0c.39.049.777.102 1.163.16 1.07.16 1.837 1.094 1.837 2.175v5.17c0 .62-.504 1.124-1.125 1.124H4.125A1.125 1.125 0 013 20.625v-5.17c0-1.08.768-2.014 1.837-2.174A47.78 47.78 0 016 13.12M12.265 3.11a.375.375 0 11-.53 0L12 2.845l.265.265zm-3 0a.375.375 0 11-.53 0L9 2.845l.265.265zm6 0a.375.375 0 11-.53 0L15 2.845l.265.265z"
-        />
-      </svg>
-    ),
-    color: "text-rose-600 dark:text-rose-400",
-    bgColor: "bg-rose-100 dark:bg-rose-900/40",
-  },
-  hotel: {
-    icon: (
-      <svg
-        className="h-5 w-5"
-        fill="none"
-        viewBox="0 0 24 24"
-        stroke="currentColor"
-        strokeWidth={1.5}
-      >
-        <path
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          d="M2.25 21h19.5m-18-18v18m10.5-18v18m6-13.5V21M6.75 6.75h.75m-.75 3h.75m-.75 3h.75m3-6h.75m-.75 3h.75m-.75 3h.75M6.75 21v-3.375c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21M3 3h12m-.75 4.5H21m-3.75 3.75h.008v.008h-.008v-.008zm0 3h.008v.008h-.008v-.008zm0 3h.008v.008h-.008v-.008z"
-        />
-      </svg>
-    ),
-    color: "text-purple-600 dark:text-purple-400",
-    bgColor: "bg-purple-100 dark:bg-purple-900/40",
-  },
-  other: {
-    icon: (
-      <svg
-        className="h-5 w-5"
-        fill="none"
-        viewBox="0 0 24 24"
-        stroke="currentColor"
-        strokeWidth={1.5}
-      >
-        <path
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z"
-        />
-        <path
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z"
-        />
-      </svg>
-    ),
-    color: "text-blue-600 dark:text-blue-400",
-    bgColor: "bg-blue-100 dark:bg-blue-900/40",
-  },
-};
+const SEGMENT_TYPE_OPTIONS: SegmentTypeOption[] = SEGMENT_TYPES.map(
+  (segmentType) => ({
+    value: segmentType,
+    label: SEGMENT_TYPE_CONFIG[segmentType].label,
+  })
+);
 
 const SMART_FILL_SUPPORTED_TYPES = new Set<SegmentType>([
   "flight",
@@ -408,7 +268,7 @@ function getTypeConfig(value?: string | null): SegmentTypeConfig {
 }
 
 function supportsLegsForType(type: SegmentType): boolean {
-  return type === "flight" || type === "train";
+  return type === "train";
 }
 
 function toAutofillType(type: SegmentType): SegmentAutofillType {
@@ -826,6 +686,264 @@ function formatSegmentTime(segment: SegmentRow): string {
   });
   if (start && end) return `${start} → ${end}`;
   return start ?? end ?? "Timing TBD";
+}
+
+type EndpointKey = "departure" | "arrival";
+type EndpointMetadataField = "airport" | "terminal" | "timezone" | "gate";
+
+type SegmentEndpointCard = {
+  key: EndpointKey;
+  label: string;
+  name: string;
+  code?: string | null;
+  locationLine?: string | null;
+  timeLabel?: string | null;
+  timezoneLabel?: string | null;
+  terminalLabel?: string | null;
+};
+
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+
+function getStringValue(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  return trimmed ? trimmed : null;
+}
+
+function extractScheduleTimestamp(
+  record: Record<string, unknown>
+): string | null {
+  const prioritizedKeys = [
+    "scheduledTimeUtc",
+    "scheduledTimeUTC",
+    "scheduled_time_utc",
+    "scheduledTimeLocal",
+    "scheduled_time_local",
+    "actualTimeUtc",
+    "actualTimeUTC",
+    "estimatedTimeUtc",
+    "estimatedTimeUTC",
+    "timeUtc",
+    "timeUTC",
+    "timestamp",
+  ];
+
+  for (const key of prioritizedKeys) {
+    const value = getStringValue(record[key]);
+    if (value) {
+      return value;
+    }
+  }
+
+  const scheduleValue = record.schedule;
+  if (isPlainObject(scheduleValue)) {
+    const nested = extractScheduleTimestamp(
+      scheduleValue as Record<string, unknown>
+    );
+    if (nested) {
+      return nested;
+    }
+  }
+
+  return null;
+}
+
+function formatEndpointTimeLabel(
+  timestamp: string | null,
+  timeZone?: string
+): string | null {
+  if (!timestamp) return null;
+  const date = new Date(timestamp);
+  if (Number.isNaN(date.getTime())) return timestamp;
+  try {
+    const formatter = new Intl.DateTimeFormat(undefined, {
+      month: "short",
+      day: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+      ...(timeZone ? { timeZone } : {}),
+    });
+    return formatter.format(date);
+  } catch (error) {
+    console.warn("Failed to format endpoint timestamp", error);
+    return formatDate(timestamp);
+  }
+}
+
+function getEndpointFieldValueFromMetadata(
+  metadata: Record<string, unknown>,
+  endpoint: EndpointKey,
+  field: EndpointMetadataField
+): string | null {
+  const directKey = `${endpoint}_${field}`;
+  const direct = getStringValue(metadata[directKey]);
+  if (direct) {
+    return direct;
+  }
+
+  const rawValue = metadata[endpoint];
+  if (!rawValue) return null;
+
+  if (typeof rawValue === "string") {
+    return field === "airport" ? rawValue : null;
+  }
+
+  if (!isPlainObject(rawValue)) return null;
+  const raw = rawValue as Record<string, unknown>;
+  const airportRecord = isPlainObject(raw.airport)
+    ? (raw.airport as Record<string, unknown>)
+    : undefined;
+
+  switch (field) {
+    case "airport": {
+      return (
+        getStringValue(airportRecord?.name) ||
+        getStringValue(airportRecord?.shortName) ||
+        getStringValue(raw.airportName) ||
+        getStringValue(raw.name) ||
+        null
+      );
+    }
+    case "terminal": {
+      return (
+        getStringValue(raw.terminal) || getStringValue(raw.terminalName) || null
+      );
+    }
+    case "timezone": {
+      return (
+        getStringValue(raw.timezone) ||
+        getStringValue(airportRecord?.timeZone) ||
+        getStringValue(airportRecord?.timezone) ||
+        null
+      );
+    }
+    case "gate": {
+      return (
+        getStringValue(raw.gate) ||
+        getStringValue(raw.gateNumber) ||
+        getStringValue(raw.gate_number) ||
+        null
+      );
+    }
+    default:
+      return null;
+  }
+}
+
+function buildEndpointDisplay(
+  key: EndpointKey,
+  record: Record<string, unknown>
+): SegmentEndpointCard | null {
+  const rawValue = record[key];
+  const raw = isPlainObject(rawValue)
+    ? (rawValue as Record<string, unknown>)
+    : undefined;
+
+  const airportName =
+    getEndpointFieldValueFromMetadata(record, key, "airport") || null;
+
+  const airportRecord = isPlainObject(raw?.airport)
+    ? (raw?.airport as Record<string, unknown>)
+    : undefined;
+  const airportCode =
+    getStringValue(airportRecord?.iata) ||
+    getStringValue(airportRecord?.icao) ||
+    getStringValue(raw?.airportCode);
+
+  const city =
+    getStringValue(airportRecord?.municipalityName) ||
+    getStringValue(airportRecord?.municipality) ||
+    getStringValue(raw?.city);
+  const country =
+    getStringValue(airportRecord?.countryCode) ||
+    getStringValue(airportRecord?.countryName) ||
+    getStringValue(raw?.countryCode);
+  const locationLine = [city, country].filter(Boolean).join(", ") || null;
+
+  const timezone =
+    getEndpointFieldValueFromMetadata(record, key, "timezone") || null;
+  const terminal =
+    getEndpointFieldValueFromMetadata(record, key, "terminal") || null;
+  const gate = getEndpointFieldValueFromMetadata(record, key, "gate") || null;
+  const terminalLabel =
+    [terminal, gate ? `Gate ${gate}` : null].filter(Boolean).join(" · ") ||
+    null;
+
+  const scheduleTimestamp = raw ? extractScheduleTimestamp(raw) : null;
+  const timeLabel = formatEndpointTimeLabel(
+    scheduleTimestamp,
+    timezone || undefined
+  );
+
+  const name =
+    airportName ||
+    airportCode ||
+    (key === "departure" ? "Departure" : "Arrival");
+
+  return {
+    key,
+    label: key === "departure" ? "Departure" : "Arrival",
+    name,
+    code: airportName && airportCode ? airportCode : null,
+    locationLine,
+    timeLabel,
+    timezoneLabel: timezone,
+    terminalLabel,
+  };
+}
+
+function extractTravelEndpoints(metadata: unknown): SegmentEndpointCard[] {
+  if (!isPlainObject(metadata)) return [];
+  const record = metadata as Record<string, unknown>;
+  const endpoints: SegmentEndpointCard[] = [];
+  const departure = buildEndpointDisplay("departure", record);
+  if (departure) endpoints.push(departure);
+  const arrival = buildEndpointDisplay("arrival", record);
+  if (arrival) endpoints.push(arrival);
+  return endpoints;
+}
+
+function getSegmentEndpoints(segment: SegmentRow): SegmentEndpointCard[] {
+  return extractTravelEndpoints(segment.metadata);
+}
+
+function getEndpointFieldValueFromState(
+  formState: SegmentFormState,
+  endpoint: EndpointKey,
+  field: EndpointMetadataField,
+  fallback = ""
+): string {
+  const value = getEndpointFieldValueFromMetadata(
+    formState.metadata,
+    endpoint,
+    field
+  );
+  if (value && value.length) {
+    return value;
+  }
+  return fallback;
+}
+
+function updateEndpointFieldState(
+  prev: SegmentFormState,
+  endpoint: EndpointKey,
+  field: EndpointMetadataField,
+  value: string
+): SegmentFormState {
+  const keyName = `${endpoint}_${field}`;
+  const nextMetadata: Record<string, unknown> = { ...prev.metadata };
+  const trimmed = value.trim();
+  if (trimmed) {
+    nextMetadata[keyName] = trimmed;
+  } else {
+    delete nextMetadata[keyName];
+  }
+  return {
+    ...prev,
+    metadata: nextMetadata,
+  };
 }
 
 function avatarInitials(name?: string | null, fallback?: string | null) {
@@ -1391,6 +1509,11 @@ export default function ItineraryPlanner() {
 
       const payload = await response.json().catch(() => ({}));
       if (!response.ok) {
+        console.error(
+          "[Smart Fill] /api/segments/autofill responded with",
+          response.status,
+          payload
+        );
         throw new Error(
           (payload as { error?: string })?.error ||
             "Unable to fetch smart fill data."
@@ -1426,6 +1549,15 @@ export default function ItineraryPlanner() {
     setSmartFillSuggestion(null);
     setSmartFillError(null);
   };
+
+  const handleEndpointFieldChange = useCallback(
+    (endpoint: EndpointKey, field: EndpointMetadataField, value: string) => {
+      setSegmentForm((prev) =>
+        updateEndpointFieldState(prev, endpoint, field, value)
+      );
+    },
+    [setSegmentForm]
+  );
   const handleUpdateItinerary = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     if (!userId || !selectedId || !detail) return;
@@ -1692,6 +1824,172 @@ export default function ItineraryPlanner() {
   const editFormTypeConfig = useMemo(
     () => getTypeConfig(editSegmentForm.type),
     [editSegmentForm.type]
+  );
+  const createFormEndpoints = useMemo(
+    () => extractTravelEndpoints(segmentForm.metadata),
+    [segmentForm.metadata]
+  );
+  const isFlightSegment = segmentForm.type === "flight";
+  const departureAirportValue = getEndpointFieldValueFromState(
+    segmentForm,
+    "departure",
+    "airport",
+    segmentForm.locationName
+  );
+  const departureTerminalValue = getEndpointFieldValueFromState(
+    segmentForm,
+    "departure",
+    "terminal"
+  );
+  const departureGateValue = getEndpointFieldValueFromState(
+    segmentForm,
+    "departure",
+    "gate"
+  );
+  const departureTimezoneValue = getEndpointFieldValueFromState(
+    segmentForm,
+    "departure",
+    "timezone"
+  );
+  const arrivalAirportValue = getEndpointFieldValueFromState(
+    segmentForm,
+    "arrival",
+    "airport",
+    segmentForm.locationAddress
+  );
+  const arrivalTerminalValue = getEndpointFieldValueFromState(
+    segmentForm,
+    "arrival",
+    "terminal"
+  );
+  const arrivalGateValue = getEndpointFieldValueFromState(
+    segmentForm,
+    "arrival",
+    "gate"
+  );
+  const arrivalTimezoneValue = getEndpointFieldValueFromState(
+    segmentForm,
+    "arrival",
+    "timezone"
+  );
+  const partnersHeading = isFlightSegment ? "Flight" : "Partners & references";
+  const budgetHeading = isFlightSegment ? "Cost" : "Budget & tracking";
+  const partnersSection = (
+    <section className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white/60 dark:bg-gray-950/40 p-4 sm:p-5 space-y-4">
+      <div className="flex items-center justify-between">
+        <p className="text-[11px] font-black uppercase tracking-[0.2em] text-gray-400 dark:text-gray-500">
+          {partnersHeading}
+        </p>
+      </div>
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            {providerLabelText}
+          </label>
+          <input
+            type="text"
+            value={segmentForm.providerName}
+            onChange={(e) =>
+              setSegmentForm((prev) => ({
+                ...prev,
+                providerName: e.target.value,
+              }))
+            }
+            className="w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            placeholder={providerPlaceholderText}
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            {confirmationLabelText}
+          </label>
+          <input
+            type="text"
+            value={segmentForm.confirmationCode}
+            onChange={(e) =>
+              setSegmentForm((prev) => ({
+                ...prev,
+                confirmationCode: e.target.value,
+              }))
+            }
+            className="w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            placeholder={confirmationPlaceholderText}
+          />
+        </div>
+      </div>
+      {showReferenceField && (
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            {referenceLabelText}
+          </label>
+          <input
+            type="text"
+            value={segmentForm.transportNumber}
+            onChange={(e) =>
+              setSegmentForm((prev) => ({
+                ...prev,
+                transportNumber: e.target.value,
+              }))
+            }
+            className="w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            placeholder={referencePlaceholderText}
+          />
+        </div>
+      )}
+      {showSeatField && (
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            {seatLabelText}
+          </label>
+          <input
+            type="text"
+            value={segmentForm.seatInfo}
+            onChange={(e) =>
+              setSegmentForm((prev) => ({
+                ...prev,
+                seatInfo: e.target.value,
+              }))
+            }
+            className="w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            placeholder={seatPlaceholderText}
+          />
+        </div>
+      )}
+    </section>
+  );
+
+  const budgetSection = (
+    <section className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white/60 dark:bg-gray-950/40 p-4 sm:p-5 space-y-4">
+      <div className="flex items-center justify-between">
+        <p className="text-[11px] font-black uppercase tracking-[0.2em] text-gray-400 dark:text-gray-500">
+          {budgetHeading}
+        </p>
+      </div>
+      <div>
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+          Cost (USD)
+        </label>
+        <div className="relative">
+          <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-sm font-semibold text-gray-500 dark:text-gray-400">
+            $
+          </span>
+          <input
+            type="number"
+            step="0.01"
+            min="0"
+            value={segmentForm.costAmount}
+            onChange={(e) =>
+              setSegmentForm((prev) => ({
+                ...prev,
+                costAmount: e.target.value,
+              }))
+            }
+            className="w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 pl-7 pr-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            placeholder="0.00"
+          />
+        </div>
+      </div>
+    </section>
   );
 
   return (
@@ -2513,103 +2811,101 @@ export default function ItineraryPlanner() {
                           onSubmit={handleCreateSegment}
                           className="p-6 lg:p-8 space-y-6"
                         >
-                          {/* Smart Fill */}
-                          <div className="rounded-2xl border border-dashed border-blue-200/70 dark:border-blue-800/70 bg-blue-50/50 dark:bg-blue-900/10 p-4 space-y-3">
-                            <div className="flex items-center justify-between gap-3">
-                              <div>
-                                <p className="text-sm font-semibold text-blue-900 dark:text-blue-100">
-                                  Smart fill
-                                </p>
-                                <p className="text-xs text-blue-700/80 dark:text-blue-200/70">
-                                  Use free data sources to pre-fill this
-                                  segment, then tweak anything.
-                                </p>
-                              </div>
-                              {smartFillSuggestion && (
-                                <button
-                                  type="button"
-                                  onClick={clearSmartFillSuggestion}
-                                  className="text-xs font-semibold text-blue-700 hover:text-blue-900 dark:text-blue-300"
-                                >
-                                  Clear
-                                </button>
-                              )}
-                            </div>
-                            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                              <input
-                                type="text"
-                                value={smartFillInput}
-                                onChange={(event) =>
-                                  setSmartFillInput(event.target.value)
-                                }
-                                placeholder={smartFillPlaceholder}
-                                className="w-full rounded-lg border border-blue-200/70 dark:border-blue-800/70 bg-white dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                              />
-                              <div className="flex gap-2">
-                                <input
-                                  type="date"
-                                  value={smartFillDate}
-                                  onChange={(event) =>
-                                    setSmartFillDate(event.target.value)
-                                  }
-                                  className="flex-1 rounded-lg border border-blue-200/70 dark:border-blue-800/70 bg-white dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                />
-                                <button
-                                  type="button"
-                                  onClick={handleSmartFill}
-                                  disabled={
-                                    smartFillLoading || !smartFillSupported
-                                  }
-                                  className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 disabled:opacity-50"
-                                >
-                                  {smartFillLoading
-                                    ? "Filling..."
-                                    : "Auto fill"}
-                                </button>
-                              </div>
-                            </div>
-                            {!smartFillSupported && (
-                              <p className="text-[11px] font-medium text-blue-900/70 dark:text-blue-200/70">
-                                Smart fill currently supports flights, trains,
-                                stays, meals, and activities.
-                              </p>
-                            )}
-                            {smartFillError && (
-                              <p className="text-xs font-semibold text-red-600 dark:text-red-400">
-                                {smartFillError}
-                              </p>
-                            )}
-                            {smartFillSuggestion && (
-                              <div className="rounded-xl border border-blue-200/70 dark:border-blue-800/70 bg-white/80 dark:bg-gray-900/40 px-3 py-3">
-                                <p className="text-xs font-semibold text-blue-900 dark:text-blue-100">
-                                  Filled via{" "}
-                                  {smartFillSuggestion.source ?? "smart fill"}
-                                </p>
-                                {smartFillSuggestion.highlights?.length ? (
-                                  <div className="mt-2 flex flex-wrap gap-2">
-                                    {smartFillSuggestion.highlights!.map(
-                                      (highlight) => (
-                                        <span
-                                          key={`${highlight.label}-${highlight.value}`}
-                                          className="inline-flex items-center rounded-full bg-blue-100/70 px-2 py-0.5 text-[11px] font-semibold text-blue-800 dark:bg-blue-900/40 dark:text-blue-200"
-                                        >
-                                          <span className="mr-1 text-blue-500">
-                                            ●
-                                          </span>
-                                          {highlight.label}: {highlight.value}
-                                        </span>
-                                      )
-                                    )}
+                          {smartFillSupported && (
+                            <>
+                              {/* Smart Fill */}
+                              <div className="rounded-2xl border border-dashed border-blue-200/70 dark:border-blue-800/70 bg-blue-50/50 dark:bg-blue-900/10 p-4 space-y-3">
+                                <div className="flex items-center justify-between gap-3">
+                                  <div>
+                                    <p className="text-sm font-semibold text-blue-900 dark:text-blue-100">
+                                      Smart fill
+                                    </p>
+                                    <p className="text-xs text-blue-700/80 dark:text-blue-200/70">
+                                      Use free data sources to pre-fill this
+                                      segment, then tweak anything.
+                                    </p>
                                   </div>
-                                ) : (
-                                  <p className="mt-2 text-[11px] text-blue-900/70 dark:text-blue-200/70">
-                                    We filled the available fields – you can
-                                    still edit before saving.
+                                  {smartFillSuggestion && (
+                                    <button
+                                      type="button"
+                                      onClick={clearSmartFillSuggestion}
+                                      className="text-xs font-semibold text-blue-700 hover:text-blue-900 dark:text-blue-300"
+                                    >
+                                      Clear
+                                    </button>
+                                  )}
+                                </div>
+                                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                                  <input
+                                    type="text"
+                                    value={smartFillInput}
+                                    onChange={(event) =>
+                                      setSmartFillInput(event.target.value)
+                                    }
+                                    placeholder={smartFillPlaceholder}
+                                    className="w-full rounded-lg border border-blue-200/70 dark:border-blue-800/70 bg-white dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                  />
+                                  <div className="flex gap-2">
+                                    <input
+                                      type="date"
+                                      value={smartFillDate}
+                                      onChange={(event) =>
+                                        setSmartFillDate(event.target.value)
+                                      }
+                                      className="flex-1 rounded-lg border border-blue-200/70 dark:border-blue-800/70 bg-white dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    />
+                                    <button
+                                      type="button"
+                                      onClick={handleSmartFill}
+                                      disabled={smartFillLoading}
+                                      className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 disabled:opacity-50"
+                                    >
+                                      {smartFillLoading
+                                        ? "Filling..."
+                                        : "Auto fill"}
+                                    </button>
+                                  </div>
+                                </div>
+                                {smartFillError && (
+                                  <p className="text-xs font-semibold text-red-600 dark:text-red-400">
+                                    {smartFillError}
                                   </p>
                                 )}
+                                {smartFillSuggestion && (
+                                  <div className="rounded-xl border border-blue-200/70 dark:border-blue-800/70 bg-white/80 dark:bg-gray-900/40 px-3 py-3">
+                                    <p className="text-xs font-semibold text-blue-900 dark:text-blue-100">
+                                      Filled via{" "}
+                                      {smartFillSuggestion.source ??
+                                        "smart fill"}
+                                    </p>
+                                    {smartFillSuggestion.highlights?.length ? (
+                                      <div className="mt-2 flex flex-wrap gap-2">
+                                        {smartFillSuggestion.highlights!.map(
+                                          (highlight) => (
+                                            <span
+                                              key={`${highlight.label}-${highlight.value}`}
+                                              className="inline-flex items-center rounded-full bg-blue-100/70 px-2 py-0.5 text-[11px] font-semibold text-blue-800 dark:bg-blue-900/40 dark:text-blue-200"
+                                            >
+                                              <span className="mr-1 text-blue-500">
+                                                ●
+                                              </span>
+                                              {highlight.label}:{" "}
+                                              {highlight.value}
+                                            </span>
+                                          )
+                                        )}
+                                      </div>
+                                    ) : (
+                                      <p className="mt-2 text-[11px] text-blue-900/70 dark:text-blue-200/70">
+                                        We filled the available fields – you can
+                                        still edit before saving.
+                                      </p>
+                                    )}
+                                  </div>
+                                )}
                               </div>
-                            )}
-                          </div>
+                            </>
+                          )}
 
                           {/* Segment Type */}
                           <div className="grid gap-3 md:grid-cols-[minmax(0,320px)_1fr]">
@@ -2690,6 +2986,230 @@ export default function ItineraryPlanner() {
                                       placeholder={locationPlaceholderText}
                                     />
                                   </div>
+                                  {isFlightSegment && (
+                                    <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+                                      <div className="rounded-2xl border border-gray-200 dark:border-gray-700 bg-white/80 dark:bg-gray-900/40 px-4 py-4 space-y-3">
+                                        <div className="flex items-center justify-between">
+                                          <p className="text-[11px] font-black uppercase tracking-[0.2em] text-gray-400 dark:text-gray-500">
+                                            Departure
+                                          </p>
+                                          <span className="text-[11px] text-gray-400 dark:text-gray-500">
+                                            Takeoff details
+                                          </span>
+                                        </div>
+                                        <div>
+                                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                            Airport or city
+                                          </label>
+                                          <input
+                                            type="text"
+                                            value={departureAirportValue}
+                                            onChange={(e) =>
+                                              handleEndpointFieldChange(
+                                                "departure",
+                                                "airport",
+                                                e.target.value
+                                              )
+                                            }
+                                            className="w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                            placeholder="e.g., SFO · International"
+                                          />
+                                        </div>
+                                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                                          <div>
+                                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                              Terminal
+                                            </label>
+                                            <input
+                                              type="text"
+                                              value={departureTerminalValue}
+                                              onChange={(e) =>
+                                                handleEndpointFieldChange(
+                                                  "departure",
+                                                  "terminal",
+                                                  e.target.value
+                                                )
+                                              }
+                                              className="w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                              placeholder="Terminal / concourse"
+                                            />
+                                          </div>
+                                          <div>
+                                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                              Gate
+                                            </label>
+                                            <input
+                                              type="text"
+                                              value={departureGateValue}
+                                              onChange={(e) =>
+                                                handleEndpointFieldChange(
+                                                  "departure",
+                                                  "gate",
+                                                  e.target.value
+                                                )
+                                              }
+                                              className="w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                              placeholder="Gate"
+                                            />
+                                          </div>
+                                        </div>
+                                        <div>
+                                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                            Timezone
+                                          </label>
+                                          <input
+                                            type="text"
+                                            value={departureTimezoneValue}
+                                            onChange={(e) =>
+                                              handleEndpointFieldChange(
+                                                "departure",
+                                                "timezone",
+                                                e.target.value
+                                              )
+                                            }
+                                            className="w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                            placeholder="America/Los_Angeles"
+                                          />
+                                        </div>
+                                      </div>
+                                      <div className="rounded-2xl border border-gray-200 dark:border-gray-700 bg-white/80 dark:bg-gray-900/40 px-4 py-4 space-y-3">
+                                        <div className="flex items-center justify-between">
+                                          <p className="text-[11px] font-black uppercase tracking-[0.2em] text-gray-400 dark:text-gray-500">
+                                            Arrival
+                                          </p>
+                                          <span className="text-[11px] text-gray-400 dark:text-gray-500">
+                                            Landing details
+                                          </span>
+                                        </div>
+                                        <div>
+                                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                            Airport or city
+                                          </label>
+                                          <input
+                                            type="text"
+                                            value={arrivalAirportValue}
+                                            onChange={(e) =>
+                                              handleEndpointFieldChange(
+                                                "arrival",
+                                                "airport",
+                                                e.target.value
+                                              )
+                                            }
+                                            className="w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                            placeholder="e.g., Haneda · Terminal 3"
+                                          />
+                                        </div>
+                                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                                          <div>
+                                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                              Terminal
+                                            </label>
+                                            <input
+                                              type="text"
+                                              value={arrivalTerminalValue}
+                                              onChange={(e) =>
+                                                handleEndpointFieldChange(
+                                                  "arrival",
+                                                  "terminal",
+                                                  e.target.value
+                                                )
+                                              }
+                                              className="w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                              placeholder="Terminal / customs"
+                                            />
+                                          </div>
+                                          <div>
+                                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                              Gate / carousel
+                                            </label>
+                                            <input
+                                              type="text"
+                                              value={arrivalGateValue}
+                                              onChange={(e) =>
+                                                handleEndpointFieldChange(
+                                                  "arrival",
+                                                  "gate",
+                                                  e.target.value
+                                                )
+                                              }
+                                              className="w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                              placeholder="Gate or belt"
+                                            />
+                                          </div>
+                                        </div>
+                                        <div>
+                                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                            Timezone
+                                          </label>
+                                          <input
+                                            type="text"
+                                            value={arrivalTimezoneValue}
+                                            onChange={(e) =>
+                                              handleEndpointFieldChange(
+                                                "arrival",
+                                                "timezone",
+                                                e.target.value
+                                              )
+                                            }
+                                            className="w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                            placeholder="Asia/Tokyo"
+                                          />
+                                        </div>
+                                      </div>
+                                    </div>
+                                  )}
+                                  {createFormEndpoints.length > 0 && (
+                                    <div
+                                      className={`grid gap-3 ${
+                                        createFormEndpoints.length > 1
+                                          ? "sm:grid-cols-2"
+                                          : ""
+                                      }`}
+                                    >
+                                      {createFormEndpoints.map((endpoint) => (
+                                        <div
+                                          key={`create-${endpoint.key}`}
+                                          className="rounded-2xl border border-gray-200 dark:border-gray-700 bg-white/80 dark:bg-gray-900/50 px-4 py-3 shadow-sm"
+                                        >
+                                          <div className="flex items-center justify-between gap-2">
+                                            <p className="text-[11px] font-black uppercase tracking-[0.2em] text-gray-400 dark:text-gray-500">
+                                              {endpoint.label}
+                                            </p>
+                                            {endpoint.timezoneLabel && (
+                                              <span className="text-[11px] text-gray-400 dark:text-gray-500 truncate">
+                                                {endpoint.timezoneLabel}
+                                              </span>
+                                            )}
+                                          </div>
+                                          <div className="mt-2">
+                                            <p className="text-sm font-semibold text-gray-900 dark:text-white">
+                                              {endpoint.name}
+                                              {endpoint.code && (
+                                                <span className="ml-1 text-xs font-medium text-gray-500 dark:text-gray-400">
+                                                  {endpoint.code}
+                                                </span>
+                                              )}
+                                            </p>
+                                            {endpoint.locationLine && (
+                                              <p className="text-xs text-gray-500 dark:text-gray-400">
+                                                {endpoint.locationLine}
+                                              </p>
+                                            )}
+                                          </div>
+                                          {endpoint.timeLabel && (
+                                            <p className="mt-3 text-sm font-medium text-gray-900 dark:text-gray-100">
+                                              {endpoint.timeLabel}
+                                            </p>
+                                          )}
+                                          {endpoint.terminalLabel && (
+                                            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                                              {endpoint.terminalLabel}
+                                            </p>
+                                          )}
+                                        </div>
+                                      ))}
+                                    </div>
+                                  )}
                                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                                     <div>
                                       <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -2889,8 +3409,7 @@ export default function ItineraryPlanner() {
                                       Legs & hops
                                     </p>
                                     <p className="text-sm text-blue-700 dark:text-blue-200">
-                                      Track each hop for multi-leg flights or
-                                      trains.
+                                      Track each hop for train transfers.
                                     </p>
                                   </div>
                                   <div className="flex items-center gap-2">
@@ -3273,6 +3792,8 @@ export default function ItineraryPlanner() {
                             };
 
                             const costDisplay = getSegmentCostDisplay(segment);
+                            const travelEndpoints =
+                              getSegmentEndpoints(segment);
 
                             return (
                               <div
@@ -3315,29 +3836,30 @@ export default function ItineraryPlanner() {
                                       <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
                                         {formatSegmentTime(segment)}
                                       </p>
-                                      {segment.location_name && (
-                                        <p className="text-sm text-gray-500 dark:text-gray-400 flex items-center gap-1 mt-1">
-                                          <svg
-                                            className="h-3.5 w-3.5"
-                                            fill="none"
-                                            viewBox="0 0 24 24"
-                                            stroke="currentColor"
-                                            strokeWidth={1.5}
-                                          >
-                                            <path
-                                              strokeLinecap="round"
-                                              strokeLinejoin="round"
-                                              d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z"
-                                            />
-                                            <path
-                                              strokeLinecap="round"
-                                              strokeLinejoin="round"
-                                              d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z"
-                                            />
-                                          </svg>
-                                          {segment.location_name}
-                                        </p>
-                                      )}
+                                      {segment.location_name &&
+                                        travelEndpoints.length === 0 && (
+                                          <p className="text-sm text-gray-500 dark:text-gray-400 flex items-center gap-1 mt-1">
+                                            <svg
+                                              className="h-3.5 w-3.5"
+                                              fill="none"
+                                              viewBox="0 0 24 24"
+                                              stroke="currentColor"
+                                              strokeWidth={1.5}
+                                            >
+                                              <path
+                                                strokeLinecap="round"
+                                                strokeLinejoin="round"
+                                                d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z"
+                                              />
+                                              <path
+                                                strokeLinecap="round"
+                                                strokeLinejoin="round"
+                                                d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z"
+                                              />
+                                            </svg>
+                                            {segment.location_name}
+                                          </p>
+                                        )}
                                     </div>
                                     <div className="flex items-center gap-1">
                                       {costDisplay && (
@@ -3397,6 +3919,59 @@ export default function ItineraryPlanner() {
                                       </div>
                                     </div>
                                   </div>
+
+                                  {travelEndpoints.length > 0 && (
+                                    <div
+                                      className={`grid gap-3 ${
+                                        travelEndpoints.length > 1
+                                          ? "sm:grid-cols-2"
+                                          : ""
+                                      }`}
+                                    >
+                                      {travelEndpoints.map((endpoint) => (
+                                        <div
+                                          key={endpoint.key}
+                                          className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white/70 dark:bg-gray-950/40 px-4 py-3 shadow-sm"
+                                        >
+                                          <div className="flex items-center justify-between gap-2">
+                                            <p className="text-[11px] font-black uppercase tracking-[0.2em] text-gray-400 dark:text-gray-500">
+                                              {endpoint.label}
+                                            </p>
+                                            {endpoint.timezoneLabel && (
+                                              <span className="text-[11px] text-gray-400 dark:text-gray-500 truncate">
+                                                {endpoint.timezoneLabel}
+                                              </span>
+                                            )}
+                                          </div>
+                                          <div className="mt-2">
+                                            <p className="text-sm font-semibold text-gray-900 dark:text-white">
+                                              {endpoint.name}
+                                              {endpoint.code && (
+                                                <span className="ml-1 text-xs font-medium text-gray-500 dark:text-gray-400">
+                                                  {endpoint.code}
+                                                </span>
+                                              )}
+                                            </p>
+                                            {endpoint.locationLine && (
+                                              <p className="text-xs text-gray-500 dark:text-gray-400">
+                                                {endpoint.locationLine}
+                                              </p>
+                                            )}
+                                          </div>
+                                          {endpoint.timeLabel && (
+                                            <p className="mt-3 text-sm font-medium text-gray-900 dark:text-gray-100">
+                                              {endpoint.timeLabel}
+                                            </p>
+                                          )}
+                                          {endpoint.terminalLabel && (
+                                            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                                              {endpoint.terminalLabel}
+                                            </p>
+                                          )}
+                                        </div>
+                                      ))}
+                                    </div>
+                                  )}
 
                                   {segment.description && (
                                     <p className="text-sm text-gray-600 dark:text-gray-300">
