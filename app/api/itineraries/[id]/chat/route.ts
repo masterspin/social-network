@@ -278,12 +278,22 @@ async function executeToolCall(
           const validIds = segment_ids.filter(id => typeof id === "string");
           if (validIds.length === 0) return [];
 
+          // Try to get segment titles from context for better description
+          // Note: We don't have direct access to context here, so we'll use a generic message
+          // The frontend confirmation will show the actual titles
+
+          const title = validIds.length === 1
+            ? "Remove Segment"
+            : `Remove ${validIds.length} Segments`;
+
+          const description = validIds.length === 1
+            ? "Delete the selected segment from your itinerary"
+            : `Delete ${validIds.length} segments that form a complete journey`;
+
           // Return a plan with multiple delete actions
           return [{
-            title: validIds.length === 1 ? "Remove Segment" : `Remove ${validIds.length} Segments`,
-            description: validIds.length === 1
-              ? "Delete the selected segment from your itinerary"
-              : `Delete ${validIds.length} segments that form a complete journey`,
+            title,
+            description,
             actions: validIds.map(id => ({ type: "delete" as const, segmentId: id })),
           }];
         }

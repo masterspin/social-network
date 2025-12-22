@@ -198,6 +198,18 @@ export default function ChatAssistant({
                     const createCount = plan.actions.filter(a => a.type === 'create').length;
                     const deleteCount = plan.actions.filter(a => a.type === 'delete').length;
 
+                    // Get titles of segments to be deleted
+                    const deleteSegmentTitles = plan.actions
+                      .filter(a => a.type === 'delete')
+                      .map(action => {
+                        if (action.type === 'delete') {
+                          const seg = existingSegments.find(s => s.id === action.segmentId);
+                          return seg?.title || 'Unknown segment';
+                        }
+                        return '';
+                      })
+                      .filter(Boolean);
+
                     return (
                       <div
                         key={idx}
@@ -212,6 +224,17 @@ export default function ChatAssistant({
                               <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
                                 {plan.description}
                               </p>
+                            )}
+                            {/* Show which segments will be deleted */}
+                            {deleteSegmentTitles.length > 0 && (
+                              <div className="mt-2 text-xs text-gray-700 dark:text-gray-300">
+                                <p className="font-medium mb-1">Will remove:</p>
+                                <ul className="list-disc list-inside space-y-0.5">
+                                  {deleteSegmentTitles.map((title, i) => (
+                                    <li key={i} className="truncate">{title}</li>
+                                  ))}
+                                </ul>
+                              </div>
                             )}
                             <div className="mt-2 flex gap-2 text-xs text-gray-600 dark:text-gray-400">
                               {createCount > 0 && (
