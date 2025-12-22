@@ -2951,9 +2951,8 @@ export default function ItineraryPlanner() {
           )}
 
           {detail && (
-            <div className="space-y-6">
-              <div className="group relative rounded-[2rem] border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-xl shadow-gray-200/50 dark:shadow-none overflow-hidden transition-all duration-500">
-                <div className="h-3 bg-gradient-to-r from-blue-600 to-indigo-600 w-full" />
+            <div className="space-y-6 pt-8">
+              <div className="group relative rounded-[2rem] border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-xl shadow-gray-200/50 dark:shadow-none overflow-hidden transition-all duration-500 pt-6">
 
                 {isEditingHeader && (
                   <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
