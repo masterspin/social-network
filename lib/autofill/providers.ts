@@ -249,13 +249,119 @@ export async function fetchFlightSuggestionFree(
   destination: string,
   dateInput?: string
 ): Promise<SegmentAutofillPlan[]> {
-  // For MVP, return mock data structure
-  // TODO: Integrate AviationStack free tier or FlightAware public data
+  const apiKey = process.env.AERODATABOX_API_KEY;
+  const apiHost = process.env.AERODATABOX_API_HOST ?? "aerodatabox.p.rapidapi.com";
+  const apiBase = process.env.AERODATABOX_API_BASE ?? `https://${apiHost}`;
+
+  if (!apiKey) {
+    console.warn("AERODATABOX_API_KEY not set, returning mock data");
+    return getMockFlightPlans(origin, destination, dateInput);
+  }
+
   const originUpper = origin.trim().toUpperCase();
   const destUpper = destination.trim().toUpperCase();
   const date = dateInput || new Date().toISOString().slice(0, 10);
 
-  // PLAN A: Direct
+  try {
+    // Query departures from origin airport
+    const url = new URL(
+      `/flights/airports/iata/${originUpper}/${date}T00:00/${date}T23:59`,
+      apiBase
+    );
+    url.searchParams.set("withLeg", "true");
+    url.searchParams.set("withCancelled", "false");
+    url.searchParams.set("withCodeshared", "true");
+    url.searchParams.set("withCargo", "false");
+    url.searchParams.set("withPrivate", "false");
+    url.searchParams.set("withLocation", "true");
+    url.searchParams.set("direction", "Departure");
+
+    const response = await fetch(url.toString(), {
+      headers: {
+        "X-RapidAPI-Key": apiKey,
+        "X-RapidAPI-Host": apiHost,
+        accept: "application/json",
+        "user-agent": USER_AGENT,
+      },
+      next: { revalidate: 3600 }, // Cache for 1 hour
+    });
+
+    if (!response.ok) {
+      console.warn(`AeroDataBox request failed (${response.status}), using mock data`);
+      return getMockFlightPlans(origin, destination, dateInput);
+    }
+
+    const payload = await response.json().catch(() => null);
+    const departures = Array.isArray(payload?.departures) ? payload.departures : [];
+
+    // Filter flights going to destination
+    const matchingFlights = departures.filter((flight: any) => {
+      const arrivalIata = flight?.arrival?.airport?.iata || flight?.movement?.airport?.iata;
+      return arrivalIata === destUpper;
+    });
+
+    if (matchingFlights.length === 0) {
+      console.log(`No direct flights found from ${originUpper} to ${destUpper}, returning mock data`);
+      return getMockFlightPlans(origin, destination, dateInput);
+    }
+
+    // Convert to plans (limit to 3 options)
+    const plans: SegmentAutofillPlan[] = matchingFlights.slice(0, 3).map((flight: any, idx: number) => {
+      const departure = flight?.departure || {};
+      const arrival = flight?.arrival || {};
+      const airline = flight?.airline || {};
+
+      const flightNumber = `${airline?.iata || airline?.icao || ''}${flight?.number || ''}`.trim();
+      const departureTime = departure?.scheduledTimeLocal || departure?.scheduledTimeUtc;
+      const arrivalTime = arrival?.scheduledTimeLocal || arrival?.scheduledTimeUtc;
+
+      const segment: SegmentAutofillSuggestion = {
+        type: "flight",
+        title: `${flightNumber} · ${originUpper} → ${destUpper}`,
+        description: `${airline?.name || 'Flight'}`,
+        location_name: departure?.airport?.name || originUpper,
+        start_time: departureTime ? safeDate(departureTime) : null,
+        end_time: arrivalTime ? safeDate(arrivalTime) : null,
+        provider_name: airline?.name || null,
+        transport_number: flightNumber || null,
+        metadata: {
+          source: "aerodatabox-route-search",
+          origin: originUpper,
+          destination: destUpper,
+          departure: departure,
+          arrival: arrival,
+        },
+        highlights: [
+          { label: "Route", value: `${originUpper} → ${destUpper}` },
+          { label: "Flight", value: flightNumber },
+        ],
+        source: "AeroDataBox",
+      };
+
+      return {
+        title: idx === 0 ? "Direct Flight" : `Option ${idx + 1}`,
+        description: `${airline?.name || 'Flight'} ${flightNumber}`,
+        actions: [{ type: "create", segment }],
+      };
+    });
+
+    return plans;
+  } catch (error) {
+    console.error("Error fetching flights from AeroDataBox:", error);
+    return getMockFlightPlans(origin, destination, dateInput);
+  }
+}
+
+// Fallback mock data function
+function getMockFlightPlans(
+  origin: string,
+  destination: string,
+  dateInput?: string
+): SegmentAutofillPlan[] {
+  const originUpper = origin.trim().toUpperCase();
+  const destUpper = destination.trim().toUpperCase();
+  const date = dateInput || new Date().toISOString().slice(0, 10);
+
   const directSuggestion: SegmentAutofillSuggestion = {
     type: "flight",
     title: `${originUpper} → ${destUpper} (Direct)`,
@@ -266,7 +372,7 @@ export async function fetchFlightSuggestionFree(
     provider_name: "Mock Airlines",
     transport_number: "MA101",
     metadata: {
-      source: "free-search",
+      source: "mock-data",
       origin: originUpper,
       destination: destUpper,
     },
@@ -274,11 +380,9 @@ export async function fetchFlightSuggestionFree(
       { label: "Route", value: `${originUpper} → ${destUpper}` },
       { label: "Type", value: "Direct" },
     ],
-    source: "free-search",
+    source: "mock-data",
   };
 
-  // PLAN B: With connection (Multi-leg demo)
-  // Leg 1: Origin -> HUB
   const leg1: SegmentAutofillSuggestion = {
     type: "flight",
     title: `${originUpper} → HUB`,
@@ -288,11 +392,11 @@ export async function fetchFlightSuggestionFree(
     end_time: `${date}T09:00:00`,
     provider_name: "Mock Express",
     transport_number: "ME55",
-    metadata: { source: "free-search-multi" },
+    metadata: { source: "mock-data" },
     highlights: [{ label: "Route", value: `${originUpper} → HUB` }],
-    source: "free-search",
+    source: "mock-data",
   };
-  // Leg 2: HUB -> Dest
+
   const leg2: SegmentAutofillSuggestion = {
     type: "flight",
     title: `HUB → ${destUpper}`,
@@ -302,9 +406,9 @@ export async function fetchFlightSuggestionFree(
     end_time: `${date}T13:30:00`,
     provider_name: "Mock Express",
     transport_number: "ME56",
-    metadata: { source: "free-search-multi" },
+    metadata: { source: "mock-data" },
     highlights: [{ label: "Route", value: `HUB → ${destUpper}` }],
-    source: "free-search",
+    source: "mock-data",
   };
 
   return [

@@ -116,7 +116,27 @@ Example:
 - Action: Delete BOTH segments (they form one journey)
 - Response: "I found your journey from Detroit to Zurich with a connection in Toronto. I'll remove both flight segments for you."
 
-Similarly, if a user asks to delete "my flight to Paris" and there are multiple connecting segments ending in Paris, delete all of them as one journey.`;
+Similarly, if a user asks to delete "my flight to Paris" and there are multiple connecting segments ending in Paris, delete all of them as one journey.
+
+**Replacement Requests:**
+When a user asks to "replace" or "find a replacement for" an existing segment:
+1. First, identify which segment(s) they want to replace (use the same multi-leg detection as above)
+2. Search for new options using the appropriate search tool
+3. Create a SINGLE plan that includes BOTH:
+   - Delete actions for the old segment(s)
+   - Create actions for the new segment(s)
+4. This ensures the old flight is removed when the new one is added
+
+Example:
+- User says: "Replace my DTW to Zurich flight with a non-Air Canada option"
+- Segments show: "DTW → Toronto → Zurich" (Air Canada)
+- Actions:
+  1. Call search_flights for DTW to Zurich alternatives
+  2. Call delete_segment for both old flight segments
+  3. Return ONE plan with: delete actions for old flights + create actions for new flights
+- Response: "I found some alternatives. This plan will remove your current Air Canada connection and add [new option]."
+
+**Important:** For replacements, you MUST call both the search tool AND the delete_segment tool, then combine the results into a single plan.`;
 
 const TOOLS = [
   {

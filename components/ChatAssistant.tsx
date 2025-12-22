@@ -210,6 +210,11 @@ export default function ChatAssistant({
                       })
                       .filter(Boolean);
 
+                    // Get create action details
+                    const createSegments = plan.actions
+                      .filter((a): a is { type: 'create'; segment: any } => a.type === 'create')
+                      .map(action => action.segment);
+
                     return (
                       <div
                         key={idx}
@@ -225,6 +230,38 @@ export default function ChatAssistant({
                                 {plan.description}
                               </p>
                             )}
+
+                            {/* Show flight details for create actions */}
+                            {createSegments.length > 0 && (
+                              <div className="mt-2 space-y-2">
+                                {createSegments.map((seg, i) => (
+                                  <div key={i} className="text-xs bg-gray-50 dark:bg-gray-800/50 rounded-lg p-2">
+                                    <p className="font-medium text-gray-900 dark:text-gray-100">{seg.title}</p>
+                                    {seg.start_time && (
+                                      <p className="text-gray-600 dark:text-gray-400 mt-1">
+                                        {new Date(seg.start_time).toLocaleString('en-US', {
+                                          month: 'short',
+                                          day: 'numeric',
+                                          hour: 'numeric',
+                                          minute: '2-digit'
+                                        })}
+                                        {seg.end_time && ` → ${new Date(seg.end_time).toLocaleString('en-US', {
+                                          hour: 'numeric',
+                                          minute: '2-digit'
+                                        })}`}
+                                      </p>
+                                    )}
+                                    {seg.provider_name && (
+                                      <p className="text-gray-600 dark:text-gray-400">
+                                        {seg.provider_name}
+                                        {seg.transport_number && ` ${seg.transport_number}`}
+                                      </p>
+                                    )}
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+
                             {/* Show which segments will be deleted */}
                             {deleteSegmentTitles.length > 0 && (
                               <div className="mt-2 text-xs text-gray-700 dark:text-gray-300">
