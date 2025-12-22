@@ -28,16 +28,16 @@ function safeDate(value?: string | null): string | null {
   return date.toISOString();
 }
 
-function safeNavitiaDate(value?: string | null): string | null {
+function parseCompactDateTime(value: string | null | undefined): string | null {
   if (!value) return null;
   const match = value.match(
-    /^(?<year>\d{4})(?<month>\d{2})(?<day>\d{2})T(?<hour>\d{2})(?<minute>\d{2})(?<second>\d{2})$/
+    /^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})$/
   );
-  if (!match || !match.groups) {
+  if (!match) {
     return safeDate(value);
   }
-  const { year, month, day, hour, minute, second } = match.groups;
-  const isoString = `${year}-${month}-${day}T${hour}:${minute}:${second}`;
+  const [, year, month, day, hour, minute, second] = match;
+  const isoString = `${year}-${month}-${day}T${hour}:${minute}:${second}Z`;
   return safeDate(isoString);
 }
 
@@ -405,8 +405,8 @@ export async function fetchTrainSuggestion(
     title: line?.name || train?.name || `Service ${serviceCode}`,
     description: companyName || null,
     location_name: firstStop?.stop_point?.name || null,
-    start_time: safeNavitiaDate(firstStop?.departure_date_time),
-    end_time: safeNavitiaDate(lastStop?.arrival_date_time),
+    start_time: parseCompactDateTime(firstStop?.departure_date_time),
+    end_time: parseCompactDateTime(lastStop?.arrival_date_time),
     provider_name: companyName || null,
     transport_number: serviceCode,
     location_address: firstStop?.stop_point?.name || null,

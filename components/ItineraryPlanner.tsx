@@ -311,7 +311,7 @@ function serializeLegs(
         seat: seat || null,
       };
     })
-    .filter((entry): entry is Record<string, string | null> => Boolean(entry));
+    .filter((entry) => entry !== null) as Array<Record<string, string | null>>;
   return serialized.length ? serialized : undefined;
 }
 
@@ -2267,7 +2267,7 @@ export default function ItineraryPlanner() {
     if (!detail) return;
     setEditHeaderForm({
       title: detail.title || "",
-      visibility: detail.visibility || "private",
+      visibility: (detail.visibility as "public" | "private" | "shared") || "private",
     });
     setIsEditingHeader(true);
   };
@@ -2992,7 +2992,7 @@ export default function ItineraryPlanner() {
                                   onClick={() =>
                                     setEditHeaderForm({
                                       ...editHeaderForm,
-                                      visibility: v,
+                                      visibility: v as "public" | "private" | "shared",
                                     })
                                   }
                                   className={`p-4 rounded-2xl border-2 text-left transition-all ${editHeaderForm.visibility === v
@@ -3149,7 +3149,7 @@ export default function ItineraryPlanner() {
                             if (detail.owner_id === userId) {
                               setEditHeaderForm({
                                 title: detail.title || "",
-                                visibility: detail.visibility || "private",
+                                visibility: (detail.visibility as "public" | "private" | "shared") || "private",
                               });
                               setIsEditingTitle(true);
                             }
@@ -3335,7 +3335,10 @@ export default function ItineraryPlanner() {
                     initialData={editFlightData || undefined}
                     smartFillEnabled={smartFillSupported}
                     onSmartFill={handleFlightSmartFill}
-                    smartFillSuggestion={smartFillSuggestion}
+                    smartFillSuggestion={smartFillSuggestion ? {
+                      source: smartFillSuggestion.source || undefined,
+                      highlights: smartFillSuggestion.highlights || undefined,
+                    } : null}
                     onClearSmartFill={clearSmartFillSuggestion}
                     smartFillLoading={smartFillLoading}
                     smartFillError={smartFillError}
@@ -3448,31 +3451,25 @@ export default function ItineraryPlanner() {
                                   <div className="rounded-xl border border-blue-200/70 dark:border-blue-800/70 bg-white/80 dark:bg-gray-900/40 px-3 py-3">
                                     <p className="text-xs font-semibold text-blue-900 dark:text-blue-100">
                                       Filled via{" "}
-                                      {smartFillSuggestion.source ??
+                                      {smartFillSuggestion?.source ??
                                         "smart fill"}
                                     </p>
-                                    {smartFillSuggestion.highlights?.length ? (
-                                      <div className="mt-2 flex flex-wrap gap-2">
-                                        {smartFillSuggestion.highlights!.map(
-                                          (highlight) => (
-                                            <span
-                                              key={`${highlight.label}-${highlight.value}`}
-                                              className="inline-flex items-center rounded-full bg-blue-100/70 px-2 py-0.5 text-[11px] font-semibold text-blue-800 dark:bg-blue-900/40 dark:text-blue-200"
+                                    {(smartFillSuggestion?.highlights?.length ?? 0) > 0 && (
+                                      <div className="mt-2 space-y-1">
+                                        {smartFillSuggestion?.highlights?.map(
+                                          (h, i) => (
+                                            <div
+                                              key={i}
+                                              className="flex gap-2 text-xs text-blue-700/80 dark:text-blue-200/70"
                                             >
-                                              <span className="mr-1 text-blue-500">
-                                                ●
+                                              <span className="font-medium">
+                                                {h.label}:
                                               </span>
-                                              {highlight.label}:{" "}
-                                              {highlight.value}
-                                            </span>
+                                              <span>{h.value}</span>
+                                            </div>
                                           )
                                         )}
                                       </div>
-                                    ) : (
-                                      <p className="mt-2 text-[11px] text-blue-900/70 dark:text-blue-200/70">
-                                        We filled the available fields – you can
-                                        still edit before saving.
-                                      </p>
                                     )}
                                   </div>
                                 )}
@@ -4530,12 +4527,6 @@ export default function ItineraryPlanner() {
                                                 <MapPin className="h-3.5 w-3.5 text-indigo-500" />
                                                 {segment.location_address}
                                               </a>
-                                              {segment.timezone && (
-                                                <span className="inline-flex items-center gap-1.5 text-sm font-medium text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-800/60 rounded-lg px-3 py-1.5 border border-gray-200 dark:border-gray-700">
-                                                  <Clock className="h-3.5 w-3.5 text-gray-500 dark:text-gray-400" />
-                                                  {segment.timezone}
-                                                </span>
-                                              )}
                                             </div>
                                           </div>
                                         </div>
@@ -5016,7 +5007,7 @@ export default function ItineraryPlanner() {
                 // Determine segment type
                 let segType: SegmentType = "flight";
                 if (suggestion.type === "transport") segType = "transport";
-                else if (suggestion.type === "hotel" || suggestion.type === "stay") segType = "stay";
+                else if (suggestion.type === "hotel") segType = "stay";
 
                 setSegmentForm({
                   type: segType,

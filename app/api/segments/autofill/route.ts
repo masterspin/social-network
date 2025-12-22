@@ -98,9 +98,8 @@ function buildCacheKey(payload: SegmentAutofillRequest): string {
   const normalizedQuery = payload.query.trim().toLowerCase();
   const normalizedDate = payload.date?.slice(0, 10) ?? "";
   const contextKey = payload.context
-    ? `${payload.context.lat ?? ""}|${payload.context.lng ?? ""}|${
-        payload.context.radiusMeters ?? ""
-      }`
+    ? `${payload.context.lat ?? ""}|${payload.context.lng ?? ""}|${payload.context.radiusMeters ?? ""
+    }`
     : "";
   return `${payload.type}|${normalizedQuery}|${normalizedDate}|${contextKey}`;
 }
@@ -125,23 +124,40 @@ function setCache(key: string, suggestion: SegmentAutofillSuggestion) {
 async function resolveSuggestion(
   payload: SegmentAutofillRequest
 ): Promise<SegmentAutofillSuggestion | null> {
+  let plan: any = null;
+
   switch (payload.type) {
     case "flight":
-      return fetchFlightSuggestion(payload.query, payload.date);
+      plan = await fetchFlightSuggestion(payload.query, payload.date);
+      break;
     case "train":
     case "transport":
-      return fetchTrainSuggestion(payload.query, payload.date);
+      plan = await fetchTrainSuggestion(payload.query, payload.date);
+      break;
     case "hotel":
     case "meal":
     case "activity":
-      return fetchPlaceSuggestion({
+      plan = await fetchPlaceSuggestion({
         query: payload.query,
         type: payload.type as "hotel" | "meal" | "activity",
         context: payload.context,
       });
+      break;
     default:
       return null;
   }
+
+  // Extract the first segment from the plan
+  if (!plan || !plan.actions || plan.actions.length === 0) {
+    return null;
+  }
+
+  const firstAction = plan.actions[0];
+  if (firstAction.type === 'create') {
+    return firstAction.segment;
+  }
+
+  return null;
 }
 
 export async function POST(request: Request) {

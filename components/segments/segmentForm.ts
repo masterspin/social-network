@@ -221,7 +221,7 @@ export function serializeLegs(
         seat: seat || null,
       };
     })
-    .filter((entry): entry is Record<string, string | null> => Boolean(entry));
+    .filter((entry) => entry !== null) as Array<Record<string, string | null>>;
   return serialized.length ? serialized : undefined;
 }
 
