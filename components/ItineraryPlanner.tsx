@@ -2238,13 +2238,13 @@ export default function ItineraryPlanner() {
   }, []);
   */
 
-  const handleDeleteSegment = async (segmentId: string) => {
-    if (
-      !userId ||
-      !selectedId ||
-      !window.confirm("Are you sure you want to delete this segment?")
-    )
+  const handleDeleteSegment = async (segmentId: string, skipConfirm = false) => {
+    if (!userId || !selectedId) return;
+
+    if (!skipConfirm && !window.confirm("Are you sure you want to delete this segment?")) {
       return;
+    }
+
     try {
       const response = await fetch(
         `/api/itineraries/${encodeURIComponent(
@@ -2259,6 +2259,7 @@ export default function ItineraryPlanner() {
       await loadItineraryDetail(selectedId, userId);
     } catch (error) {
       setFeedback({ type: "error", text: "Failed to delete segment." });
+      throw error; // Re-throw so caller can handle
     }
   };
 
@@ -4934,41 +4935,125 @@ export default function ItineraryPlanner() {
           <ChatAssistant
             itineraryId={selectedId}
             userId={userId}
-            onAddSegment={(suggestion) => {
-              // Pre-fill the segment form with AI suggestion
-              setSegmentForm({
-                type: suggestion.type === "flight" ? "flight" : "stay",
-                title: suggestion.title || "",
-                locationName: suggestion.location_name || "",
-                locationAddress: suggestion.location_address || "",
-                locationLat: suggestion.location_lat?.toString() || "",
-                locationLng: suggestion.location_lng?.toString() || "",
-                startTime: suggestion.start_time
-                  ? isoToLocalInput(suggestion.start_time)
-                  : "",
-                endTime: suggestion.end_time
-                  ? isoToLocalInput(suggestion.end_time)
-                  : "",
-                timezone: suggestion.timezone || "",
-                isAllDay: suggestion.is_all_day || false,
-                providerName: suggestion.provider_name || "",
-                confirmationCode: suggestion.confirmation_code || "",
-                transportNumber: suggestion.transport_number || "",
-                seatInfo: "",
-                costAmount: "",
-                legs: [],
-                metadata: suggestion.metadata || {},
-              });
-              setShowFlightModal(true);
-              // Show success feedback
-              setFeedback({
-                type: "success",
-                text: "Suggestion added to form. Review and save to add to itinerary.",
-              });
-              setTimeout(() => setFeedback(null), 3000);
+            onApplyPlan={async (plan) => {
+              // Handle delete actions first
+              const deleteActions = plan.actions.filter(a => a.type === 'delete');
+              const createActions = plan.actions.filter(a => a.type === 'create');
+
+              if (deleteActions.length > 0) {
+                // Show confirmation for deletions
+                const segmentTitles = deleteActions
+                  .map(action => {
+                    if (action.type === 'delete') {
+                      const seg = detail.segments?.find(s => s.id === action.segmentId);
+                      return seg?.title || 'Unknown segment';
+                    }
+                    return '';
+                  })
+                  .filter(Boolean);
+
+                const confirmed = window.confirm(
+                  `Are you sure you want to delete ${deleteActions.length} segment(s)?\n\n${segmentTitles.join('\n')}`
+                );
+
+                if (!confirmed) {
+                  return;
+                }
+
+                // Execute deletions
+                for (const action of deleteActions) {
+                  if (action.type === 'delete') {
+                    try {
+                      await handleDeleteSegment(action.segmentId, true); // Skip confirmation
+                    } catch (error) {
+                      console.error('Failed to delete segment:', error);
+                      setFeedback({
+                        type: "error",
+                        text: `Failed to delete segment: ${error instanceof Error ? error.message : 'Unknown error'}`,
+                      });
+                      setTimeout(() => setFeedback(null), 3000);
+                      return;
+                    }
+                  }
+                }
+
+                setFeedback({
+                  type: "success",
+                  text: `Successfully deleted ${deleteActions.length} segment(s)`,
+                });
+                setTimeout(() => setFeedback(null), 3000);
+
+                // If there are no create actions, we're done
+                if (createActions.length === 0) {
+                  return;
+                }
+              }
+
+              // Handle create actions
+              if (createActions.length === 0) {
+                setFeedback({
+                  type: "error",
+                  text: "No segments to create in this plan.",
+                });
+                setTimeout(() => setFeedback(null), 3000);
+                return;
+              }
+
+              if (createActions.length > 1) {
+                // Multi-leg flight - show info message
+                setFeedback({
+                  type: "success",
+                  text: `Plan contains ${createActions.length} segments. Opening first segment for review.`,
+                });
+                setTimeout(() => setFeedback(null), 5000);
+              }
+
+              // Apply the first segment for now
+              const firstAction = createActions[0];
+              if (firstAction.type === 'create') {
+                const suggestion = firstAction.segment;
+
+                // Determine segment type
+                let segType: SegmentType = "flight";
+                if (suggestion.type === "transport") segType = "transport";
+                else if (suggestion.type === "hotel" || suggestion.type === "stay") segType = "stay";
+
+                setSegmentForm({
+                  type: segType,
+                  title: suggestion.title || "",
+                  locationName: suggestion.location_name || "",
+                  locationAddress: suggestion.location_address || "",
+                  locationLat: suggestion.location_lat?.toString() || "",
+                  locationLng: suggestion.location_lng?.toString() || "",
+                  startTime: suggestion.start_time
+                    ? isoToLocalInput(suggestion.start_time)
+                    : "",
+                  endTime: suggestion.end_time
+                    ? isoToLocalInput(suggestion.end_time)
+                    : "",
+                  timezone: suggestion.timezone || "",
+                  isAllDay: suggestion.is_all_day || false,
+                  providerName: suggestion.provider_name || "",
+                  confirmationCode: suggestion.confirmation_code || "",
+                  transportNumber: suggestion.transport_number || "",
+                  seatInfo: "",
+                  costAmount: "",
+                  legs: [],
+                  metadata: suggestion.metadata || {},
+                });
+
+                if (segType === "flight") {
+                  setShowFlightModal(true);
+                } else if (segType === "stay") {
+                  setShowStayModal(true);
+                } else if (segType === "transport") {
+                  setShowRideModal(true);
+                }
+              }
             }}
             existingSegments={
               detail.segments?.map((seg) => ({
+                id: seg.id,
                 type: seg.type,
                 title: seg.title,
                 start_time: seg.start_time || undefined,

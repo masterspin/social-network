@@ -6,8 +6,9 @@ import { chatWithTools } from "@/lib/ai/openrouter";
 import {
   fetchFlightSuggestionFree,
   fetchPlaceSuggestion,
+  fetchRideSuggestion,
 } from "@/lib/autofill/providers";
-import { SegmentAutofillSuggestion } from "@/lib/autofill/types";
+import { SegmentAutofillPlan } from "@/lib/autofill/types";
 
 type TypedSupabaseClient = SupabaseClient<Database>;
 
@@ -68,6 +69,7 @@ type ChatRequest = {
   itinerary_id: string;
   context?: {
     existing_segments?: Array<{
+      id?: string;
       type: string;
       title: string;
       start_time?: string;
@@ -78,23 +80,43 @@ type ChatRequest = {
 
 type ChatResponse = {
   message: string;
-  suggestions?: SegmentAutofillSuggestion[];
+  plans?: SegmentAutofillPlan[];
   error?: string;
 };
 
-const SYSTEM_PROMPT = `You are a helpful travel assistant that helps users plan their itineraries. You can search for flights and hotels.
+const SYSTEM_PROMPT = `You are a helpful travel assistant that helps users plan their itineraries. You can search for flights, hotels, and rides, as well as remove existing segments.
 
-When users ask about travel, use the available tools to search for:
-- Flights: Use search_flights with origin, destination, and optional date
-- Hotels: Use search_hotels with location/city name and optional check-in date
+When users ask about travel, use the available tools to:
+- Search for flights: Use search_flights with origin, destination, and optional date
+- Search for hotels: Use search_hotels with location/city name and optional check-in date
+- Search for rides/transport: Use search_rides for Uber, taxi, or car service requests between two places
+- Remove segments: Use delete_segment with the segment ID to remove an existing itinerary item
 
 Be conversational and helpful. When suggesting segments, explain what you found.
 
 Important guidelines:
 - For flights, extract city/airport codes (e.g., NYC, LAX, LHR) from natural language
 - For hotels, extract city or specific hotel names
+- For rides, extract specific origin and destination names (e.g., "Airport" to "Hotel", "SFO" to "Downtown")
 - If dates are mentioned, parse them into YYYY-MM-DD format
-- Always confirm what you're searching for before calling tools`;
+- Always confirm what you're searching for or deleting before calling tools
+
+**Multi-leg Journey Detection for Deletions:**
+When a user asks to delete a flight from City A to City C, but the itinerary only has connecting flights (A→B and B→C), you should:
+1. Identify that these segments form a complete journey from A to C
+2. Look for sequential flights on the same or consecutive days where:
+   - The destination of one flight matches the origin of the next flight
+   - The flights are reasonably close in time (within 24 hours)
+3. Delete ALL segments that form this journey together
+4. Explain to the user: "I found your journey from A to C with a connection in B. I'll remove both flight segments."
+
+Example:
+- User says: "Remove my flight from Detroit to Zurich"
+- Segments show: "DTW → Toronto" and "Toronto → Zurich" on the same day
+- Action: Delete BOTH segments (they form one journey)
+- Response: "I found your journey from Detroit to Zurich with a connection in Toronto. I'll remove both flight segments for you."
+
+Similarly, if a user asks to delete "my flight to Paris" and there are multiple connecting segments ending in Paris, delete all of them as one journey.`;
 
 const TOOLS = [
   {
@@ -154,12 +176,55 @@ const TOOLS = [
       },
     },
   },
+  {
+    type: "function" as const,
+    function: {
+      name: "search_rides",
+      description: "Search for ride/transport options (Uber/Taxi) between two locations.",
+      parameters: {
+        type: "object",
+        properties: {
+          origin: {
+            type: "string",
+            description: "Pickup location name or address",
+          },
+          destination: {
+            type: "string",
+            description: "Dropoff location name or address",
+          },
+          time: {
+            type: "string",
+            description: "Pickup time in ISO format (optional)",
+          },
+        },
+        required: ["origin", "destination"],
+      },
+    },
+  },
+  {
+    type: "function" as const,
+    function: {
+      name: "delete_segment",
+      description: "Delete one or more existing segments from the itinerary. Use this when the user asks to remove or delete a flight, hotel, or other segment. For multi-leg journeys, you can delete multiple segments at once by providing an array of segment IDs.",
+      parameters: {
+        type: "object",
+        properties: {
+          segment_ids: {
+            type: "array",
+            items: { type: "string" },
+            description: "Array of segment IDs to delete. For a single segment, provide an array with one ID. For multi-leg journeys, provide all segment IDs that form the complete journey.",
+          },
+        },
+        required: ["segment_ids"],
+      },
+    },
+  },
 ];
 
 async function executeToolCall(
   toolName: string,
   args: Record<string, unknown>
-): Promise<SegmentAutofillSuggestion[]> {
+): Promise<SegmentAutofillPlan[]> {
   console.log(`[Chat] Executing tool: ${toolName}`, args);
 
   try {
@@ -189,6 +254,38 @@ async function executeToolCall(
                 : undefined,
           });
           return result ? [result] : [];
+        }
+        return [];
+      }
+
+      case "search_rides": {
+        const { origin, destination, time } = args;
+        if (typeof origin === "string" && typeof destination === "string") {
+          const result = await fetchRideSuggestion({
+            origin,
+            destination,
+            time: typeof time === "string" ? time : undefined,
+          });
+          return result ? [result] : [];
+        }
+        return [];
+      }
+
+      case "delete_segment": {
+        const { segment_ids } = args;
+        if (Array.isArray(segment_ids) && segment_ids.length > 0) {
+          // Validate all IDs are strings
+          const validIds = segment_ids.filter(id => typeof id === "string");
+          if (validIds.length === 0) return [];
+
+          // Return a plan with multiple delete actions
+          return [{
+            title: validIds.length === 1 ? "Remove Segment" : `Remove ${validIds.length} Segments`,
+            description: validIds.length === 1
+              ? "Delete the selected segment from your itinerary"
+              : `Delete ${validIds.length} segments that form a complete journey`,
+            actions: validIds.map(id => ({ type: "delete" as const, segmentId: id })),
+          }];
         }
         return [];
       }
@@ -241,12 +338,23 @@ export async function POST(
     if (context?.existing_segments && context.existing_segments.length > 0) {
       contextMessage = `\n\nCurrent itinerary segments:\n${context.existing_segments
         .map(
-          (seg, i) =>
-            `${i + 1}. ${seg.type}: ${seg.title}${
-              seg.start_time
-                ? ` on ${new Date(seg.start_time).toLocaleDateString()}`
-                : ""
-            }`
+          (seg, i) => {
+            // Extract origin/destination from flight titles for better journey detection
+            let segmentInfo = `${seg.type}: ${seg.title}`;
+
+            // For flights, try to extract route info
+            if (seg.type === 'flight' && seg.title) {
+              const routeMatch = seg.title.match(/([A-Z]{3})\s*(?:→|->)\s*([A-Z]{3})/);
+              if (routeMatch) {
+                segmentInfo = `flight: ${routeMatch[1]} → ${routeMatch[2]}`;
+              }
+            }
+
+            return `${i + 1}. [ID: ${seg.id || 'unknown'}] ${segmentInfo}${seg.start_time
+              ? ` on ${new Date(seg.start_time).toLocaleDateString()}`
+              : ""
+              }`;
+          }
         )
         .join("\n")}`;
     }
@@ -262,20 +370,20 @@ export async function POST(
     const result = await chatWithTools(messages, TOOLS);
 
     // Execute any tool calls
-    let allSuggestions: SegmentAutofillSuggestion[] = [];
+    let allPlans: SegmentAutofillPlan[] = [];
     if (result.toolCalls && result.toolCalls.length > 0) {
       for (const toolCall of result.toolCalls) {
-        const suggestions = await executeToolCall(
+        const plans = await executeToolCall(
           toolCall.name,
           toolCall.arguments
         );
-        allSuggestions = [...allSuggestions, ...suggestions];
+        allPlans = [...allPlans, ...plans];
       }
     }
 
     return NextResponse.json({
       message: result.message,
-      suggestions: allSuggestions.length > 0 ? allSuggestions : undefined,
+      plans: allPlans.length > 0 ? allPlans : undefined,
     });
   } catch (error) {
     console.error("[Chat API] Error:", error);

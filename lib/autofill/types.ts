@@ -44,3 +44,13 @@ export type SegmentAutofillSuggestion = {
   highlights?: SegmentAutofillHighlight[] | null;
   source?: string | null;
 };
+
+export type PlanAction =
+  | { type: "create"; segment: SegmentAutofillSuggestion }
+  | { type: "delete"; segmentId: string };
+
+export type SegmentAutofillPlan = {
+  title: string;
+  description?: string;
+  actions: PlanAction[];
+};

@@ -1,20 +1,21 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { SegmentAutofillSuggestion } from "@/lib/autofill/types";
+import { SegmentAutofillPlan } from "@/lib/autofill/types";
 
 type Message = {
   id: string;
   role: "user" | "assistant";
   content: string;
-  suggestions?: SegmentAutofillSuggestion[];
+  plans?: SegmentAutofillPlan[];
 };
 
 type ChatAssistantProps = {
   itineraryId: string;
   userId: string;
-  onAddSegment: (suggestion: SegmentAutofillSuggestion) => void;
+  onApplyPlan: (plan: SegmentAutofillPlan) => void | Promise<void>;
   existingSegments?: Array<{
+    id?: string;
     type: string;
     title: string;
     start_time?: string;
@@ -25,7 +26,7 @@ type ChatAssistantProps = {
 export default function ChatAssistant({
   itineraryId,
   userId,
-  onAddSegment,
+  onApplyPlan,
   existingSegments = [],
 }: ChatAssistantProps) {
   const [isOpen, setIsOpen] = useState(false);
@@ -86,7 +87,7 @@ export default function ChatAssistant({
         id: (Date.now() + 1).toString(),
         role: "assistant",
         content: data.message || "I found some options for you:",
-        suggestions: data.suggestions,
+        plans: data.plans,
       };
 
       setMessages((prev) => [...prev, assistantMessage]);
@@ -94,9 +95,8 @@ export default function ChatAssistant({
       const errorMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: "assistant",
-        content: `Sorry, I encountered an error: ${
-          error instanceof Error ? error.message : "Unknown error"
-        }`,
+        content: `Sorry, I encountered an error: ${error instanceof Error ? error.message : "Unknown error"
+          }`,
       };
       setMessages((prev) => [...prev, errorMessage]);
     } finally {
@@ -180,62 +180,62 @@ export default function ChatAssistant({
         {messages.map((message) => (
           <div
             key={message.id}
-            className={`flex ${
-              message.role === "user" ? "justify-end" : "justify-start"
-            }`}
+            className={`flex ${message.role === "user" ? "justify-end" : "justify-start"
+              }`}
           >
             <div
-              className={`max-w-[80%] rounded-2xl px-4 py-2 ${
-                message.role === "user"
-                  ? "bg-blue-500 text-white"
-                  : "bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100"
-              }`}
+              className={`max-w-[80%] rounded-2xl px-4 py-2 ${message.role === "user"
+                ? "bg-blue-500 text-white"
+                : "bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                }`}
             >
               <p className="text-sm whitespace-pre-wrap">{message.content}</p>
 
-              {/* Suggestion Cards */}
-              {message.suggestions && message.suggestions.length > 0 && (
+              {/* Plan Cards */}
+              {message.plans && message.plans.length > 0 && (
                 <div className="mt-3 space-y-2">
-                  {message.suggestions.map((suggestion, idx) => (
-                    <div
-                      key={idx}
-                      className="bg-white dark:bg-gray-900 rounded-xl p-3 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100"
-                    >
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="flex-1 min-w-0">
-                          <p className="font-semibold text-sm truncate">
-                            {suggestion.title || "Suggestion"}
-                          </p>
-                          {suggestion.description && (
-                            <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
-                              {suggestion.description}
-                            </p>
-                          )}
-                          {suggestion.highlights && (
-                            <div className="mt-2 space-y-1">
-                              {suggestion.highlights.map((h, i) => (
-                                <div
-                                  key={i}
-                                  className="flex gap-2 text-xs text-gray-600 dark:text-gray-400"
-                                >
-                                  <span className="font-medium">
-                                    {h.label}:
-                                  </span>
-                                  <span>{h.value}</span>
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                      <button
-                        onClick={() => onAddSegment(suggestion)}
-                        className="mt-3 w-full bg-blue-500 hover:bg-blue-600 text-white text-xs font-medium py-2 px-3 rounded-lg transition"
+                  {message.plans.map((plan, idx) => {
+                    const createCount = plan.actions.filter(a => a.type === 'create').length;
+                    const deleteCount = plan.actions.filter(a => a.type === 'delete').length;
+
+                    return (
+                      <div
+                        key={idx}
+                        className="bg-white dark:bg-gray-900 rounded-xl p-3 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100"
                       >
-                        Add to Itinerary
-                      </button>
-                    </div>
-                  ))}
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex-1 min-w-0">
+                            <p className="font-semibold text-sm truncate">
+                              {plan.title}
+                            </p>
+                            {plan.description && (
+                              <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
+                                {plan.description}
+                              </p>
+                            )}
+                            <div className="mt-2 flex gap-2 text-xs text-gray-600 dark:text-gray-400">
+                              {createCount > 0 && (
+                                <span className="bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 px-2 py-0.5 rounded">
+                                  +{createCount} segment{createCount > 1 ? 's' : ''}
+                                </span>
+                              )}
+                              {deleteCount > 0 && (
+                                <span className="bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 px-2 py-0.5 rounded">
+                                  -{deleteCount} segment{deleteCount > 1 ? 's' : ''}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => onApplyPlan(plan)}
+                          className="mt-3 w-full bg-blue-500 hover:bg-blue-600 text-white text-xs font-medium py-2 px-3 rounded-lg transition"
+                        >
+                          Apply Plan
+                        </button>
+                      </div>
+                    );
+                  })}
                 </div>
               )}
             </div>

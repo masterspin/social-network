@@ -1,4 +1,8 @@
-import { SegmentAutofillHighlight, SegmentAutofillSuggestion } from "./types";
+import {
+  SegmentAutofillHighlight,
+  SegmentAutofillSuggestion,
+  SegmentAutofillPlan,
+} from "./types";
 
 const USER_AGENT =
   "segment-smart-fill/1.0 (+https://github.com/ritij/social-network)";
@@ -57,7 +61,7 @@ function resolveScheduleTime(value: unknown): string | null {
 export async function fetchFlightSuggestion(
   flightNumberInput: string,
   dateInput?: string
-): Promise<SegmentAutofillSuggestion | null> {
+): Promise<SegmentAutofillPlan | null> {
   const apiKey = process.env.AERODATABOX_API_KEY;
   const apiHost =
     process.env.AERODATABOX_API_HOST ?? "aerodatabox.p.rapidapi.com";
@@ -192,7 +196,7 @@ export async function fetchFlightSuggestion(
     flightCandidate?.flight?.icao ||
     flightNumber;
 
-  return {
+  const suggestion: SegmentAutofillSuggestion = {
     type: "flight",
     title: routeLabel ? `${flightCode} · ${routeLabel}` : flightCode,
     description: airline?.name
@@ -227,6 +231,12 @@ export async function fetchFlightSuggestion(
     highlights: highlights.length ? highlights : null,
     source: "aerodatabox",
   };
+
+  return {
+    title: suggestion.title || "Flight",
+    description: suggestion.description || undefined,
+    actions: [{ type: "create", segment: suggestion }],
+  };
 }
 
 /**
@@ -238,44 +248,86 @@ export async function fetchFlightSuggestionFree(
   origin: string,
   destination: string,
   dateInput?: string
-): Promise<SegmentAutofillSuggestion[]> {
+): Promise<SegmentAutofillPlan[]> {
   // For MVP, return mock data structure
   // TODO: Integrate AviationStack free tier or FlightAware public data
   const originUpper = origin.trim().toUpperCase();
   const destUpper = destination.trim().toUpperCase();
   const date = dateInput || new Date().toISOString().slice(0, 10);
 
-  // This is placeholder data - in production, fetch from real API
-  const suggestions: SegmentAutofillSuggestion[] = [
-    {
-      type: "flight",
-      title: `${originUpper} → ${destUpper}`,
-      description: "Direct flight available",
-      location_name: originUpper,
-      start_time: `${date}T08:00:00Z`,
-      end_time: `${date}T12:00:00Z`,
-      provider_name: "Various Airlines",
-      transport_number: "Flight search result",
-      metadata: {
-        source: "free-search",
-        origin: originUpper,
-        destination: destUpper,
-      },
-      highlights: [
-        { label: "Route", value: `${originUpper} → ${destUpper}` },
-        { label: "Date", value: date },
-      ],
+  // PLAN A: Direct
+  const directSuggestion: SegmentAutofillSuggestion = {
+    type: "flight",
+    title: `${originUpper} → ${destUpper} (Direct)`,
+    description: "Direct flight · 4h 30m",
+    location_name: originUpper,
+    start_time: `${date}T08:00:00`,
+    end_time: `${date}T12:30:00`,
+    provider_name: "Mock Airlines",
+    transport_number: "MA101",
+    metadata: {
       source: "free-search",
+      origin: originUpper,
+      destination: destUpper,
+    },
+    highlights: [
+      { label: "Route", value: `${originUpper} → ${destUpper}` },
+      { label: "Type", value: "Direct" },
+    ],
+    source: "free-search",
+  };
+
+  // PLAN B: With connection (Multi-leg demo)
+  // Leg 1: Origin -> HUB
+  const leg1: SegmentAutofillSuggestion = {
+    type: "flight",
+    title: `${originUpper} → HUB`,
+    description: "Leg 1 · 2h 00m",
+    location_name: originUpper,
+    start_time: `${date}T07:00:00`,
+    end_time: `${date}T09:00:00`,
+    provider_name: "Mock Express",
+    transport_number: "ME55",
+    metadata: { source: "free-search-multi" },
+    highlights: [{ label: "Route", value: `${originUpper} → HUB` }],
+    source: "free-search",
+  };
+  // Leg 2: HUB -> Dest
+  const leg2: SegmentAutofillSuggestion = {
+    type: "flight",
+    title: `HUB → ${destUpper}`,
+    description: "Leg 2 · 3h 00m",
+    location_name: "HUB",
+    start_time: `${date}T10:30:00`,
+    end_time: `${date}T13:30:00`,
+    provider_name: "Mock Express",
+    transport_number: "ME56",
+    metadata: { source: "free-search-multi" },
+    highlights: [{ label: "Route", value: `HUB → ${destUpper}` }],
+    source: "free-search",
+  };
+
+  return [
+    {
+      title: "Direct Flight",
+      description: "Fastest option",
+      actions: [{ type: "create", segment: directSuggestion }],
+    },
+    {
+      title: "Connection via HUB",
+      description: "Cheaper option · 2 Segments",
+      actions: [
+        { type: "create", segment: leg1 },
+        { type: "create", segment: leg2 },
+      ],
     },
   ];
-
-  return suggestions;
 }
 
 export async function fetchTrainSuggestion(
   serviceCodeInput: string,
   dateInput?: string
-): Promise<SegmentAutofillSuggestion | null> {
+): Promise<SegmentAutofillPlan | null> {
   const apiToken = process.env.NAVITIA_API_TOKEN;
   const coverage = process.env.NAVITIA_COVERAGE ?? "sncf";
 
@@ -348,7 +400,7 @@ export async function fetchTrainSuggestion(
     highlights.push({ label: "Line", value: line.name });
   }
 
-  return {
+  const suggestion: SegmentAutofillSuggestion = {
     type: "transport",
     title: line?.name || train?.name || `Service ${serviceCode}`,
     description: companyName || null,
@@ -365,6 +417,12 @@ export async function fetchTrainSuggestion(
     },
     highlights: highlights.length ? highlights : null,
     source: "navitia",
+  };
+
+  return {
+    title: suggestion.title || "Train Journey",
+    description: suggestion.description || undefined,
+    actions: [{ type: "create", segment: suggestion }],
   };
 }
 
@@ -395,7 +453,7 @@ const ensureNumber = (value?: number | string | null): number | null => {
 
 export async function fetchPlaceSuggestion(
   params: PlaceSuggestionParams
-): Promise<SegmentAutofillSuggestion | null> {
+): Promise<SegmentAutofillPlan | null> {
   const { query, type, context } = params;
   const trimmed = query.trim();
   if (!trimmed) return null;
@@ -460,7 +518,7 @@ export async function fetchPlaceSuggestion(
         });
       }
 
-      return {
+      const suggestion: SegmentAutofillSuggestion = {
         type,
         title: place.name,
         description: place.categories?.[0]?.name || null,
@@ -477,6 +535,12 @@ export async function fetchPlaceSuggestion(
         },
         highlights: highlights.length ? highlights : null,
         source: "foursquare",
+      };
+
+      return {
+        title: suggestion.title || "Place",
+        description: suggestion.description || undefined,
+        actions: [{ type: "create", segment: suggestion }],
       };
     }
   }
@@ -528,7 +592,7 @@ export async function fetchPlaceSuggestion(
     highlights.push({ label: "Hours", value: openingHours });
   }
 
-  return {
+  const suggestion: SegmentAutofillSuggestion = {
     type,
     title: place.name || place.display_name || trimmed,
     description: place.type || null,
@@ -545,5 +609,94 @@ export async function fetchPlaceSuggestion(
     },
     highlights: highlights.length ? highlights : null,
     source: "nominatim",
+  };
+
+  return {
+    title: suggestion.title || "Place",
+    description: suggestion.description || undefined,
+    actions: [{ type: "create", segment: suggestion }],
+  };
+}
+
+type RideSuggestionParams = {
+  origin: string;
+  destination: string;
+  time?: string;
+  context?: {
+    lat?: number;
+    lng?: number;
+  } | null;
+};
+
+export async function fetchRideSuggestion(
+  params: RideSuggestionParams
+): Promise<SegmentAutofillPlan | null> {
+  const { origin, destination, time, context } = params;
+
+  // Helper to search places
+  const searchPlace = async (query: string) => {
+    const url = new URL("https://nominatim.openstreetmap.org/search");
+    url.searchParams.set("format", "jsonv2");
+    url.searchParams.set("limit", "1");
+    url.searchParams.set("q", query);
+    url.searchParams.set("addressdetails", "1");
+
+    const res = await fetch(url.toString(), {
+      headers: { "user-agent": USER_AGENT },
+      next: { revalidate: 3600 } // Cache for 1 hour
+    });
+    const payload = await res.json().catch(() => []);
+    return payload?.[0] || null;
+  };
+
+  const [originPlace, destPlace] = await Promise.all([
+    searchPlace(origin),
+    searchPlace(destination)
+  ]);
+
+  if (!originPlace && !destPlace) return null;
+
+  const originLabel = originPlace?.name || originPlace?.display_name?.split(',')[0] || origin;
+  const destLabel = destPlace?.name || destPlace?.display_name?.split(',')[0] || destination;
+
+  const highlights: SegmentAutofillHighlight[] = [];
+  if (originPlace) {
+    highlights.push({ label: "Pickup", value: originLabel });
+  }
+  if (destPlace) {
+    highlights.push({ label: "Dropoff", value: destLabel });
+  }
+
+  // Construct a useful title
+  const title = `Ride: ${originLabel} → ${destLabel}`;
+
+  const suggestion: SegmentAutofillSuggestion = {
+    type: "transport",
+    title: title,
+    description: "Car Request",
+    location_name: originLabel, // Pickup location
+    location_address: originPlace?.display_name || null,
+    location_lat: ensureNumber(originPlace?.lat),
+    location_lng: ensureNumber(originPlace?.lon),
+    start_time: safeDate(time), // Suggested start time
+
+    // We can't know the end time without routing, but we can default provider
+    provider_name: "Uber",
+    transport_number: null,
+
+    metadata: {
+      source: "nominatim-ride",
+      origin_place: originPlace,
+      destination_place: destPlace,
+      destination_address: destPlace?.display_name || null,
+    },
+    highlights: highlights.length ? highlights : null,
+    source: "nominatim",
+  };
+
+  return {
+    title: suggestion.title || "Ride Request",
+    description: "Car / Taxi Service",
+    actions: [{ type: "create", segment: suggestion }],
   };
 }
