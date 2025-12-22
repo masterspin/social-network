@@ -8,6 +8,7 @@ import {
   fetchPlaceSuggestion,
   fetchRideSuggestion,
 } from "@/lib/autofill/providers";
+import { fetchFlightOffersAmadeus } from "@/lib/autofill/amadeus";
 import { SegmentAutofillPlan } from "@/lib/autofill/types";
 
 type TypedSupabaseClient = SupabaseClient<Database>;
@@ -93,6 +94,13 @@ When users ask about travel, use the available tools to:
 - Remove segments: Use delete_segment with the segment ID to remove an existing itinerary item
 
 Be conversational and helpful. When suggesting segments, explain what you found.
+
+**CRITICAL: Never fabricate or make up data**
+- ONLY present options that are returned by the search tools
+- If a search returns no results, tell the user honestly: "I couldn't find any flights/hotels for that route/location"
+- Do NOT invent flight numbers, airlines, times, or prices
+- Do NOT create placeholder or example data
+- If the tools return empty results, explain this to the user and suggest alternatives (different dates, nearby airports, etc.)
 
 Important guidelines:
 - For flights, extract city/airport codes (e.g., NYC, LAX, LHR) from natural language
@@ -252,7 +260,7 @@ async function executeToolCall(
       case "search_flights": {
         const { origin, destination, date } = args;
         if (typeof origin === "string" && typeof destination === "string") {
-          const results = await fetchFlightSuggestionFree(
+          const results = await fetchFlightOffersAmadeus(
             origin,
             destination,
             typeof date === "string" ? date : undefined
@@ -402,13 +410,26 @@ export async function POST(
     // Execute any tool calls
     let allPlans: SegmentAutofillPlan[] = [];
     if (result.toolCalls && result.toolCalls.length > 0) {
+      console.log(`[Chat] 🤖 AI requested ${result.toolCalls.length} tool call(s)`);
+
       for (const toolCall of result.toolCalls) {
+        console.log(`[Chat] 🔧 Tool: ${toolCall.name}`, JSON.stringify(toolCall.arguments, null, 2));
+
         const plans = await executeToolCall(
           toolCall.name,
           toolCall.arguments
         );
+
+        console.log(`[Chat] ✅ Returned ${plans.length} plan(s)`);
+        if (plans.length > 0 && plans[0].actions[0]?.type === 'create') {
+          const firstSegment = plans[0].actions[0].segment;
+          console.log(`[Chat] 📊 Source: ${firstSegment.source || 'unknown'}`);
+        }
+
         allPlans = [...allPlans, ...plans];
       }
+    } else {
+      console.log(`[Chat] 💬 AI responded without using tools`);
     }
 
     return NextResponse.json({
@@ -416,12 +437,12 @@ export async function POST(
       plans: allPlans.length > 0 ? allPlans : undefined,
     });
   } catch (error) {
-    console.error("[Chat API] Error:", error);
+    console.error("[Chat] Error:", error);
     return NextResponse.json(
       {
         message: "",
         error:
-          error instanceof Error ? error.message : "Failed to process chat",
+          error instanceof Error ? error.message : "Failed to process request",
       },
       { status: 500 }
     );

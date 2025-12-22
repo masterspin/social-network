@@ -254,8 +254,8 @@ export async function fetchFlightSuggestionFree(
   const apiBase = process.env.AERODATABOX_API_BASE ?? `https://${apiHost}`;
 
   if (!apiKey) {
-    console.warn("AERODATABOX_API_KEY not set, returning mock data");
-    return getMockFlightPlans(origin, destination, dateInput);
+    console.warn("AERODATABOX_API_KEY not set, returning empty results");
+    return [];
   }
 
   const originUpper = origin.trim().toUpperCase();
@@ -263,169 +263,151 @@ export async function fetchFlightSuggestionFree(
   const date = dateInput || new Date().toISOString().slice(0, 10);
 
   try {
-    // Query departures from origin airport
-    const url = new URL(
-      `/flights/airports/iata/${originUpper}/${date}T00:00/${date}T23:59`,
-      apiBase
-    );
-    url.searchParams.set("withLeg", "true");
-    url.searchParams.set("withCancelled", "false");
-    url.searchParams.set("withCodeshared", "true");
-    url.searchParams.set("withCargo", "false");
-    url.searchParams.set("withPrivate", "false");
-    url.searchParams.set("withLocation", "true");
-    url.searchParams.set("direction", "Departure");
+    console.log(`[AeroDataBox] Fetching flights: ${originUpper} → ${destUpper} on ${date}`);
 
-    const response = await fetch(url.toString(), {
-      headers: {
-        "X-RapidAPI-Key": apiKey,
-        "X-RapidAPI-Host": apiHost,
-        accept: "application/json",
-        "user-agent": USER_AGENT,
-      },
-      next: { revalidate: 3600 }, // Cache for 1 hour
-    });
+    // AeroDataBox has a 12-hour limit, so we need to make 2 calls to get the full day
+    const timeWindows = [
+      { from: `${date}T00:00`, to: `${date}T12:00`, label: "morning" },
+      { from: `${date}T12:00`, to: `${date}T23:59`, label: "afternoon/evening" }
+    ];
 
-    if (!response.ok) {
-      console.warn(`AeroDataBox request failed (${response.status}), using mock data`);
-      return getMockFlightPlans(origin, destination, dateInput);
+    let allDepartures: any[] = [];
+
+    for (const window of timeWindows) {
+      const url = new URL(
+        `/flights/airports/iata/${originUpper}`,
+        apiBase
+      );
+      url.searchParams.set("withLeg", "true");
+      url.searchParams.set("withCancelled", "false");
+      url.searchParams.set("withCodeshared", "true");
+      url.searchParams.set("withCargo", "false");
+      url.searchParams.set("withPrivate", "false");
+      url.searchParams.set("withLocation", "true");
+      url.searchParams.set("direction", "Departure");
+      url.searchParams.set("fromLocal", window.from);
+      url.searchParams.set("toLocal", window.to);
+
+      console.log(`[AeroDataBox] Fetching ${window.label} flights`);
+
+      const response = await fetch(url.toString(), {
+        headers: {
+          "X-RapidAPI-Key": apiKey,
+          "X-RapidAPI-Host": apiHost,
+          accept: "application/json",
+          "user-agent": USER_AGENT,
+        },
+        next: { revalidate: 3600 }, // Cache for 1 hour
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text().catch(() => "Unable to read error response");
+        console.error(`[AeroDataBox] Request failed (${response.status}) for ${window.label}: ${errorText}`);
+        if (response.status === 400) {
+          console.error(`  - Invalid airport code (${originUpper}) or date format (${date})`);
+          console.error(`  - Date too far in the future (AeroDataBox typically limits to ~1 year ahead)`);
+        } else if (response.status === 401 || response.status === 403) {
+          console.error(`  - Invalid or expired API key or quota exceeded`);
+        } else if (response.status === 429) {
+          console.error(`  - Rate limit exceeded`);
+        }
+        // Continue to next window even if one fails
+        continue;
+      }
+
+      const payload = await response.json().catch(() => null);
+      const departures = Array.isArray(payload?.departures) ? payload.departures : [];
+      console.log(`[AeroDataBox] Found ${departures.length} departures in ${window.label}`);
+      allDepartures = [...allDepartures, ...departures];
     }
 
-    const payload = await response.json().catch(() => null);
-    const departures = Array.isArray(payload?.departures) ? payload.departures : [];
+    if (allDepartures.length === 0) {
+      console.log(`[AeroDataBox] No departures found for ${originUpper} on ${date}`);
+      return [];
+    }
 
-    // Filter flights going to destination
-    const matchingFlights = departures.filter((flight: any) => {
+    console.log(`[AeroDataBox] Total departures: ${allDepartures.length}`);
+
+    // Filter flights going to destination (direct flights)
+    const directFlights = allDepartures.filter((flight: any) => {
       const arrivalIata = flight?.arrival?.airport?.iata || flight?.movement?.airport?.iata;
       return arrivalIata === destUpper;
     });
 
-    if (matchingFlights.length === 0) {
-      console.log(`No direct flights found from ${originUpper} to ${destUpper}, returning mock data`);
-      return getMockFlightPlans(origin, destination, dateInput);
+    console.log(`[AeroDataBox] Found ${directFlights.length} direct flights to ${destUpper}`);
+
+    // If we have direct flights, use those
+    if (directFlights.length > 0) {
+      const plans: SegmentAutofillPlan[] = directFlights.slice(0, 3).map((flight: any, idx: number) => {
+        const departure = flight?.departure || {};
+        const arrival = flight?.arrival || {};
+        const airline = flight?.airline || {};
+
+        const flightNumber = `${airline?.iata || airline?.icao || ''}${flight?.number || ''}`.trim();
+        const departureTime = departure?.scheduledTimeLocal || departure?.scheduledTimeUtc;
+        const arrivalTime = arrival?.scheduledTimeLocal || arrival?.scheduledTimeUtc;
+
+        const segment: SegmentAutofillSuggestion = {
+          type: "flight",
+          title: `${flightNumber} · ${originUpper} → ${destUpper}`,
+          description: `${airline?.name || 'Flight'}`,
+          location_name: departure?.airport?.name || originUpper,
+          start_time: departureTime ? safeDate(departureTime) : null,
+          end_time: arrivalTime ? safeDate(arrivalTime) : null,
+          provider_name: airline?.name || null,
+          transport_number: flightNumber || null,
+          metadata: {
+            source: "aerodatabox-route-search",
+            origin: originUpper,
+            destination: destUpper,
+            departure: departure,
+            arrival: arrival,
+          },
+          highlights: [
+            { label: "Route", value: `${originUpper} → ${destUpper}` },
+            { label: "Flight", value: flightNumber },
+          ],
+          source: "AeroDataBox",
+        };
+
+        return {
+          title: idx === 0 ? "Direct Flight" : `Direct Option ${idx + 1}`,
+          description: `${airline?.name || 'Flight'} ${flightNumber}`,
+          actions: [{ type: "create", segment }],
+        };
+      });
+
+      return plans;
     }
 
-    // Convert to plans (limit to 3 options)
-    const plans: SegmentAutofillPlan[] = matchingFlights.slice(0, 3).map((flight: any, idx: number) => {
-      const departure = flight?.departure || {};
-      const arrival = flight?.arrival || {};
-      const airline = flight?.airline || {};
+    // No direct flights - look for connecting flights
+    console.log(`[AeroDataBox] No direct flights, searching for connections...`);
 
-      const flightNumber = `${airline?.iata || airline?.icao || ''}${flight?.number || ''}`.trim();
-      const departureTime = departure?.scheduledTimeLocal || departure?.scheduledTimeUtc;
-      const arrivalTime = arrival?.scheduledTimeLocal || arrival?.scheduledTimeUtc;
-
-      const segment: SegmentAutofillSuggestion = {
-        type: "flight",
-        title: `${flightNumber} · ${originUpper} → ${destUpper}`,
-        description: `${airline?.name || 'Flight'}`,
-        location_name: departure?.airport?.name || originUpper,
-        start_time: departureTime ? safeDate(departureTime) : null,
-        end_time: arrivalTime ? safeDate(arrivalTime) : null,
-        provider_name: airline?.name || null,
-        transport_number: flightNumber || null,
-        metadata: {
-          source: "aerodatabox-route-search",
-          origin: originUpper,
-          destination: destUpper,
-          departure: departure,
-          arrival: arrival,
-        },
-        highlights: [
-          { label: "Route", value: `${originUpper} → ${destUpper}` },
-          { label: "Flight", value: flightNumber },
-        ],
-        source: "AeroDataBox",
-      };
-
-      return {
-        title: idx === 0 ? "Direct Flight" : `Option ${idx + 1}`,
-        description: `${airline?.name || 'Flight'} ${flightNumber}`,
-        actions: [{ type: "create", segment }],
-      };
+    // Find common connection hubs (airports that appear as destinations from origin)
+    const connectionHubs = new Map<string, any[]>();
+    allDepartures.forEach((flight: any) => {
+      const arrivalIata = flight?.arrival?.airport?.iata;
+      if (arrivalIata && arrivalIata !== destUpper) {
+        if (!connectionHubs.has(arrivalIata)) {
+          connectionHubs.set(arrivalIata, []);
+        }
+        connectionHubs.get(arrivalIata)!.push(flight);
+      }
     });
 
-    return plans;
+    console.log(`[AeroDataBox] Found ${connectionHubs.size} potential connection airports`);
+
+    // For each hub, check if there are flights to the destination
+    // (This would require another API call per hub, which could be expensive)
+    // For now, return empty and suggest the user try a different route
+    console.log(`[AeroDataBox] Connection search would require additional API calls`);
+    console.log(`[AeroDataBox] Suggestion: Try searching for flights to major hubs like FRA, AMS, LHR, or CDG`);
+
+    return [];
   } catch (error) {
     console.error("Error fetching flights from AeroDataBox:", error);
-    return getMockFlightPlans(origin, destination, dateInput);
+    return [];
   }
-}
-
-// Fallback mock data function
-function getMockFlightPlans(
-  origin: string,
-  destination: string,
-  dateInput?: string
-): SegmentAutofillPlan[] {
-  const originUpper = origin.trim().toUpperCase();
-  const destUpper = destination.trim().toUpperCase();
-  const date = dateInput || new Date().toISOString().slice(0, 10);
-
-  const directSuggestion: SegmentAutofillSuggestion = {
-    type: "flight",
-    title: `${originUpper} → ${destUpper} (Direct)`,
-    description: "Direct flight · 4h 30m",
-    location_name: originUpper,
-    start_time: `${date}T08:00:00`,
-    end_time: `${date}T12:30:00`,
-    provider_name: "Mock Airlines",
-    transport_number: "MA101",
-    metadata: {
-      source: "mock-data",
-      origin: originUpper,
-      destination: destUpper,
-    },
-    highlights: [
-      { label: "Route", value: `${originUpper} → ${destUpper}` },
-      { label: "Type", value: "Direct" },
-    ],
-    source: "mock-data",
-  };
-
-  const leg1: SegmentAutofillSuggestion = {
-    type: "flight",
-    title: `${originUpper} → HUB`,
-    description: "Leg 1 · 2h 00m",
-    location_name: originUpper,
-    start_time: `${date}T07:00:00`,
-    end_time: `${date}T09:00:00`,
-    provider_name: "Mock Express",
-    transport_number: "ME55",
-    metadata: { source: "mock-data" },
-    highlights: [{ label: "Route", value: `${originUpper} → HUB` }],
-    source: "mock-data",
-  };
-
-  const leg2: SegmentAutofillSuggestion = {
-    type: "flight",
-    title: `HUB → ${destUpper}`,
-    description: "Leg 2 · 3h 00m",
-    location_name: "HUB",
-    start_time: `${date}T10:30:00`,
-    end_time: `${date}T13:30:00`,
-    provider_name: "Mock Express",
-    transport_number: "ME56",
-    metadata: { source: "mock-data" },
-    highlights: [{ label: "Route", value: `HUB → ${destUpper}` }],
-    source: "mock-data",
-  };
-
-  return [
-    {
-      title: "Direct Flight",
-      description: "Fastest option",
-      actions: [{ type: "create", segment: directSuggestion }],
-    },
-    {
-      title: "Connection via HUB",
-      description: "Cheaper option · 2 Segments",
-      actions: [
-        { type: "create", segment: leg1 },
-        { type: "create", segment: leg2 },
-      ],
-    },
-  ];
 }
 
 export async function fetchTrainSuggestion(
