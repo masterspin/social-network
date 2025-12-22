@@ -3092,7 +3092,37 @@ export default function ItineraryPlanner() {
                 )}
 
                 <div className="p-8 lg:p-10 relative">
-                  <div className="absolute top-8 right-8 lg:top-10 lg:right-10">
+                  <div className="absolute top-8 right-8 lg:top-10 lg:right-10 flex items-center gap-2">
+                    <button
+                      onClick={() => {
+                        if (!detail.segments || detail.segments.length === 0) {
+                          alert("No segments to add to calendar");
+                          return;
+                        }
+
+                        const count = detail.segments.filter(s => s.start_time).length;
+                        if (count === 0) {
+                          alert("No segments with dates to add to calendar");
+                          return;
+                        }
+
+                        const confirmed = confirm(
+                          `Add ${count} segment${count > 1 ? 's' : ''} to Google Calendar?\n\n` +
+                          `This will open ${count} tab${count > 1 ? 's' : ''} with pre-filled calendar events. ` +
+                          `You'll need to click "Save" in each tab to add them to your calendar.`
+                        );
+
+                        if (confirmed) {
+                          const { addAllToGoogleCalendar } = require("@/lib/calendar/google-calendar");
+                          addAllToGoogleCalendar(detail.segments);
+                        }
+                      }}
+                      className="p-3 rounded-full bg-gray-50/50 dark:bg-gray-800/50 text-gray-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-all duration-300 shadow-sm border border-gray-100 dark:border-gray-800 backdrop-blur-sm"
+                      aria-label="Add to Google Calendar"
+                      title="Add all segments to Google Calendar"
+                    >
+                      <Calendar className="h-6 w-6" />
+                    </button>
                     <button
                       onClick={startEditingHeader}
                       className="p-3 rounded-full bg-gray-50/50 dark:bg-gray-800/50 text-gray-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-all duration-300 shadow-sm border border-gray-100 dark:border-gray-800 backdrop-blur-sm"
