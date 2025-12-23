@@ -35,7 +35,7 @@ export default function ChatAssistant({
       id: "welcome",
       role: "assistant",
       content:
-        "Hi! I'm your travel assistant. I can help you find flights and hotels for your itinerary. Just ask me something like 'Find flights from NYC to London' or 'Search for hotels in Paris'.",
+        "Hi! I'm your AI travel assistant. I can help you find flights, hotels, and transportation for your trip.\n\nI'll ask you a few questions to find the best options for your preferences (like budget, time of day, direct vs. connecting flights, etc.).\n\nWhat would you like to search for?",
     },
   ]);
   const [input, setInput] = useState("");

@@ -61,7 +61,8 @@ async function getAmadeusToken(): Promise<string> {
 export async function fetchFlightOffersAmadeus(
     origin: string,
     destination: string,
-    dateInput?: string
+    dateInput?: string,
+    maxConnections?: number // 0 = direct only, 1 = max 1 stop, etc.
 ): Promise<SegmentAutofillPlan[]> {
     try {
         const token = await getAmadeusToken();
@@ -69,7 +70,7 @@ export async function fetchFlightOffersAmadeus(
         const destUpper = destination.trim().toUpperCase();
         const date = dateInput || new Date().toISOString().slice(0, 10);
 
-        console.log(`[Amadeus] Searching flights: ${originUpper} → ${destUpper} on ${date}`);
+        console.log(`[Amadeus] Searching flights: ${originUpper} → ${destUpper} on ${date}${maxConnections !== undefined ? ` (max ${maxConnections} stop${maxConnections !== 1 ? 's' : ''})` : ''}`);
 
         const url = new URL("https://test.api.amadeus.com/v2/shopping/flight-offers");
         url.searchParams.set("originLocationCode", originUpper);
@@ -102,8 +103,24 @@ export async function fetchFlightOffersAmadeus(
 
         console.log(`[Amadeus] Found ${offers.length} flight offers`);
 
+        // Filter by max connections if specified
+        let filteredOffers = offers;
+        if (maxConnections !== undefined) {
+            filteredOffers = offers.filter((offer: any) => {
+                const segments = offer.itineraries?.[0]?.segments || [];
+                const numStops = segments.length - 1; // segments.length - 1 = number of stops
+                return numStops <= maxConnections;
+            });
+            console.log(`[Amadeus] After filtering for max ${maxConnections} stop(s): ${filteredOffers.length} offers`);
+        }
+
+        if (filteredOffers.length === 0) {
+            console.log(`[Amadeus] No flights found matching criteria`);
+            return [];
+        }
+
         // Convert Amadeus offers to our plan format
-        const plans: SegmentAutofillPlan[] = offers.slice(0, 3).map((offer: any, idx: number) => {
+        const plans: SegmentAutofillPlan[] = filteredOffers.slice(0, 3).map((offer: any, idx: number) => {
             const itinerary = offer.itineraries?.[0]; // First itinerary (outbound)
             const segments = itinerary?.segments || [];
             const price = offer.price?.total;

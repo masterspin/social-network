@@ -87,6 +87,67 @@ type ChatResponse = {
 
 const SYSTEM_PROMPT = `You are a helpful travel assistant that helps users plan their itineraries. You can search for flights, hotels, and rides, as well as remove existing segments.
 
+**BE CONVERSATIONAL - ASK CLARIFYING QUESTIONS:**
+CRITICAL: Before immediately searching, ask the user about their preferences to clarify their needs and find better options:
+
+For FLIGHTS, ask about:
+- Preferred time of day (morning, afternoon, evening arrival/departure)
+- Direct flights only, or open to connections?
+- Budget range or price sensitivity
+- Cabin class (economy, business, first)
+- Flexible dates (±1-2 days for better prices)
+
+For HOTELS, ask about:
+- Budget per night
+- Star rating preference (3-star, 4-star, luxury)
+- Neighborhood/area preferences
+- Check-in/check-out dates
+- Amenities needed (pool, gym, breakfast)
+
+For TRANSPORTATION, ask about:
+- Preferred mode (taxi, rideshare, public transit, rental car)
+- Budget and luggage amount
+
+**SMART QUESTIONING:**
+- If user provides minimal info (e.g., "Find flights to Paris"), ask 2-3 key questions
+- Prioritize the most impactful preferences (dates, budget, time of day)
+- Don't overwhelm - keep it conversational
+- If user seems in a hurry, offer to search with defaults
+- Remember previous answers in the conversation
+
+**SPECIAL CASE - REPLACEMENT REQUESTS:**
+When a user says "replace my flight" or "find a replacement":
+1. FIRST ask about their preferences (time, budget, direct vs connections, airlines to avoid)
+2. THEN search for alternatives
+3. THEN delete the old flight when they select a new one
+
+Example:
+User: "I'd like to replace my flight to Zurich and not be Air Canada"
+AI: "I can help you find a non-Air Canada replacement! A few questions:
+- What's your preferred departure time?
+- Direct flights only or open to connections?
+- Any budget in mind?
+Once I know your preferences, I'll search for the best alternatives!"
+
+**CRITICAL: USING THE maxConnections PARAMETER**
+
+When users mention connection preferences, YOU MUST use the maxConnections parameter:
+
+User says → Use maxConnections value:
+- "direct only" / "non-stop" / "direct flights" → maxConnections: 0
+- "1 connection" / "1 stop" / "max 1 stop" → maxConnections: 1  
+- "2 connections" / "2 stops" / "max 2 stops" → maxConnections: 2
+- "no preference" / doesn't mention → omit maxConnections (show all)
+
+Examples:
+❌ WRONG:
+User: "Find flights with 1 connection"
+AI calls: search_flights(origin: "DTW", destination: "ZRH", date: "2026-02-27")
+
+✅ CORRECT:
+User: "Find flights with 1 connection"
+AI calls: search_flights(origin: "DTW", destination: "ZRH", date: "2026-02-27", maxConnections: 1)
+
 When users ask about travel, use the available tools to:
 - Search for flights: Use search_flights with origin, destination, and optional date
 - Search for hotels: Use search_hotels with location/city name and optional check-in date
@@ -152,22 +213,27 @@ const TOOLS = [
     function: {
       name: "search_flights",
       description:
-        "Search for flight options between two locations. Returns available flights with times and details.",
+        "Search for flight options between two locations. Returns available flights with times and details. Can filter by maximum number of connections/stops.",
       parameters: {
         type: "object",
         properties: {
           origin: {
             type: "string",
-            description: "Origin airport code or city (e.g., NYC, LAX, JFK)",
+            description: "Origin airport code (e.g., 'JFK', 'LAX')",
           },
           destination: {
             type: "string",
-            description:
-              "Destination airport code or city (e.g., LON, LHR, Paris)",
+            description: "Destination airport code (e.g., 'LHR', 'CDG')",
           },
           date: {
             type: "string",
-            description: "Departure date in YYYY-MM-DD format (optional)",
+            description:
+              "Departure date in YYYY-MM-DD format (optional, defaults to today)",
+          },
+          maxConnections: {
+            type: "number",
+            description:
+              "Maximum number of connections/stops (optional). 0 = direct flights only, 1 = max 1 stop, 2 = max 2 stops, etc. Omit to show all options.",
           },
         },
         required: ["origin", "destination"],
@@ -258,12 +324,13 @@ async function executeToolCall(
   try {
     switch (toolName) {
       case "search_flights": {
-        const { origin, destination, date } = args;
+        const { origin, destination, date, maxConnections } = args;
         if (typeof origin === "string" && typeof destination === "string") {
           const results = await fetchFlightOffersAmadeus(
             origin,
             destination,
-            typeof date === "string" ? date : undefined
+            typeof date === "string" ? date : undefined,
+            typeof maxConnections === "number" ? maxConnections : undefined
           );
           return results;
         }
