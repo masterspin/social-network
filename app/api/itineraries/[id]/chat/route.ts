@@ -131,22 +131,36 @@ Once I know your preferences, I'll search for the best alternatives!"
 
 **CRITICAL: USING THE maxConnections PARAMETER**
 
-When users mention connection preferences, YOU MUST use the maxConnections parameter:
+When users mention connection preferences, YOU MUST use the maxConnections parameter in your search_flights call.
 
-User says → Use maxConnections value:
-- "direct only" / "non-stop" / "direct flights" → maxConnections: 0
-- "1 connection" / "1 stop" / "max 1 stop" → maxConnections: 1  
-- "2 connections" / "2 stops" / "max 2 stops" → maxConnections: 2
-- "no preference" / doesn't mention → omit maxConnections (show all)
+Parse these phrases and extract the maxConnections value:
+
+Direct flights (maxConnections: 0):
+- "direct only", "non-stop", "direct flights", "no connections", "no stops"
+
+1 connection (maxConnections: 1):
+- "1 connection", "1 stop", "max 1 stop", "max 1 connection", "1 max connection"
+- "one connection", "one stop", "maximum 1 stop", "at most 1 connection"
+
+2 connections (maxConnections: 2):
+- "2 connections", "2 stops", "max 2 stops", "max 2 connections"
+- "two connections", "two stops", "maximum 2 stops"
+
+No preference (omit maxConnections):
+- User doesn't mention connections/stops at all
+
+**IMPORTANT:** When the user says "I want 1 max connection" or "max 1 connection", this means maxConnections: 1
 
 Examples:
 ❌ WRONG:
-User: "Find flights with 1 connection"
+User: "I want 1 max connection"
 AI calls: search_flights(origin: "DTW", destination: "ZRH", date: "2026-02-27")
+Result: Shows 2-stop and 3-stop flights ❌
 
 ✅ CORRECT:
-User: "Find flights with 1 connection"
+User: "I want 1 max connection"  
 AI calls: search_flights(origin: "DTW", destination: "ZRH", date: "2026-02-27", maxConnections: 1)
+Result: Shows only direct and 1-stop flights ✅
 
 When users ask about travel, use the available tools to:
 - Search for flights: Use search_flights with origin, destination, and optional date
@@ -191,10 +205,10 @@ Similarly, if a user asks to delete "my flight to Paris" and there are multiple 
 When a user asks to "replace" or "find a replacement for" an existing segment:
 1. First, identify which segment(s) they want to replace (use the same multi-leg detection as above)
 2. Search for new options using the appropriate search tool
-3. Create a SINGLE plan that includes BOTH:
-   - Delete actions for the old segment(s)
-   - Create actions for the new segment(s)
-4. This ensures the old flight is removed when the new one is added
+3. Call BOTH tools in the same response:
+   - search_flights (to find new options)
+   - delete_segment (to mark old flights for removal)
+4. In your message to the user, explain: "I found some replacement options. When you apply one of these plans, it will automatically remove your current flight and add the new one."
 
 Example:
 - User says: "Replace my DTW to Zurich flight with a non-Air Canada option"
@@ -202,10 +216,9 @@ Example:
 - Actions:
   1. Call search_flights for DTW to Zurich alternatives
   2. Call delete_segment for both old flight segments
-  3. Return ONE plan with: delete actions for old flights + create actions for new flights
-- Response: "I found some alternatives. This plan will remove your current Air Canada connection and add [new option]."
+- Response: "I found some non-Air Canada alternatives for your DTW to Zurich flight. When you apply one of these options, it will automatically remove your current Air Canada connection and add the new flight."
 
-**Important:** For replacements, you MUST call both the search tool AND the delete_segment tool, then combine the results into a single plan.`;
+**Important:** The system will show the delete action and create actions as separate plans, but explain to the user that applying the new flight plan will replace the old one.`;
 
 const TOOLS = [
   {

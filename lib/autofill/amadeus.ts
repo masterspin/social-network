@@ -94,6 +94,10 @@ export async function fetchFlightOffersAmadeus(
         }
 
         const data = await response.json();
+
+        // Log the full response for debugging
+        console.log(`[Amadeus] Full API Response:`, JSON.stringify(data, null, 2));
+
         const offers = data.data || [];
 
         if (offers.length === 0) {
@@ -119,8 +123,8 @@ export async function fetchFlightOffersAmadeus(
             return [];
         }
 
-        // Convert Amadeus offers to our plan format
-        const plans: SegmentAutofillPlan[] = filteredOffers.slice(0, 3).map((offer: any, idx: number) => {
+        // Convert Amadeus offers to our plan format (show up to 5)
+        const plans: SegmentAutofillPlan[] = filteredOffers.slice(0, 5).map((offer: any, idx: number) => {
             const itinerary = offer.itineraries?.[0]; // First itinerary (outbound)
             const segments = itinerary?.segments || [];
             const price = offer.price?.total;
