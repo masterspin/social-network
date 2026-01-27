@@ -22,6 +22,8 @@ import Inbox from "./Inbox";
 import MatchMaker from "./MatchMaker";
 import MatchesList from "./MatchesList";
 import ItineraryPlanner from "./ItineraryPlanner";
+import ReferralCreator from "./ReferralCreator";
+import PendingReferrals from "./PendingReferrals";
 import {
   FaInstagram,
   FaTwitter,
@@ -105,7 +107,7 @@ const SOCIAL_PLATFORMS: Record<string, PlatformConfig> = {
 
 export default function Dashboard() {
   const [activeTab, setActiveTab] = useState<
-    "network" | "inbox" | "profile" | "matches" | "itineraries"
+    "network" | "inbox" | "profile" | "matches" | "itineraries" | "referrals"
   >("network");
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [connections, setConnections] = useState<unknown[]>([]);
@@ -578,6 +580,34 @@ export default function Dashboard() {
             </button>
 
             <button
+              onClick={() => setActiveTab("referrals")}
+              className={`group relative py-4 px-6 font-medium text-sm transition-colors ${activeTab === "referrals"
+                ? "text-gray-900 dark:text-white"
+                : "text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
+                }`}
+            >
+              <span className="flex items-center gap-2">
+                <svg
+                  className="w-5 h-5"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"
+                  />
+                </svg>
+                Referrals
+              </span>
+              {activeTab === "referrals" && (
+                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gray-900 dark:bg-white"></div>
+              )}
+            </button>
+
+            <button
               onClick={() => setActiveTab("itineraries")}
               className={`group relative py-4 px-6 font-medium text-sm transition-colors ${activeTab === "itineraries"
                 ? "text-gray-900 dark:text-white"
@@ -676,6 +706,19 @@ export default function Dashboard() {
               </div>
               <div>
                 <MatchMaker onMatchCreated={() => loadData()} />
+              </div>
+            </div>
+          </div>
+        )}
+
+        {activeTab === "referrals" && (
+          <div className="max-w-7xl mx-auto px-4 py-8">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div>
+                <PendingReferrals onReferralResponded={() => loadData()} />
+              </div>
+              <div>
+                <ReferralCreator onReferralCreated={() => loadData()} />
               </div>
             </div>
           </div>
