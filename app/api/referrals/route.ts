@@ -169,6 +169,71 @@ export async function POST(request: Request) {
   }
 }
 
+// DELETE /api/referrals - Delete a referral
+export async function DELETE(request: Request) {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE;
+
+  if (!url || !serviceKey) {
+    return NextResponse.json(
+      { error: "Missing Supabase configuration" },
+      { status: 500 }
+    );
+  }
+
+  const admin = createClient(url, serviceKey, {
+    auth: { persistSession: false },
+  });
+
+  try {
+    const body = await request.json();
+    const { referral_id, user_id } = body;
+
+    if (!referral_id || !user_id) {
+      return NextResponse.json(
+        { error: "Missing required fields" },
+        { status: 400 }
+      );
+    }
+
+    // Verify user is user1 or user2 on the referral
+    const { data: referral, error: fetchError } = await admin
+      .from("referrals")
+      .select("id, user1_id, user2_id")
+      .eq("id", referral_id)
+      .single();
+
+    if (fetchError || !referral) {
+      return NextResponse.json(
+        { error: "Referral not found" },
+        { status: 404 }
+      );
+    }
+
+    if (referral.user1_id !== user_id && referral.user2_id !== user_id) {
+      return NextResponse.json(
+        { error: "Not authorized to delete this referral" },
+        { status: 403 }
+      );
+    }
+
+    const { error: deleteError } = await admin
+      .from("referrals")
+      .delete()
+      .eq("id", referral_id);
+
+    if (deleteError) throw deleteError;
+
+    return NextResponse.json({ success: true }, { status: 200 });
+  } catch (error) {
+    console.error("[Referrals API DELETE] Error:", error);
+    return NextResponse.json(
+      { error: (error as Error).message },
+      { status: 500 }
+    );
+  }
+}
+
 // GET /api/referrals?user_id=xxx - Get referrals for a user
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
