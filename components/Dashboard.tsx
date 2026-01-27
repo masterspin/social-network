@@ -23,7 +23,7 @@ import MatchMaker from "./MatchMaker";
 import MatchesList from "./MatchesList";
 import ItineraryPlanner from "./ItineraryPlanner";
 import ReferralCreator from "./ReferralCreator";
-import PendingReferrals from "./PendingReferrals";
+import ReferralsList from "./PendingReferrals";
 import {
   FaInstagram,
   FaTwitter,
@@ -715,7 +715,7 @@ export default function Dashboard() {
           <div className="max-w-7xl mx-auto px-4 py-8">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <div>
-                <PendingReferrals onReferralResponded={() => loadData()} />
+                <ReferralsList onReferralResponded={() => loadData()} />
               </div>
               <div>
                 <ReferralCreator onReferralCreated={() => loadData()} />

@@ -22,13 +22,11 @@ export default function ReferralCreator({
 }: ReferralCreatorProps) {
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [connections, setConnections] = useState<User[]>([]);
-  const [selectedCandidate, setSelectedCandidate] = useState<string>("");
-  const [selectedOpportunityHolder, setSelectedOpportunityHolder] =
-    useState<string>("");
+  const [selectedUser1, setSelectedUser1] = useState<string>("");
+  const [selectedUser2, setSelectedUser2] = useState<string>("");
   const [context, setContext] = useState<string>("");
-  const [searchTermCandidate, setSearchTermCandidate] = useState("");
-  const [searchTermOpportunityHolder, setSearchTermOpportunityHolder] =
-    useState("");
+  const [searchTerm1, setSearchTerm1] = useState("");
+  const [searchTerm2, setSearchTerm2] = useState("");
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
   const [message, setMessage] = useState<{
@@ -60,7 +58,6 @@ export default function ReferralCreator({
           return;
         }
 
-        // Filter only first connections and extract the user objects
         const firstConnections = (json.data || [])
           .filter((conn: any) => conn.connection_type === "first")
           .map((conn: any) => conn.other_user)
@@ -80,17 +77,17 @@ export default function ReferralCreator({
     e.preventDefault();
     if (
       !currentUserId ||
-      !selectedCandidate ||
-      !selectedOpportunityHolder ||
+      !selectedUser1 ||
+      !selectedUser2 ||
       !context.trim() ||
       creating
     )
       return;
 
-    if (selectedCandidate === selectedOpportunityHolder) {
+    if (selectedUser1 === selectedUser2) {
       setMessage({
         type: "error",
-        text: "Candidate and opportunity holder must be different people",
+        text: "Please select two different people",
       });
       return;
     }
@@ -104,8 +101,8 @@ export default function ReferralCreator({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           referrer_id: currentUserId,
-          candidate_id: selectedCandidate,
-          opportunity_holder_id: selectedOpportunityHolder,
+          user1_id: selectedUser1,
+          user2_id: selectedUser2,
           context: context.trim(),
         }),
       });
@@ -122,8 +119,8 @@ export default function ReferralCreator({
       }
 
       setMessage({ type: "success", text: "Referral created successfully!" });
-      setSelectedCandidate("");
-      setSelectedOpportunityHolder("");
+      setSelectedUser1("");
+      setSelectedUser2("");
       setContext("");
       setCreating(false);
 
@@ -179,55 +176,51 @@ export default function ReferralCreator({
       ) : (
         <form onSubmit={createReferral} className="space-y-6">
           <SearchablePicker
-            label="Select Candidate"
-            description="The person you're introducing"
-            searchTerm={searchTermCandidate}
-            onSearchChange={setSearchTermCandidate}
+            label="Select first person"
+            searchTerm={searchTerm1}
+            onSearchChange={setSearchTerm1}
             connections={connections}
-            selectedId={selectedCandidate}
+            selectedId={selectedUser1}
             onSelect={(id) => {
-              setSelectedCandidate(id);
-              setSearchTermCandidate("");
-              if (id === selectedOpportunityHolder) {
-                setSelectedOpportunityHolder("");
+              setSelectedUser1(id);
+              setSearchTerm1("");
+              if (id === selectedUser2) {
+                setSelectedUser2("");
               }
             }}
-            excludeIds={
-              selectedOpportunityHolder ? [selectedOpportunityHolder] : []
-            }
+            excludeIds={selectedUser2 ? [selectedUser2] : []}
           />
 
           <SearchablePicker
-            label="Select Opportunity Holder"
-            description="The person with the opportunity"
-            searchTerm={searchTermOpportunityHolder}
-            onSearchChange={setSearchTermOpportunityHolder}
+            label="Select second person"
+            searchTerm={searchTerm2}
+            onSearchChange={setSearchTerm2}
             connections={connections}
-            selectedId={selectedOpportunityHolder}
+            selectedId={selectedUser2}
             onSelect={(id) => {
-              setSelectedOpportunityHolder(id);
-              setSearchTermOpportunityHolder("");
+              setSelectedUser2(id);
+              setSearchTerm2("");
             }}
-            excludeIds={selectedCandidate ? [selectedCandidate] : []}
-            disabled={!selectedCandidate}
+            excludeIds={selectedUser1 ? [selectedUser1] : []}
+            disabled={!selectedUser1}
             helperText={
-              !selectedCandidate
-                ? "Select the candidate before choosing the opportunity holder"
+              !selectedUser1
+                ? "Select the first person before choosing a second"
                 : undefined
             }
           />
 
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Context / Opportunity Description
+              Context
             </label>
             <textarea
               value={context}
               onChange={(e) => setContext(e.target.value)}
-              placeholder="Describe why you're making this introduction and what opportunity exists..."
+              placeholder="Why are you connecting these two people?"
               rows={4}
-              className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
-              disabled={!selectedCandidate || !selectedOpportunityHolder}
+              className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none"
+              disabled={!selectedUser1 || !selectedUser2}
             />
           </div>
 
@@ -236,8 +229,8 @@ export default function ReferralCreator({
               type="submit"
               disabled={
                 creating ||
-                !selectedCandidate ||
-                !selectedOpportunityHolder ||
+                !selectedUser1 ||
+                !selectedUser2 ||
                 !context.trim()
               }
               className="flex-1 px-6 py-2 rounded-lg bg-purple-600 text-white hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed"
@@ -262,7 +255,6 @@ export default function ReferralCreator({
 
 type SearchablePickerProps = {
   label: string;
-  description?: string;
   searchTerm: string;
   onSearchChange: (value: string) => void;
   connections: User[];
@@ -275,7 +267,6 @@ type SearchablePickerProps = {
 
 function SearchablePicker({
   label,
-  description,
   searchTerm,
   onSearchChange,
   connections,
@@ -314,21 +305,16 @@ function SearchablePicker({
 
   return (
     <div className={disabled ? "opacity-60" : undefined}>
-      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
         {label}
       </label>
-      {description && (
-        <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
-          {description}
-        </p>
-      )}
       <input
         type="text"
         value={searchTerm}
         onChange={(event) => onSearchChange(event.target.value)}
         disabled={disabled}
         placeholder="Search by name or @username"
-        className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+        className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-purple-500"
       />
       {helperText && (
         <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
