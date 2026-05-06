@@ -16,6 +16,11 @@ type MatchMakerProps = {
   onMatchCreated?: () => void;
 };
 
+type AcceptedConnection = {
+  connection_type?: string | null;
+  other_user: User | null;
+};
+
 export default function MatchMaker({
   onClose,
   onMatchCreated,
@@ -58,10 +63,10 @@ export default function MatchMaker({
         }
 
         // Filter only first connections and extract the user objects
-        const firstConnections = (json.data || [])
-          .filter((conn: any) => conn.connection_type === "first")
-          .map((conn: any) => conn.other_user)
-          .filter((user: any) => user !== null);
+        const firstConnections = ((json.data || []) as AcceptedConnection[])
+          .filter((conn) => conn.connection_type === "first")
+          .map((conn) => conn.other_user)
+          .filter((user): user is User => user !== null);
         setConnections(firstConnections);
         setLoading(false);
       } catch (e) {

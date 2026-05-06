@@ -1,6 +1,19 @@
 import { Database } from "@/types/supabase";
 
 type SegmentRow = Database["public"]["Tables"]["itinerary_segments"]["Row"];
+type MetadataRecord = Record<string, unknown>;
+
+function isMetadataRecord(value: unknown): value is MetadataRecord {
+    return Boolean(value && typeof value === "object" && !Array.isArray(value));
+}
+
+function asMetadataRecord(value: unknown): MetadataRecord | undefined {
+    return isMetadataRecord(value) ? value : undefined;
+}
+
+function asString(value: unknown): string | undefined {
+    return typeof value === "string" ? value : undefined;
+}
 
 /**
  * Generate a Google Calendar URL for a single segment
@@ -94,12 +107,12 @@ function buildSegmentDescription(segment: SegmentRow): string {
 
     // Parse metadata for additional details
     if (segment.metadata && typeof segment.metadata === "object") {
-        const metadata = segment.metadata as Record<string, any>;
+        const metadata = segment.metadata as MetadataRecord;
 
         // Flight-specific details
         if (segment.type === "flight") {
-            const departure = metadata.departure as Record<string, any> | undefined;
-            const arrival = metadata.arrival as Record<string, any> | undefined;
+            const departure = asMetadataRecord(metadata.departure);
+            const arrival = asMetadataRecord(metadata.arrival);
 
             if (departure) {
                 lines.push(`\nDeparture:`);
@@ -118,10 +131,14 @@ function buildSegmentDescription(segment: SegmentRow): string {
             // Multi-leg flights
             if (Array.isArray(metadata.legs) && metadata.legs.length > 0) {
                 lines.push(`\nFlight Legs:`);
-                metadata.legs.forEach((leg: any, idx: number) => {
-                    lines.push(`  Leg ${idx + 1}: ${leg.origin || ""} → ${leg.destination || ""}`);
-                    if (leg.carrier && leg.number) {
-                        lines.push(`    ${leg.carrier}${leg.number}`);
+                metadata.legs.filter(isMetadataRecord).forEach((leg, idx) => {
+                    const origin = asString(leg.origin);
+                    const destination = asString(leg.destination);
+                    const carrier = asString(leg.carrier);
+                    const number = asString(leg.number);
+                    lines.push(`  Leg ${idx + 1}: ${origin || ""} → ${destination || ""}`);
+                    if (carrier && number) {
+                        lines.push(`    ${carrier}${number}`);
                     }
                 });
             }

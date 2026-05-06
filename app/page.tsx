@@ -18,6 +18,13 @@ export default function HomePage() {
   }, []);
 
   const checkAuth = async () => {
+    if (process.env.NEXT_PUBLIC_DEV_MODE === "true") {
+      setIsAuthenticated(true);
+      setHasProfile(true);
+      setLoading(false);
+      return;
+    }
+
     const { user } = await getCurrentUser();
 
     if (!user) {

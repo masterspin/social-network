@@ -1,7 +1,10 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { SegmentAutofillPlan } from "@/lib/autofill/types";
+import {
+  SegmentAutofillPlan,
+  SegmentAutofillSuggestion,
+} from "@/lib/autofill/types";
 
 type Message = {
   id: string;
@@ -243,7 +246,10 @@ export default function ChatAssistant({
 
                     // Get create action details
                     const createSegments = plan.actions
-                      .filter((a): a is { type: 'create'; segment: any } => a.type === 'create')
+                      .filter(
+                        (a): a is { type: 'create'; segment: SegmentAutofillSuggestion } =>
+                          a.type === 'create'
+                      )
                       .map(action => action.segment);
 
                     return (

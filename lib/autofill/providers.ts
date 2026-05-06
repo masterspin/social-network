@@ -58,6 +58,29 @@ function resolveScheduleTime(value: unknown): string | null {
   return null;
 }
 
+type AeroDataBoxAirport = {
+  iata?: string;
+  name?: string;
+};
+
+type AeroDataBoxMovement = {
+  airport?: AeroDataBoxAirport;
+  scheduledTimeLocal?: string;
+  scheduledTimeUtc?: string;
+};
+
+type AeroDataBoxFlight = {
+  number?: string;
+  departure?: AeroDataBoxMovement;
+  arrival?: AeroDataBoxMovement;
+  movement?: AeroDataBoxMovement;
+  airline?: {
+    iata?: string;
+    icao?: string;
+    name?: string;
+  };
+};
+
 export async function fetchFlightSuggestion(
   flightNumberInput: string,
   dateInput?: string
@@ -271,7 +294,7 @@ export async function fetchFlightSuggestionFree(
       { from: `${date}T12:00`, to: `${date}T23:59`, label: "afternoon/evening" }
     ];
 
-    let allDepartures: any[] = [];
+    let allDepartures: AeroDataBoxFlight[] = [];
 
     for (const window of timeWindows) {
       const url = new URL(
@@ -315,7 +338,9 @@ export async function fetchFlightSuggestionFree(
         continue;
       }
 
-      const payload = await response.json().catch(() => null);
+      const payload = (await response.json().catch(() => null)) as {
+        departures?: AeroDataBoxFlight[];
+      } | null;
       const departures = Array.isArray(payload?.departures) ? payload.departures : [];
       console.log(`[AeroDataBox] Found ${departures.length} departures in ${window.label}`);
       allDepartures = [...allDepartures, ...departures];
@@ -329,7 +354,7 @@ export async function fetchFlightSuggestionFree(
     console.log(`[AeroDataBox] Total departures: ${allDepartures.length}`);
 
     // Filter flights going to destination (direct flights)
-    const directFlights = allDepartures.filter((flight: any) => {
+    const directFlights = allDepartures.filter((flight) => {
       const arrivalIata = flight?.arrival?.airport?.iata || flight?.movement?.airport?.iata;
       return arrivalIata === destUpper;
     });
@@ -338,7 +363,7 @@ export async function fetchFlightSuggestionFree(
 
     // If we have direct flights, use those
     if (directFlights.length > 0) {
-      const plans: SegmentAutofillPlan[] = directFlights.slice(0, 3).map((flight: any, idx: number) => {
+      const plans: SegmentAutofillPlan[] = directFlights.slice(0, 3).map((flight, idx) => {
         const departure = flight?.departure || {};
         const arrival = flight?.arrival || {};
         const airline = flight?.airline || {};
@@ -384,8 +409,8 @@ export async function fetchFlightSuggestionFree(
     console.log(`[AeroDataBox] No direct flights, searching for connections...`);
 
     // Find common connection hubs (airports that appear as destinations from origin)
-    const connectionHubs = new Map<string, any[]>();
-    allDepartures.forEach((flight: any) => {
+    const connectionHubs = new Map<string, AeroDataBoxFlight[]>();
+    allDepartures.forEach((flight) => {
       const arrivalIata = flight?.arrival?.airport?.iata;
       if (arrivalIata && arrivalIata !== destUpper) {
         if (!connectionHubs.has(arrivalIata)) {

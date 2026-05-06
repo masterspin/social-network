@@ -1,5 +1,8 @@
 import { supabase } from "./client";
 import type { Database } from "@/types/supabase";
+import * as mockData from "@/lib/dev/mock-data";
+
+const IS_DEV = process.env.NEXT_PUBLIC_DEV_MODE === "true";
 
 // Auth functions
 export async function signOut() {
@@ -8,6 +11,12 @@ export async function signOut() {
 }
 
 export async function getCurrentUser() {
+  if (IS_DEV) {
+    return {
+      user: { id: mockData.DEV_USER_ID, email: mockData.DEV_USER.email },
+      error: null,
+    };
+  }
   const {
     data: { user },
     error,
@@ -17,6 +26,10 @@ export async function getCurrentUser() {
 
 // User profile functions
 export async function getUserProfile(userId: string) {
+  if (IS_DEV) {
+    const user = mockData.MOCK_USERS.find((u) => u.id === userId) ?? mockData.DEV_USER;
+    return { data: user as unknown as Database["public"]["Tables"]["users"]["Row"], error: null };
+  }
   const { data, error } = await supabase
     .from("users")
     .select("*")
@@ -100,6 +113,23 @@ export async function checkUsernameAvailable(username: string) {
 // - Excludes users blocked by requester or who have blocked requester
 // - No custom Postgres functions, no client-side ranking
 export async function searchConnections(query: string, requesterId: string) {
+  if (IS_DEV) {
+    const q = query.toLowerCase().trim();
+    const results = mockData.MOCK_USERS.filter(
+      (u) =>
+        u.id !== requesterId &&
+        (u.username.toLowerCase().includes(q) ||
+          u.name.toLowerCase().includes(q) ||
+          (u.preferred_name ?? "").toLowerCase().includes(q))
+    ).map((u) => ({
+      id: u.id,
+      username: u.username,
+      name: u.name,
+      preferred_name: u.preferred_name,
+      profile_image_url: u.profile_image_url,
+    }));
+    return { data: results as BasicUser[], error: null };
+  }
   const q = sanitizeForOr(query);
   if (!q) return { data: [] as BasicUser[], error: null };
 
@@ -175,6 +205,10 @@ export async function listUsersByQuery(query: string) {
 
 // Social links functions
 export async function getUserSocialLinks(userId: string) {
+  if (IS_DEV) {
+    const links = userId === mockData.DEV_USER_ID ? mockData.MOCK_SOCIAL_LINKS : [];
+    return { data: links as unknown as Database["public"]["Tables"]["social_links"]["Row"][], error: null };
+  }
   const { data, error } = await supabase
     .from("social_links")
     .select("*")
@@ -201,6 +235,9 @@ export async function deleteSocialLink(linkId: string) {
 
 // Connection functions
 export async function getUserConnections(userId: string) {
+  if (IS_DEV) {
+    return { data: mockData.MOCK_CONNECTIONS as unknown[], error: null };
+  }
   const { data, error } = await supabase
     .from("connections")
     .select(
@@ -247,6 +284,15 @@ export async function getSentConnectionRequests(userId: string) {
 
 // Get the most recent connection record between two users (either direction)
 export async function getConnectionBetweenUsers(aId: string, bId: string) {
+  if (IS_DEV) {
+    const allConns = [...mockData.MOCK_CONNECTIONS, mockData.CONN_ALICE_BOB];
+    const found = allConns.find(
+      (c) =>
+        (c.requester_id === aId && c.recipient_id === bId) ||
+        (c.requester_id === bId && c.recipient_id === aId)
+    ) ?? null;
+    return { data: found as unknown as Database["public"]["Tables"]["connections"]["Row"] & { requester: unknown; recipient: unknown } | null, error: null };
+  }
   const { data, error } = await supabase
     .from("connections")
     .select(
@@ -424,6 +470,17 @@ export async function getNetworkData(userId: string) {
 }
 
 // Block user functions
+export async function isUserBlocked(blockerId: string, blockedId: string) {
+  if (IS_DEV) return { isBlocked: false, error: null };
+  const { data, error } = await supabase
+    .from("blocked_users")
+    .select("id")
+    .eq("blocker_id", blockerId)
+    .eq("blocked_id", blockedId)
+    .single();
+  return { isBlocked: !!data, error };
+}
+
 export async function blockUser(blockerId: string, blockedId: string) {
   const { data, error } = await supabase
     .from("blocked_users")
@@ -443,6 +500,7 @@ export async function unblockUser(blockerId: string, blockedId: string) {
 }
 
 export async function getBlockedUsers(blockerId: string) {
+  if (IS_DEV) return { data: [] as unknown[], error: null };
   const { data, error } = await supabase
     .from("blocked_users")
     .select(
@@ -458,18 +516,16 @@ export async function getBlockedUsers(blockerId: string) {
   return { data, error };
 }
 
-export async function isUserBlocked(blockerId: string, blockedId: string) {
-  const { data, error } = await supabase
-    .from("blocked_users")
-    .select("id")
-    .eq("blocker_id", blockerId)
-    .eq("blocked_id", blockedId)
-    .single();
-  return { isBlocked: !!data, error };
-}
-
 // Get count of first connections for a user
 export async function getFirstConnectionCount(userId: string) {
+  if (IS_DEV) {
+    const count = mockData.MOCK_CONNECTIONS.filter(
+      (c) =>
+        (c.requester_id === userId || c.recipient_id === userId) &&
+        c.connection_type === "first"
+    ).length;
+    return { count, error: null };
+  }
   const { count, error } = await supabase
     .from("connections")
     .select("*", { count: "exact", head: true })

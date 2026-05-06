@@ -93,6 +93,32 @@ async function checkAccess(
 export async function GET(request: Request, context: RouteContext) {
   try {
     const { id: itineraryId, segmentId } = await context.params;
+
+    if (process.env.NEXT_PUBLIC_DEV_MODE === "true") {
+      const { MOCK_ITINERARIES } = await import("@/lib/dev/mock-data");
+      const itinerary = MOCK_ITINERARIES.find((item) => item.id === itineraryId);
+
+      if (!itinerary) {
+        return NextResponse.json(
+          { error: "Itinerary not found" },
+          { status: 404 }
+        );
+      }
+
+      const segments =
+        "segments" in itinerary && Array.isArray(itinerary.segments)
+          ? itinerary.segments
+          : [];
+      const segmentExists =
+        !segmentId || segments.some((segment) => segment.id === segmentId);
+
+      if (!segmentExists) {
+        return NextResponse.json({ error: "Segment not found" }, { status: 404 });
+      }
+
+      return NextResponse.json({ data: [] }, { status: 200 });
+    }
+
     const userId = await resolveUserId(request);
 
     if (!itineraryId || !segmentId || !userId) {

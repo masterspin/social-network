@@ -14,6 +14,8 @@ type RouteContext = {
   params: Promise<{ id: string }>;
 };
 
+type SegmentRow = Database["public"]["Tables"]["itinerary_segments"]["Row"];
+
 function getAdminClient(): TypedSupabaseClient {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE;
@@ -110,6 +112,30 @@ async function getMembership(
 export async function GET(request: Request, context: RouteContext) {
   try {
     const { id: itineraryId } = await context.params;
+
+    if (process.env.NEXT_PUBLIC_DEV_MODE === "true") {
+      const { MOCK_ITINERARIES } = await import("@/lib/dev/mock-data");
+      const itinerary = MOCK_ITINERARIES.find((item) => item.id === itineraryId);
+
+      if (!itinerary) {
+        return NextResponse.json(
+          { error: "Itinerary not found" },
+          { status: 404 }
+        );
+      }
+
+      return NextResponse.json(
+        {
+          data: {
+            ...itinerary,
+            segments: "segments" in itinerary ? itinerary.segments : [],
+            checklists: "checklists" in itinerary ? itinerary.checklists : [],
+          },
+        },
+        { status: 200 }
+      );
+    }
+
     const userId = await resolveUserId(request);
 
     if (!itineraryId || !userId) {
@@ -157,7 +183,7 @@ export async function GET(request: Request, context: RouteContext) {
     if (error) throw error;
 
     if (data?.segments) {
-      data.segments.sort((a: any, b: any) => {
+      data.segments.sort((a: SegmentRow, b: SegmentRow) => {
         const left = a.start_time
           ? new Date(a.start_time).getTime()
           : Number.MAX_SAFE_INTEGER;

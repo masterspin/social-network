@@ -3,6 +3,11 @@ import { createClient } from "@supabase/supabase-js";
 import type { Database } from "@/types/supabase";
 
 export async function GET() {
+  if (process.env.NEXT_PUBLIC_DEV_MODE === "true") {
+    const { MOCK_USERS_ALL } = await import("@/lib/dev/mock-data");
+    return NextResponse.json({ data: MOCK_USERS_ALL }, { status: 200 });
+  }
+
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE;
 

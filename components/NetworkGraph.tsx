@@ -20,6 +20,7 @@ type NodeData = {
   x?: number;
   y?: number;
 };
+type PathType = NonNullable<NodeData["path_type"]>;
 type LinkData = {
   source: string;
   target: string;
@@ -234,7 +235,13 @@ export default function NetworkGraph({
       expandedRef.current.add(nodeId);
       
       // Determine the path type for children of this node
-      const nodePathType = currentNode?.path_type || currentNode?.connection_type || "first";
+      const nodePathType: PathType =
+        currentNode?.path_type ||
+        (currentNode?.connection_type === "one_point_five"
+          ? "one_point_five"
+          : currentNode?.connection_type === "pending"
+          ? "pending"
+          : "first");
       console.log(`[ExpandStart] Expanding ${nodeId} with path_type=${currentNode?.path_type} connection_type=${currentNode?.connection_type} nodePathType=${nodePathType}`);
       
       try {
@@ -282,7 +289,7 @@ export default function NetworkGraph({
           let addedLinks = 0;
           
           // Hierarchy: first > one_point_five > pending
-          const getPathPriority = (type?: string) => {
+          const getPathPriority = (type?: PathType) => {
             if (type === "first") return 3;
             if (type === "one_point_five") return 2;
             if (type === "pending") return 1;
@@ -301,7 +308,12 @@ export default function NetworkGraph({
             }
             
             const nextDepth = depthOfNode + 1;
-            const rowType = row.status === "pending" ? "pending" : (row.connection_type || "first");
+            const rowType: PathType =
+              row.status === "pending"
+                ? "pending"
+                : row.connection_type === "one_point_five"
+                ? "one_point_five"
+                : "first";
             
             // Determine path type: inherit from parent unless this is a direct connection from user
             const pathType = depthOfNode === 0 ? rowType : nodePathType;
@@ -313,12 +325,12 @@ export default function NetworkGraph({
             if (existingNode) {
               // Node exists - update if we have a better path (higher priority or shorter distance)
               const existingPriority = getPathPriority(existingNode.path_type);
-              const newPriority = getPathPriority(pathType as any);
+              const newPriority = getPathPriority(pathType);
               
               if (newPriority > existingPriority || 
                   (newPriority === existingPriority && nextDepth < (existingNode.distance || Infinity))) {
                 existingNode.distance = nextDepth;
-                existingNode.path_type = pathType as any;
+                existingNode.path_type = pathType;
                 existingNode.connection_type = rowType;
                 nodeDepthMapRef.current.set(other.id, nextDepth);
               }
@@ -334,7 +346,7 @@ export default function NetworkGraph({
                 profile_image_url: other.profile_image_url,
                 distance: nextDepth,
                 connection_type: rowType,
-                path_type: pathType as any,
+                path_type: pathType,
               });
             }
             // Add edge between nodeId and other.id (always add edges, showing all connections)

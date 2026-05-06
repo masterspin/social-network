@@ -31,6 +31,22 @@ import {
   FaDiscord,
   FaSnapchat,
 } from "react-icons/fa";
+import {
+  Network,
+  Inbox as InboxIcon,
+  Heart,
+  Map,
+  User,
+  Search,
+  LogOut,
+} from "lucide-react";
+import { Button } from "@/components/ui/Button";
+import { Avatar } from "@/components/ui/Avatar";
+import { Badge, connectionTypeBadge } from "@/components/ui/Badge";
+import { Card } from "@/components/ui/Card";
+import { Input } from "@/components/ui/Input";
+import { Select } from "@/components/ui/Select";
+import { Modal } from "@/components/ui/Modal";
 
 type UserProfile = Database["public"]["Tables"]["users"]["Row"];
 type SocialLink = Database["public"]["Tables"]["social_links"]["Row"];
@@ -412,226 +428,73 @@ export default function Dashboard() {
         }`}
     >
       {/* Header */}
-      <header className="sticky top-0 z-50 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 py-4">
+      <header className="sticky top-0 z-50 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800">
+        <div className="max-w-7xl mx-auto px-4 py-3">
           <div className="flex items-center justify-between">
             {/* Logo & User Info */}
-            <div className="flex items-center gap-4">
-              <div className="w-10 h-10 bg-gray-900 dark:bg-white rounded-lg flex items-center justify-center shadow-sm">
-                <svg
-                  className="w-6 h-6 text-white"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
-                  />
-                </svg>
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center">
+                <Network className="w-4 h-4 text-white" />
               </div>
               <div>
-                <h1 className="text-xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                  Social Network
+                <h1 className="text-base font-semibold tracking-tight text-gray-900 dark:text-gray-100">
+                  Amaedu
                 </h1>
                 {userProfile && (
-                  <p className="text-sm text-gray-600 dark:text-gray-400">
+                  <p className="text-xs text-gray-500 dark:text-gray-400 leading-none">
                     @{userProfile.username}
                   </p>
                 )}
               </div>
             </div>
 
-            {/* Search & Sign Out Buttons */}
-            <div className="flex items-center gap-3">
-              <button
+            {/* Actions */}
+            <div className="flex items-center gap-1">
+              <Button
+                variant="ghost"
+                size="sm"
                 onClick={() => setShowSearchModal(true)}
-                className="flex items-center gap-2 px-4 py-2 bg-blue-100 hover:bg-blue-200 dark:bg-blue-900/30 dark:hover:bg-blue-900/50 text-blue-700 dark:text-blue-300 rounded-xl font-medium transition-all hover:scale-105"
               >
-                <svg
-                  className="w-5 h-5"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M21 21l-4.35-4.35M10 18a8 8 0 110-16 8 8 0 010 16z"
-                  />
-                </svg>
+                <Search className="w-4 h-4" />
                 <span className="hidden sm:inline">Search</span>
-              </button>
-              <button
-                onClick={handleSignOut}
-                className="flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-xl font-medium transition-all hover:scale-105"
-              >
-                <svg
-                  className="w-5 h-5"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
-                  />
-                </svg>
-                <span className="hidden sm:inline">Sign Out</span>
-              </button>
+              </Button>
+              <Button variant="ghost" size="sm" onClick={handleSignOut}>
+                <LogOut className="w-4 h-4" />
+                <span className="hidden sm:inline">Sign out</span>
+              </Button>
             </div>
           </div>
         </div>
       </header>
 
       {/* Navigation Tabs */}
-      <nav className="sticky top-[73px] z-40 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800">
+      <nav className="sticky top-[57px] z-40 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800">
         <div className="max-w-7xl mx-auto px-4">
-          <div className="flex space-x-1">
-            <button
-              onClick={() => setActiveTab("network")}
-              className={`group relative py-4 px-6 font-medium text-sm transition-colors ${activeTab === "network"
-                ? "text-gray-900 dark:text-white"
-                : "text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
-                }`}
-            >
-              <span className="flex items-center gap-2">
-                <svg
-                  className="w-5 h-5"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"
-                  />
-                </svg>
-                Network Graph
-              </span>
-              {activeTab === "network" && (
-                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gray-900 dark:bg-white"></div>
-              )}
-            </button>
-
-            <button
-              onClick={() => setActiveTab("inbox")}
-              className={`group relative py-4 px-6 font-medium text-sm transition-colors ${activeTab === "inbox"
-                ? "text-gray-900 dark:text-white"
-                : "text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
-                }`}
-            >
-              <span className="flex items-center gap-2">
-                <svg
-                  className="w-5 h-5"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
-                  />
-                </svg>
-                Inbox
-              </span>
-              {activeTab === "inbox" && (
-                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gray-900 dark:bg-white"></div>
-              )}
-            </button>
-
-            <button
-              onClick={() => setActiveTab("matches")}
-              className={`group relative py-4 px-6 font-medium text-sm transition-colors ${activeTab === "matches"
-                ? "text-gray-900 dark:text-white"
-                : "text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
-                }`}
-            >
-              <span className="flex items-center gap-2">
-                <svg
-                  className="w-5 h-5"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
-                  />
-                </svg>
-                Matches
-              </span>
-              {activeTab === "matches" && (
-                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gray-900 dark:bg-white"></div>
-              )}
-            </button>
-
-            <button
-              onClick={() => setActiveTab("itineraries")}
-              className={`group relative py-4 px-6 font-medium text-sm transition-colors ${activeTab === "itineraries"
-                ? "text-gray-900 dark:text-white"
-                : "text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
-                }`}
-            >
-              <span className="flex items-center gap-2">
-                <svg
-                  className="w-5 h-5"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M9 20.25l-6-2.25V3.75l6 2.25m0 14.25l6-2.25m-6 2.25V6m6 12.75l6 2.25V6.75l-6-2.25m0 14.25V4.5"
-                  />
-                </svg>
-                Itineraries
-              </span>
-              {activeTab === "itineraries" && (
-                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gray-900 dark:bg-white"></div>
-              )}
-            </button>
-
-            <button
-              onClick={() => setActiveTab("profile")}
-              className={`group relative py-4 px-6 font-medium text-sm transition-colors ${activeTab === "profile"
-                ? "text-gray-900 dark:text-white"
-                : "text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
-                }`}
-            >
-              <span className="flex items-center gap-2">
-                <svg
-                  className="w-5 h-5"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
-                  />
-                </svg>
-                Profile
-              </span>
-              {activeTab === "profile" && (
-                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gray-900 dark:bg-white"></div>
-              )}
-            </button>
+          <div className="flex items-center gap-1 py-2">
+            {(
+              [
+                { key: "network", label: "Network", Icon: Network },
+                { key: "inbox", label: "Inbox", Icon: InboxIcon },
+                { key: "matches", label: "Matches", Icon: Heart },
+                { key: "itineraries", label: "Itineraries", Icon: Map },
+                { key: "profile", label: "Profile", Icon: User },
+              ] as const
+            ).map(({ key, label, Icon }) => (
+              <button
+                key={key}
+                onClick={() => setActiveTab(key)}
+                className={[
+                  "flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors duration-100",
+                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500",
+                  activeTab === key
+                    ? "bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                    : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800/50",
+                ].join(" ")}
+              >
+                <Icon className="w-4 h-4" />
+                <span className="hidden sm:inline">{label}</span>
+              </button>
+            ))}
           </div>
         </div>
       </nav>
@@ -639,21 +502,23 @@ export default function Dashboard() {
       {/* Content */}
       <main className="flex-1 overflow-hidden flex flex-col">
         {activeTab === "network" && (
-          <NetworkGraph
-            onOpenUser={(u) =>
-              setSelectedConnectionUser({
-                id: u.id,
-                username: "",
-                name: u.name || "",
-                preferred_name: u.preferred_name ?? null,
-                profile_image_url: u.profile_image_url ?? null,
-              })
-            }
-          />
+          <div key="network" className="animate-fade-in flex-1 flex flex-col">
+            <NetworkGraph
+              onOpenUser={(u) =>
+                setSelectedConnectionUser({
+                  id: u.id,
+                  username: "",
+                  name: u.name || "",
+                  preferred_name: u.preferred_name ?? null,
+                  profile_image_url: u.profile_image_url ?? null,
+                })
+              }
+            />
+          </div>
         )}
 
         {activeTab === "inbox" && (
-          <div className="max-w-7xl mx-auto px-4 py-8">
+          <div key="inbox" className="animate-fade-in max-w-7xl mx-auto px-4 py-8 w-full">
             <Inbox
               onOpenProfile={(userId) => {
                 setSelectedConnectionUser({
@@ -669,938 +534,441 @@ export default function Dashboard() {
         )}
 
         {activeTab === "matches" && (
-          <div className="max-w-7xl mx-auto px-4 py-8">
+          <div key="matches" className="animate-fade-in max-w-7xl mx-auto px-4 py-8 w-full">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <div>
-                <MatchesList />
-              </div>
-              <div>
-                <MatchMaker onMatchCreated={() => loadData()} />
-              </div>
+              <MatchesList />
+              <MatchMaker onMatchCreated={() => loadData()} />
             </div>
           </div>
         )}
 
         {activeTab === "itineraries" && (
-          <div className="flex-1 relative">
+          <div key="itineraries" className="animate-fade-in flex-1 relative">
             <ItineraryPlanner />
           </div>
         )}
 
         {activeTab === "profile" && userProfile && (
-          <div className="max-w-7xl mx-auto px-4 py-8">
-            {/* Hero Card with Profile Image, Username & Connections */}
-            <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg shadow-sm p-8 mb-6">
+          <div key="profile" className="animate-fade-in max-w-7xl mx-auto px-4 py-8 w-full">
+            {/* Hero Card */}
+            <Card className="mb-6">
               <div className="flex flex-col md:flex-row items-start gap-6">
-                {/* Profile Image */}
+                {/* Avatar */}
                 <div className="flex-shrink-0">
-                  {!isEditingProfile ? (
-                    userProfile.profile_image_url ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={userProfile.profile_image_url}
-                        alt="Profile"
-                        className="w-32 h-32 rounded-full object-cover border-4 border-gray-200 dark:border-gray-700"
+                  {isEditingProfile ? (
+                    <div className="flex flex-col items-center gap-3">
+                      <Avatar
+                        name={editForm.name || "?"}
+                        imageUrl={editForm.profile_image_url || null}
+                        size="xl"
                       />
-                    ) : (
-                      <div className="w-32 h-32 rounded-full bg-gray-100 dark:bg-gray-800 border-4 border-gray-200 dark:border-gray-700 flex items-center justify-center">
-                        <span className="text-5xl font-bold text-gray-600 dark:text-gray-400">
-                          {userProfile.name.charAt(0).toUpperCase()}
-                        </span>
-                      </div>
-                    )
-                  ) : (
-                    <div className="flex flex-col items-center gap-2">
-                      <div className="w-32 h-32 rounded-full bg-gray-100 dark:bg-gray-800 border-4 border-gray-200 dark:border-gray-700 flex items-center justify-center overflow-hidden">
-                        {editForm.profile_image_url ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img
-                            src={editForm.profile_image_url}
-                            alt="Profile Preview"
-                            className="w-full h-full object-cover"
-                          />
-                        ) : (
-                          <span className="text-5xl font-bold text-gray-600 dark:text-gray-400">
-                            {editForm.name.charAt(0).toUpperCase()}
-                          </span>
-                        )}
-                      </div>
-                      <input
-                        type="text"
+                      <Input
                         value={editForm.profile_image_url}
                         onChange={(e) =>
-                          setEditForm({
-                            ...editForm,
-                            profile_image_url: e.target.value,
-                          })
+                          setEditForm({ ...editForm, profile_image_url: e.target.value })
                         }
-                        placeholder="Image URL"
-                        className="px-3 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg text-sm w-full max-w-xs"
+                        placeholder="Image URL (optional)"
+                        className="w-48 text-xs"
                       />
                     </div>
+                  ) : (
+                    <Avatar
+                      name={userProfile.preferred_name || userProfile.name}
+                      imageUrl={userProfile.profile_image_url}
+                      size="xl"
+                    />
                   )}
                 </div>
 
-                {/* User Info & Connections */}
-                <div className="flex-1">
+                {/* User Info */}
+                <div className="flex-1 min-w-0">
                   {!isEditingProfile ? (
                     <>
-                      <h1 className="text-4xl font-bold mb-2 text-gray-900 dark:text-white">
+                      <h1 className="text-2xl font-bold mb-1 text-gray-900 dark:text-gray-100">
                         {userProfile.preferred_name || userProfile.name}
                       </h1>
-                      <p className="text-xl text-gray-600 dark:text-gray-400 mb-3">
+                      <p className="text-sm text-gray-500 dark:text-gray-400 mb-3">
                         @{userProfile.username}
                       </p>
                       {userProfile.bio && (
-                        <p className="text-gray-600 dark:text-gray-400 text-lg mb-4 max-w-2xl">
+                        <p className="text-sm text-gray-700 dark:text-gray-300 mb-4 max-w-2xl">
                           {userProfile.bio}
                         </p>
                       )}
-
-                      {/* Connections & Blocked - Subtle inline links */}
                       <div className="flex items-center gap-4">
                         <button
                           onClick={() => setShowConnectionsModal(true)}
-                          className="inline-flex items-center gap-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 transition-colors group"
+                          className="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 transition-colors hover:underline"
                         >
-                          <svg
-                            className="w-4 h-4"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
-                            />
-                          </svg>
-                          <span className="font-medium">
-                            {connections.length}{" "}
-                            <span className="group-hover:underline">
-                              {connections.length === 1
-                                ? "Connection"
-                                : "Connections"}
-                            </span>
-                          </span>
+                          <span className="font-semibold">{connections.length}</span>{" "}
+                          {connections.length === 1 ? "Connection" : "Connections"}
                         </button>
-                        <span className="text-gray-300 dark:text-gray-700">
-                          •
-                        </span>
+                        <span className="text-gray-300 dark:text-gray-700">·</span>
                         <button
                           onClick={() => setShowBlockedModal(true)}
-                          className="inline-flex items-center gap-2 text-gray-600 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-colors group"
+                          className="text-sm text-gray-500 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-colors hover:underline"
                         >
-                          <svg
-                            className="w-4 h-4"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"
-                            />
-                          </svg>
-                          <span className="font-medium group-hover:underline">
-                            {blockedUsers.length > 0
-                              ? `${blockedUsers.length} blocked`
-                              : "Blocked"}
-                          </span>
+                          {blockedUsers.length > 0 ? `${blockedUsers.length} blocked` : "Blocked users"}
                         </button>
                       </div>
                     </>
                   ) : (
                     <div className="space-y-3">
-                      <input
-                        type="text"
+                      <Input
+                        label="Full Name"
                         value={editForm.name}
-                        onChange={(e) =>
-                          setEditForm({ ...editForm, name: e.target.value })
-                        }
+                        onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
                         placeholder="Full Name"
-                        className="w-full px-4 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg text-xl font-bold"
                       />
-                      <input
-                        type="text"
+                      <Input
+                        label="Preferred Name"
                         value={editForm.preferred_name}
-                        onChange={(e) =>
-                          setEditForm({
-                            ...editForm,
-                            preferred_name: e.target.value,
-                          })
-                        }
+                        onChange={(e) => setEditForm({ ...editForm, preferred_name: e.target.value })}
                         placeholder="Preferred Name (optional)"
-                        className="w-full px-4 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg"
                       />
-                      <input
-                        type="text"
+                      <Input
+                        label="Username"
                         value={editForm.username}
-                        onChange={(e) =>
-                          setEditForm({ ...editForm, username: e.target.value })
-                        }
-                        placeholder="Username"
-                        className="w-full px-4 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg"
+                        onChange={(e) => setEditForm({ ...editForm, username: e.target.value })}
+                        placeholder="username"
                       />
-                      <textarea
-                        value={editForm.bio}
-                        onChange={(e) =>
-                          setEditForm({ ...editForm, bio: e.target.value })
-                        }
-                        placeholder="Bio"
-                        rows={3}
-                        className="w-full px-4 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg resize-none"
-                      />
+                      <div>
+                        <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Bio</label>
+                        <textarea
+                          value={editForm.bio}
+                          onChange={(e) => setEditForm({ ...editForm, bio: e.target.value })}
+                          placeholder="A short bio..."
+                          rows={3}
+                          className="w-full px-3 py-2.5 text-sm rounded-lg resize-none bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                        />
+                      </div>
                     </div>
                   )}
                 </div>
 
-                {/* Edit/Save/Cancel Buttons */}
-                <div className="flex-shrink-0 flex flex-col gap-3">
+                {/* Action Buttons */}
+                <div className="flex-shrink-0 flex flex-col gap-2">
                   {!isEditingProfile ? (
-                    <>
-                      <button
-                        onClick={handleEditProfile}
-                        className="px-6 py-3 bg-gray-900 dark:bg-white text-white dark:text-gray-900 hover:bg-gray-800 dark:hover:bg-gray-100 rounded-lg font-semibold transition-colors flex items-center gap-2"
-                      >
-                        <svg
-                          className="w-5 h-5"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-                          />
-                        </svg>
-                        Edit Profile
-                      </button>
-                    </>
+                    <Button variant="secondary" size="md" onClick={handleEditProfile}>
+                      Edit Profile
+                    </Button>
                   ) : (
                     <>
-                      <button
-                        onClick={handleSaveProfile}
-                        className="px-6 py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg font-semibold transition-colors flex items-center gap-2"
-                      >
-                        <svg
-                          className="w-5 h-5"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M5 13l4 4L19 7"
-                          />
-                        </svg>
+                      <Button variant="primary" size="md" onClick={handleSaveProfile}>
                         Save
-                      </button>
-                      <button
-                        onClick={handleCancelEdit}
-                        className="px-6 py-3 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-900 dark:text-white rounded-lg font-semibold transition-colors"
-                      >
+                      </Button>
+                      <Button variant="secondary" size="md" onClick={handleCancelEdit}>
                         Cancel
-                      </button>
+                      </Button>
                     </>
                   )}
                 </div>
               </div>
-            </div>
+            </Card>
 
-            {/* Full Width Content */}
+            {/* Cards */}
             <div className="space-y-6">
               {/* About Card */}
-              <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-8 border border-gray-200 dark:border-gray-700">
-                <h3 className="text-xl font-bold mb-6 flex items-center gap-3">
-                  <div className="w-10 h-10 bg-gradient-to-br from-gray-500 to-gray-600 dark:from-gray-600 dark:to-gray-700 rounded-xl flex items-center justify-center">
-                    <svg
-                      className="w-5 h-5 text-white"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
-                      />
-                    </svg>
-                  </div>
+              <Card>
+                <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-4">
                   About
                 </h3>
-                <div className="space-y-6">
-                  {/* Email (read-only) */}
-                  <div className="flex items-start gap-3">
-                    <svg
-                      className="w-5 h-5 text-gray-400 mt-0.5"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
-                      />
-                    </svg>
-                    <div>
-                      <p className="text-sm text-gray-500 dark:text-gray-400">
-                        Email
-                      </p>
-                      <p className="font-medium">{userProfile.email}</p>
-                    </div>
+                <div className="space-y-4">
+                  <div>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mb-0.5">Email</p>
+                    <p className="text-sm text-gray-900 dark:text-gray-100">{userProfile.email}</p>
                   </div>
-
-                  {/* Gender */}
-                  <div className="flex items-start gap-3">
-                    <svg
-                      className="w-5 h-5 text-gray-400 mt-0.5"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
-                      />
-                    </svg>
-                    <div className="flex-1">
-                      <p className="text-sm text-gray-500 dark:text-gray-400">
-                        Gender
+                  <div>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mb-0.5">Gender</p>
+                    {!isEditingProfile ? (
+                      <p className="text-sm text-gray-900 dark:text-gray-100">
+                        {userProfile.gender || <span className="text-gray-400 dark:text-gray-500">Not specified</span>}
                       </p>
-                      {!isEditingProfile ? (
-                        <p className="font-medium">
-                          {userProfile.gender || "Not specified"}
-                        </p>
-                      ) : (
-                        <input
-                          type="text"
-                          value={editForm.gender}
-                          onChange={(e) =>
-                            setEditForm({
-                              ...editForm,
-                              gender: e.target.value,
-                            })
-                          }
-                          placeholder="Optional"
-                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 mt-1"
-                        />
-                      )}
-                    </div>
+                    ) : (
+                      <Select
+                        value={editForm.gender}
+                        onChange={(e) => setEditForm({ ...editForm, gender: e.target.value })}
+                      >
+                        <option value="">Prefer not to say</option>
+                        <option value="Male">Male</option>
+                        <option value="Female">Female</option>
+                        <option value="Non-binary">Non-binary</option>
+                        <option value="Other">Other</option>
+                      </Select>
+                    )}
                   </div>
                 </div>
-              </div>
+              </Card>
 
               {/* Social Links Card */}
-              <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-8 border border-gray-200 dark:border-gray-700">
-                <h3 className="text-xl font-bold mb-6 flex items-center gap-3">
-                  <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-purple-600 dark:from-purple-600 dark:to-purple-700 rounded-xl flex items-center justify-center">
-                    <svg
-                      className="w-5 h-5 text-white"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"
-                      />
-                    </svg>
-                  </div>
+              <Card>
+                <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-4">
                   Social Links
                 </h3>
 
-                {/* Social Links Grid - Always visible, editable in edit mode */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {Object.entries(SOCIAL_PLATFORMS)
-                    .filter(([key]) => key !== "LinkedIn")
-                    .map(([key, config]) => {
-                      const Icon = config.icon;
-                      const existingLink = socialLinks.find(
-                        (link) => link.platform === key
-                      );
-                      return (
-                        <div key={key} className="relative">
-                          <label className="block mb-1.5">
-                            <div className="flex items-center gap-2 text-sm font-medium mb-1">
-                              <Icon className={`text-lg ${config.color}`} />
-                              <span>{config.name}</span>
-                            </div>
-                          </label>
-                          {!isEditingProfile ? (
-                            existingLink ? (
-                              <a
-                                href={existingLink.url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="relative flex items-center border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700/50 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors group"
-                              >
-                                <span
-                                  className={`px-3 py-2.5 text-sm text-gray-500 dark:text-gray-400 font-medium ${key !== "Discord"
-                                    ? "border-r border-gray-300 dark:border-gray-600"
-                                    : ""
-                                    }`}
-                                >
-                                  {config.prefix}
-                                </span>
-                                <span className="flex-1 px-3 py-2.5 text-sm truncate">
-                                  {existingLink.url
-                                    .replace(/^https?:\/\//, "")
-                                    .replace(
-                                      config.baseUrl?.replace(
-                                        /^https?:\/\//,
-                                        ""
-                                      ) || "",
-                                      ""
-                                    )
-                                    .replace(config.prefix, "")}
-                                </span>
-                                <svg
-                                  className="w-4 h-4 text-gray-400 mr-3 opacity-0 group-hover:opacity-100 transition-opacity"
-                                  fill="none"
-                                  stroke="currentColor"
-                                  viewBox="0 0 24 24"
-                                >
-                                  <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    strokeWidth={2}
-                                    d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
-                                  />
-                                </svg>
-                              </a>
-                            ) : (
-                              <div className="relative flex items-center border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700/30">
-                                <span
-                                  className={`px-3 py-2.5 text-sm text-gray-500 dark:text-gray-400 font-medium ${key !== "Discord"
-                                    ? "border-r border-gray-300 dark:border-gray-600"
-                                    : ""
-                                    }`}
-                                >
-                                  {config.prefix}
-                                </span>
-                                <span className="flex-1 px-3 py-2.5 text-sm text-gray-400 dark:text-gray-500"></span>
-                              </div>
-                            )
-                          ) : (
-                            <div className="relative flex items-center border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 focus-within:ring-2 focus-within:ring-teal-500 focus-within:border-transparent">
-                              <span
-                                className={`px-3 py-2.5 text-sm text-gray-500 dark:text-gray-400 font-medium ${key !== "Discord"
-                                  ? "border-r border-gray-300 dark:border-gray-600"
-                                  : ""
-                                  }`}
-                              >
-                                {config.prefix}
-                              </span>
-                              <input
-                                type="text"
-                                value={socialInputs[key] || ""}
-                                onChange={(e) =>
-                                  setSocialInputs({
-                                    ...socialInputs,
-                                    [key]: e.target.value,
-                                  })
-                                }
-                                onBlur={(e) => {
-                                  const value = e.target.value.trim();
-                                  if (value) {
-                                    // Save/update the link
-                                    handleAddSocialLink(key, value);
-                                  } else if (existingLink) {
-                                    // Delete the link if field is cleared
-                                    handleDeleteSocialLink(existingLink.id);
-                                  }
-                                }}
-                                className="flex-1 px-3 py-2.5 text-sm bg-transparent border-0 focus:outline-none focus:ring-0"
-                              />
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
-                </div>
-
-                {/* LinkedIn full width at bottom */}
-                {SOCIAL_PLATFORMS.LinkedIn && (
-                  <div className="relative mt-3">
-                    <label className="block mb-1.5">
-                      <div className="flex items-center gap-2 text-sm font-medium mb-1">
-                        <FaLinkedin
-                          className={`text-lg ${SOCIAL_PLATFORMS.LinkedIn.color}`}
-                        />
-                        <span>{SOCIAL_PLATFORMS.LinkedIn.name}</span>
-                      </div>
-                    </label>
-                    {!isEditingProfile
-                      ? (() => {
-                        const existingLink = socialLinks.find(
-                          (link) => link.platform === "LinkedIn"
-                        );
-                        return existingLink ? (
+                {!isEditingProfile ? (
+                  /* View mode: only show platforms that have links */
+                  socialLinks.length === 0 ? (
+                    <p className="text-xs text-gray-400 dark:text-gray-500">
+                      No social links added yet.
+                    </p>
+                  ) : (
+                    <div className="space-y-2">
+                      {socialLinks.map((link) => {
+                        const config = SOCIAL_PLATFORMS[link.platform];
+                        const Icon = config?.icon;
+                        const handle = link.url
+                          .replace(/^https?:\/\//, "")
+                          .replace(config?.baseUrl?.replace(/^https?:\/\//, "") || "", "")
+                          .replace(config?.prefix || "", "")
+                          .replace(/^\//, "");
+                        return (
                           <a
-                            href={existingLink.url}
+                            key={link.id}
+                            href={link.url}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="relative flex items-center border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700/50 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors group"
+                            className="flex items-center gap-3 px-3 py-2.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors group"
                           >
-                            <span className="px-3 py-2.5 text-sm text-gray-500 dark:text-gray-400 font-medium border-r border-gray-300 dark:border-gray-600">
-                              {SOCIAL_PLATFORMS.LinkedIn.prefix}
+                            {Icon && (
+                              <Icon className={`text-base flex-shrink-0 ${config.color}`} />
+                            )}
+                            <span className="text-sm text-gray-900 dark:text-gray-100 font-medium flex-shrink-0">
+                              {link.platform}
                             </span>
-                            <span className="flex-1 px-3 py-2.5 text-sm truncate">
-                              {existingLink.url
-                                .replace(/^https?:\/\//, "")
-                                .replace(
-                                  SOCIAL_PLATFORMS.LinkedIn.prefix,
-                                  ""
-                                )}
+                            <span className="text-xs text-gray-500 dark:text-gray-400 truncate flex-1">
+                              {handle || link.url}
                             </span>
-                            <svg
-                              className="w-4 h-4 text-gray-400 mr-3 opacity-0 group-hover:opacity-100 transition-opacity"
-                              fill="none"
-                              stroke="currentColor"
-                              viewBox="0 0 24 24"
-                            >
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
-                              />
-                            </svg>
                           </a>
-                        ) : (
-                          <div className="relative flex items-center border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700/30">
-                            <span className="px-3 py-2.5 text-sm text-gray-500 dark:text-gray-400 font-medium border-r border-gray-300 dark:border-gray-600">
-                              {SOCIAL_PLATFORMS.LinkedIn.prefix}
-                            </span>
-                            <span className="flex-1 px-3 py-2.5 text-sm text-gray-400 dark:text-gray-500"></span>
-                          </div>
                         );
-                      })()
-                      : (() => {
-                        const existingLink = socialLinks.find(
-                          (link) => link.platform === "LinkedIn"
-                        );
-                        return (
-                          <div className="relative flex items-center border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 focus-within:ring-2 focus-within:ring-teal-500 focus-within:border-transparent">
-                            <span className="px-3 py-2.5 text-sm text-gray-500 dark:text-gray-400 font-medium border-r border-gray-300 dark:border-gray-600">
-                              {SOCIAL_PLATFORMS.LinkedIn.prefix}
+                      })}
+                    </div>
+                  )
+                ) : (
+                  /* Edit mode: show all platforms as inputs */
+                  <div className="space-y-3">
+                    {Object.entries(SOCIAL_PLATFORMS).map(([key, config]) => {
+                      const Icon = config.icon;
+                      const existingLink = socialLinks.find((l) => l.platform === key);
+                      return (
+                        <div key={key} className="flex items-center gap-3">
+                          <Icon className={`text-base flex-shrink-0 w-5 ${config.color}`} />
+                          <div className="flex-1 flex items-center border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 focus-within:ring-2 focus-within:ring-indigo-500 focus-within:border-transparent overflow-hidden">
+                            <span className="px-3 py-2.5 text-xs text-gray-400 dark:text-gray-500 border-r border-gray-200 dark:border-gray-700 whitespace-nowrap flex-shrink-0">
+                              {config.prefix}
                             </span>
                             <input
                               type="text"
-                              value={socialInputs.LinkedIn || ""}
+                              value={socialInputs[key] || ""}
                               onChange={(e) =>
-                                setSocialInputs({
-                                  ...socialInputs,
-                                  LinkedIn: e.target.value,
-                                })
+                                setSocialInputs({ ...socialInputs, [key]: e.target.value })
                               }
                               onBlur={(e) => {
                                 const value = e.target.value.trim();
                                 if (value) {
-                                  // Save/update the link
-                                  handleAddSocialLink("LinkedIn", value);
+                                  handleAddSocialLink(key, value);
                                 } else if (existingLink) {
-                                  // Delete the link if field is cleared
                                   handleDeleteSocialLink(existingLink.id);
                                 }
                               }}
-                              className="flex-1 px-3 py-2.5 text-sm bg-transparent border-0 focus:outline-none focus:ring-0"
+                              placeholder={config.placeholder || "username"}
+                              className="flex-1 px-3 py-2.5 text-sm bg-transparent border-0 focus:outline-none focus:ring-0 text-gray-900 dark:text-gray-100"
                             />
                           </div>
-                        );
-                      })()}
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
-              </div>
+              </Card>
             </div>
           </div>
         )}
       </main>
 
       {/* Search Modal */}
-      {showSearchModal && (
-        <div
-          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50"
-          onClick={() => setShowSearchModal(false)}
-        >
-          <div
-            className="bg-white dark:bg-gray-900 w-full max-w-4xl mx-4 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 max-h-[85vh] overflow-hidden flex flex-col"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="p-5 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
-              <h3 className="text-xl font-bold">Search Users</h3>
-              <button
-                onClick={() => setShowSearchModal(false)}
-                className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800"
-                aria-label="Close"
-              >
-                <svg
-                  className="w-5 h-5"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M6 18L18 6M6 6l12 12"
-                  />
-                </svg>
-              </button>
-            </div>
-            <div className="flex-1 overflow-y-auto p-5">
-              <ConnectionManager
-                onOpenUser={(u) => {
-                  setSelectedConnectionUser(u);
-                  setShowSearchModal(false);
-                }}
-              />
-            </div>
-          </div>
+      <Modal
+        open={showSearchModal}
+        onClose={() => setShowSearchModal(false)}
+        title="Search Users"
+        maxWidth="max-w-4xl"
+      >
+        <div className="p-5">
+          <ConnectionManager
+            onOpenUser={(u) => {
+              setSelectedConnectionUser(u);
+              setShowSearchModal(false);
+            }}
+          />
         </div>
-      )}
+      </Modal>
 
       {/* Blocked Users Modal */}
-      {showBlockedModal && (
-        <div
-          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50"
-          onClick={() => setShowBlockedModal(false)}
-        >
-          <div
-            className="bg-white dark:bg-gray-900 w-full max-w-2xl mx-4 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="p-5 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
-              <div>
-                <h3 className="text-xl font-bold">Blocked Users</h3>
-                <p className="text-sm text-gray-500 dark:text-gray-400">
-                  Manage users you&apos;ve blocked from your network
-                </p>
+      <Modal
+        open={showBlockedModal}
+        onClose={() => setShowBlockedModal(false)}
+        title="Blocked Users"
+      >
+        <div className="p-5 space-y-3">
+          {blockedUsers.length === 0 ? (
+            <div className="flex flex-col items-center py-10 text-center">
+              <div className="w-12 h-12 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center mb-3">
+                <User className="w-5 h-5 text-gray-400" />
               </div>
-              <button
-                onClick={() => setShowBlockedModal(false)}
-                className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800"
-                aria-label="Close"
-              >
-                <svg
-                  className="w-5 h-5"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
+              <p className="text-sm font-medium text-gray-900 dark:text-gray-100">No blocked users</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400">You haven&apos;t blocked anyone</p>
+            </div>
+          ) : (
+            blockedUsers.map((blocked) => {
+              const blockedData = blocked as {
+                id: string;
+                blocked_id: string;
+                blocked_user: {
+                  username: string;
+                  preferred_name: string | null;
+                  name: string;
+                  profile_image_url: string | null;
+                };
+              };
+              return (
+                <div
+                  key={blockedData.id}
+                  className="flex items-center justify-between p-3 rounded-xl border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
                 >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M6 18L18 6M6 6l12 12"
-                  />
-                </svg>
-              </button>
-            </div>
-            <div className="p-5 max-h-[60vh] overflow-y-auto">
-              {blockedUsers.length === 0 ? (
-                <div className="text-center py-12">
-                  <div className="w-20 h-20 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <svg
-                      className="w-10 h-10 text-gray-400"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-                      />
-                    </svg>
-                  </div>
-                  <p className="text-gray-600 dark:text-gray-400 text-lg font-medium">
-                    No blocked users
-                  </p>
-                  <p className="text-gray-500 dark:text-gray-500 text-sm mt-2">
-                    You haven&apos;t blocked anyone yet
-                  </p>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {blockedUsers.map((blocked) => {
-                    const blockedData = blocked as {
-                      id: string;
-                      blocked_id: string;
-                      blocked_user: {
-                        username: string;
-                        preferred_name: string | null;
-                        name: string;
-                        profile_image_url: string | null;
-                      };
-                    };
-                    return (
-                      <div
-                        key={blockedData.id}
-                        className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700/50 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 transition-all border border-gray-200 dark:border-gray-600"
+                  <div className="flex items-center gap-3">
+                    <Avatar
+                      name={blockedData.blocked_user.preferred_name || blockedData.blocked_user.name}
+                      imageUrl={blockedData.blocked_user.profile_image_url}
+                      size="sm"
+                    />
+                    <div>
+                      <button
+                        onClick={() => {
+                          setSelectedConnectionUser({
+                            id: blockedData.blocked_id,
+                            username: blockedData.blocked_user.username || "",
+                            name: blockedData.blocked_user.name,
+                            preferred_name: blockedData.blocked_user.preferred_name,
+                            profile_image_url: blockedData.blocked_user.profile_image_url,
+                          });
+                          setShowBlockedModal(false);
+                        }}
+                        className="text-sm font-medium text-gray-900 dark:text-gray-100 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors text-left"
                       >
-                        <div>
-                          <button
-                            onClick={() => {
-                              setSelectedConnectionUser({
-                                id: blockedData.blocked_id,
-                                username:
-                                  blockedData.blocked_user.username || "",
-                                name: blockedData.blocked_user.name,
-                                preferred_name:
-                                  blockedData.blocked_user.preferred_name,
-                                profile_image_url:
-                                  blockedData.blocked_user.profile_image_url,
-                              });
-                              setShowBlockedModal(false);
-                            }}
-                            className="font-semibold text-gray-900 dark:text-gray-100 hover:text-blue-600 dark:hover:text-blue-400 transition-colors text-left"
-                          >
-                            {blockedData.blocked_user.preferred_name ||
-                              blockedData.blocked_user.name}
-                          </button>
-                          <div className="flex items-center gap-1.5 text-xs text-red-600 dark:text-red-400">
-                            <svg
-                              className="w-3 h-3"
-                              fill="currentColor"
-                              viewBox="0 0 20 20"
-                            >
-                              <path
-                                fillRule="evenodd"
-                                d="M13.477 14.89A6 6 0 015.11 6.524l8.367 8.368zm1.414-1.414L6.524 5.11a6 6 0 018.367 8.367zM18 10a8 8 0 11-16 0 8 8 0 0116 0z"
-                                clipRule="evenodd"
-                              />
-                            </svg>
-                            <span className="font-medium">Blocked</span>
-                          </div>
-                        </div>
-                        <button
-                          onClick={() => handleUnblock(blockedData.blocked_id)}
-                          className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-all hover:scale-105 shadow-md hover:shadow-lg"
-                        >
-                          <svg
-                            className="w-4 h-4"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z"
-                            />
-                          </svg>
-                          Unblock
-                        </button>
-                      </div>
-                    );
-                  })}
+                        {blockedData.blocked_user.preferred_name || blockedData.blocked_user.name}
+                      </button>
+                      <p className="text-xs text-red-500 dark:text-red-400">Blocked</p>
+                    </div>
+                  </div>
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    onClick={() => handleUnblock(blockedData.blocked_id)}
+                  >
+                    Unblock
+                  </Button>
                 </div>
-              )}
-            </div>
-          </div>
+              );
+            })
+          )}
         </div>
-      )}
+      </Modal>
 
       {/* Connections Modal */}
-      {showConnectionsModal && (
-        <div
-          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50"
-          onClick={() => setShowConnectionsModal(false)}
-        >
-          <div
-            className="bg-white dark:bg-gray-900 w-full max-w-2xl mx-4 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="p-5 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
-              <div>
-                <h3 className="text-xl font-bold">Your Connections</h3>
-                <p className="text-sm text-gray-500 dark:text-gray-400">
-                  {connectionUsers.length} total
-                </p>
-              </div>
+      <Modal
+        open={showConnectionsModal}
+        onClose={() => setShowConnectionsModal(false)}
+        title={`Connections (${connectionUsers.length})`}
+      >
+        <div className="px-5 pt-4 pb-2 space-y-3 border-b border-gray-200 dark:border-gray-800">
+          <Input
+            value={connectionsSearch}
+            onChange={(e) => setConnectionsSearch(e.target.value)}
+            placeholder="Search by name or username..."
+          />
+          <div className="flex gap-2">
+            {(
+              [
+                { key: "all" as const, label: `All (${connectionUsers.length})` },
+                {
+                  key: "first" as const,
+                  label: `1st (${connectionUsers.filter((u) => u.connection_type === "first").length})`,
+                },
+                {
+                  key: "one_point_five" as const,
+                  label: `1.5 (${connectionUsers.filter((u) => u.connection_type === "one_point_five").length})`,
+                },
+              ] as const
+            ).map(({ key, label }) => (
               <button
-                onClick={() => setShowConnectionsModal(false)}
-                className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800"
-                aria-label="Close"
+                key={key}
+                onClick={() => setConnectionTypeFilter(key)}
+                className={[
+                  "px-3 py-1.5 rounded-lg text-xs font-medium transition-colors",
+                  connectionTypeFilter === key
+                    ? "bg-indigo-600 text-white"
+                    : "bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700",
+                ].join(" ")}
               >
-                <svg
-                  className="w-5 h-5"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M6 18L18 6M6 6l12 12"
-                  />
-                </svg>
+                {label}
               </button>
-            </div>
-            <div className="px-5 pt-4 space-y-3">
-              <input
-                type="text"
-                value={connectionsSearch}
-                onChange={(e) => setConnectionsSearch(e.target.value)}
-                placeholder="Search connections by name or username..."
-                className="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-              <div className="flex gap-2">
-                <button
-                  onClick={() => setConnectionTypeFilter("all")}
-                  className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${connectionTypeFilter === "all"
-                    ? "bg-blue-600 text-white"
-                    : "bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700"
-                    }`}
-                >
-                  All ({connectionUsers.length})
-                </button>
-                <button
-                  onClick={() => setConnectionTypeFilter("first")}
-                  className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${connectionTypeFilter === "first"
-                    ? "bg-green-600 text-white"
-                    : "bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700"
-                    }`}
-                >
-                  1st (
-                  {
-                    connectionUsers.filter((u) => u.connection_type === "first")
-                      .length
-                  }
-                  )
-                </button>
-                <button
-                  onClick={() => setConnectionTypeFilter("one_point_five")}
-                  className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${connectionTypeFilter === "one_point_five"
-                    ? "bg-purple-600 text-white"
-                    : "bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700"
-                    }`}
-                >
-                  1.5 (
-                  {
-                    connectionUsers.filter(
-                      (u) => u.connection_type === "one_point_five"
-                    ).length
-                  }
-                  )
-                </button>
-              </div>
-            </div>
-            <div className="p-5 max-h-[60vh] overflow-y-auto divide-y divide-gray-200 dark:divide-gray-800">
-              {filteredConnectionUsers.length === 0 ? (
-                <p className="text-sm text-gray-500 dark:text-gray-400 py-8 text-center">
-                  {connectionsSearch.trim()
-                    ? "No matches found"
-                    : "No connections yet"}
-                </p>
-              ) : (
-                filteredConnectionUsers.map((u) => (
-                  <button
-                    key={u.id}
-                    className="w-full text-left flex items-center gap-3 py-3 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-lg px-2 group"
-                    onClick={() => {
-                      setSelectedConnectionUser(u);
-                      setShowConnectionsModal(false);
-                    }}
-                  >
-                    {u.profile_image_url ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={u.profile_image_url}
-                        alt={u.name}
-                        className="w-10 h-10 rounded-full object-cover border border-gray-200 dark:border-gray-700"
-                      />
-                    ) : (
-                      <div className="w-10 h-10 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-gray-700 dark:text-gray-200 font-semibold">
-                        {(u.preferred_name || u.name).charAt(0).toUpperCase()}
-                      </div>
-                    )}
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2">
-                        <p className="font-medium">
-                          {u.preferred_name || u.name}
-                          <span className="ml-2 text-sm text-gray-500 dark:text-gray-400">
-                            @{u.username}
-                          </span>
-                        </p>
-                        <span
-                          className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${u.connection_type === "first"
-                            ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300"
-                            : "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300"
-                            }`}
-                        >
-                          {u.connection_type === "first" ? "1st" : "1.5"}
-                        </span>
-                      </div>
-                      {u.how_met && (
-                        <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
-                          {u.how_met}
-                        </p>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-3">
-                      {/** Optional mutual count if present in server response */}
-                      {(() => {
-                        // Try to find mutual count from original source array for this user
-                        // We search in connections for an item with other_user.id === u.id
-                        // and read mutualCount if available.
-                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                        const match = (connections as any[]).find((c) => {
-                          const other =
-                            c.other_user || c.recipient || c.requester;
-                          return other && other.id === u.id;
-                        });
-                        const mc = match?.mutualCount as number | undefined;
-                        return typeof mc === "number" ? (
-                          <span className="hidden sm:inline text-xs px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 font-medium">
-                            {mc} mutual{mc === 1 ? "" : "s"}
-                          </span>
-                        ) : null;
-                      })()}
-                      <span className="text-sm text-blue-600 dark:text-blue-400 opacity-0 group-hover:opacity-100 transition-opacity">
-                        View
-                      </span>
-                      <svg
-                        className="w-4 h-4 text-gray-400"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M9 5l7 7-7 7"
-                        />
-                      </svg>
-                    </div>
-                  </button>
-                ))
-              )}
-            </div>
+            ))}
           </div>
         </div>
-      )}
+        <div className="divide-y divide-gray-100 dark:divide-gray-800 max-h-[50vh] overflow-y-auto">
+          {filteredConnectionUsers.length === 0 ? (
+            <p className="text-sm text-gray-500 dark:text-gray-400 py-8 text-center">
+              {connectionsSearch.trim() ? "No matches found" : "No connections yet"}
+            </p>
+          ) : (
+            filteredConnectionUsers.map((u) => {
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              const connMatch = (connections as any[]).find((c) => {
+                const other = c.other_user || c.recipient || c.requester;
+                return other && other.id === u.id;
+              });
+              const mc = connMatch?.mutualCount as number | undefined;
+              return (
+                <button
+                  key={u.id}
+                  className="w-full text-left flex items-center gap-3 py-3 px-5 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                  onClick={() => {
+                    setSelectedConnectionUser(u);
+                    setShowConnectionsModal(false);
+                  }}
+                >
+                  <Avatar
+                    name={u.preferred_name || u.name}
+                    imageUrl={u.profile_image_url}
+                    size="md"
+                  />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
+                        {u.preferred_name || u.name}
+                      </span>
+                      <span className="text-xs text-gray-500 dark:text-gray-400">@{u.username}</span>
+                      {u.connection_type && (
+                        <Badge variant={connectionTypeBadge(u.connection_type)} />
+                      )}
+                    </div>
+                    {u.how_met && (
+                      <p className="text-xs text-gray-500 dark:text-gray-400 truncate mt-0.5">
+                        {u.how_met}
+                      </p>
+                    )}
+                  </div>
+                  {typeof mc === "number" && (
+                    <span className="hidden sm:inline text-xs px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 font-medium flex-shrink-0">
+                      {mc} mutual{mc === 1 ? "" : "s"}
+                    </span>
+                  )}
+                </button>
+              );
+            })
+          )}
+        </div>
+      </Modal>
 
       {/* Profile side panel for a selected connection */}
       {selectedConnectionUser && userProfile && (

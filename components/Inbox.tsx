@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   getCurrentUser,
   updateConnectionStatus,
@@ -11,6 +11,15 @@ import {
   rejectConnectionTypeUpgrade,
   cancelConnectionTypeUpgradeRequest,
 } from "@/lib/supabase/queries";
+import { Button } from "@/components/ui/Button";
+import { Avatar } from "@/components/ui/Avatar";
+import { Badge } from "@/components/ui/Badge";
+import { Input } from "@/components/ui/Input";
+import { Select } from "@/components/ui/Select";
+import { SkeletonCard } from "@/components/ui/Skeleton";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { useToast } from "@/components/ui/Toast";
+import { Inbox as InboxIcon } from "lucide-react";
 
 import type { Database } from "@/types/supabase";
 
@@ -74,20 +83,7 @@ export default function Inbox({ onOpenProfile }: InboxProps = {}) {
     Record<string, { description: string; year: string; connectionType: "first" | "one_point_five" }>
   >({});
 
-  useEffect(() => {
-    (async () => {
-      const { user } = await getCurrentUser();
-      if (!user) {
-        setLoading(false);
-        return;
-      }
-      setCurrentUserId(user.id);
-      await refresh(user.id);
-      setLoading(false);
-    })();
-  }, []);
-
-  async function refresh(userId: string) {
+  const refresh = useCallback(async (userId: string) => {
     try {
       const res = await fetch(
         `/api/inbox?userId=${encodeURIComponent(userId)}`
@@ -134,7 +130,20 @@ export default function Inbox({ onOpenProfile }: InboxProps = {}) {
       setSent([]);
       setUpgradeRequests([]);
     }
-  }
+  }, []);
+
+  useEffect(() => {
+    (async () => {
+      const { user } = await getCurrentUser();
+      if (!user) {
+        setLoading(false);
+        return;
+      }
+      setCurrentUserId(user.id);
+      await refresh(user.id);
+      setLoading(false);
+    })();
+  }, [refresh]);
 
   function startEditSent(conn: ConnectionRow) {
     setEditingSent(conn.id);

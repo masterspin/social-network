@@ -3,6 +3,13 @@ import { createClient } from "@supabase/supabase-js";
 import type { Database } from "@/types/supabase";
 
 export async function GET(request: Request) {
+  if (process.env.NEXT_PUBLIC_DEV_MODE === "true") {
+    return NextResponse.json(
+      { data: { received: [], sent: [], upgradeRequests: [] } },
+      { status: 200 }
+    );
+  }
+
   const { searchParams } = new URL(request.url);
   const userId = searchParams.get("userId");
   if (!userId) {

@@ -19,6 +19,11 @@ import type { Database } from "@/types/supabase";
 //   }>
 // }
 export async function GET(request: Request) {
+  if (process.env.NEXT_PUBLIC_DEV_MODE === "true") {
+    const { MOCK_ACCEPTED_CONNECTIONS } = await import("@/lib/dev/mock-data");
+    return NextResponse.json({ data: MOCK_ACCEPTED_CONNECTIONS }, { status: 200 });
+  }
+
   const { searchParams } = new URL(request.url);
   const userId = searchParams.get("userId");
   if (!userId) {

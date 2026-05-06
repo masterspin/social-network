@@ -147,6 +147,11 @@ export async function POST(request: Request) {
 
 // GET /api/match?user_id=xxx - Get matches for a user
 export async function GET(request: Request) {
+  if (process.env.NEXT_PUBLIC_DEV_MODE === "true") {
+    const { MOCK_MATCHES } = await import("@/lib/dev/mock-data");
+    return NextResponse.json({ data: MOCK_MATCHES }, { status: 200 });
+  }
+
   const { searchParams } = new URL(request.url);
   const userId = searchParams.get("user_id");
 

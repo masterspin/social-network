@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { getCurrentUser } from "@/lib/supabase/queries";
 import Chat from "./Chat";
 
@@ -39,21 +39,7 @@ export default function MatchesList({ onClose }: MatchesListProps) {
     text: string;
   } | null>(null);
 
-  useEffect(() => {
-    async function loadMatches() {
-      const { user } = await getCurrentUser();
-      if (!user) {
-        setLoading(false);
-        return;
-      }
-      setCurrentUserId(user.id);
-      await fetchMatches(user.id);
-    }
-
-    loadMatches();
-  }, []);
-
-  async function fetchMatches(userId: string) {
+  const fetchMatches = useCallback(async (userId: string) => {
     try {
       const res = await fetch(
         `/api/match?user_id=${encodeURIComponent(userId)}`
@@ -75,7 +61,21 @@ export default function MatchesList({ onClose }: MatchesListProps) {
       setMessage({ type: "error", text: (e as Error).message });
       setLoading(false);
     }
-  }
+  }, []);
+
+  useEffect(() => {
+    async function loadMatches() {
+      const { user } = await getCurrentUser();
+      if (!user) {
+        setLoading(false);
+        return;
+      }
+      setCurrentUserId(user.id);
+      await fetchMatches(user.id);
+    }
+
+    loadMatches();
+  }, [fetchMatches]);
 
   async function deleteChat(matchId: string) {
     if (!currentUserId) return;
@@ -152,7 +152,7 @@ export default function MatchesList({ onClose }: MatchesListProps) {
 
       {matches.length === 0 ? (
         <div className="text-center py-8 text-gray-500">
-          No matches yet. You'll see matches here when someone matches you with
+          No matches yet. You&apos;ll see matches here when someone matches you with
           one of your connections.
         </div>
       ) : (

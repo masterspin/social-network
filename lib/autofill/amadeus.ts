@@ -14,6 +14,30 @@ interface AmadeusAuthResponse {
     token_type: string;
 }
 
+type AmadeusFlightSegment = {
+    departure: {
+        iataCode: string;
+        at: string;
+    };
+    arrival: {
+        iataCode: string;
+        at: string;
+    };
+    carrierCode: string;
+    number: string;
+};
+
+type AmadeusFlightOffer = {
+    itineraries?: Array<{
+        segments?: AmadeusFlightSegment[];
+    }>;
+    price?: {
+        total?: string;
+        currency?: string;
+    };
+    [key: string]: unknown;
+};
+
 let cachedToken: { token: string; expiresAt: number } | null = null;
 
 async function getAmadeusToken(): Promise<string> {
@@ -93,7 +117,7 @@ export async function fetchFlightOffersAmadeus(
             return [];
         }
 
-        const data = await response.json();
+        const data = (await response.json()) as { data?: AmadeusFlightOffer[] };
 
         // Log the full response for debugging
         console.log(`[Amadeus] Full API Response:`, JSON.stringify(data, null, 2));
@@ -110,7 +134,7 @@ export async function fetchFlightOffersAmadeus(
         // Filter by max connections if specified
         let filteredOffers = offers;
         if (maxConnections !== undefined) {
-            filteredOffers = offers.filter((offer: any) => {
+            filteredOffers = offers.filter((offer) => {
                 const segments = offer.itineraries?.[0]?.segments || [];
                 const numStops = segments.length - 1; // segments.length - 1 = number of stops
                 return numStops <= maxConnections;
@@ -124,7 +148,7 @@ export async function fetchFlightOffersAmadeus(
         }
 
         // Convert Amadeus offers to our plan format (show up to 5)
-        const plans: SegmentAutofillPlan[] = filteredOffers.slice(0, 5).map((offer: any, idx: number) => {
+        const plans: SegmentAutofillPlan[] = filteredOffers.slice(0, 5).map((offer) => {
             const itinerary = offer.itineraries?.[0]; // First itinerary (outbound)
             const segments = itinerary?.segments || [];
             const price = offer.price?.total;
@@ -169,7 +193,7 @@ export async function fetchFlightOffersAmadeus(
             }
 
             // Multi-leg flight
-            const legs: SegmentAutofillSuggestion[] = segments.map((seg: any, legIdx: number) => {
+            const legs: SegmentAutofillSuggestion[] = segments.map((seg, legIdx) => {
                 const departure = seg.departure;
                 const arrival = seg.arrival;
                 const carrier = seg.carrierCode;
@@ -197,7 +221,7 @@ export async function fetchFlightOffersAmadeus(
                 };
             });
 
-            const connectionPoints = segments.slice(0, -1).map((s: any) => s.arrival.iataCode).join(", ");
+            const connectionPoints = segments.slice(0, -1).map((s) => s.arrival.iataCode).join(", ");
 
             return {
                 title: `${segments.length}-Stop Flight`,

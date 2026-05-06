@@ -109,6 +109,21 @@ async function checkMembership(
 export async function GET(request: Request, context: RouteContext) {
   try {
     const { id: itineraryId } = await context.params;
+
+    if (process.env.NEXT_PUBLIC_DEV_MODE === "true") {
+      const { MOCK_ITINERARIES } = await import("@/lib/dev/mock-data");
+      const itinerary = MOCK_ITINERARIES.find((item) => item.id === itineraryId);
+
+      if (!itinerary) {
+        return NextResponse.json(
+          { error: "Itinerary not found" },
+          { status: 404 }
+        );
+      }
+
+      return NextResponse.json({ data: [] }, { status: 200 });
+    }
+
     const userId = await resolveUserId(request);
     const { searchParams } = new URL(request.url);
     const segmentId = searchParams.get("segment_id");

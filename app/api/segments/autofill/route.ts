@@ -8,6 +8,7 @@ import {
 } from "@/lib/autofill/providers";
 import {
   SegmentAutofillRequest,
+  SegmentAutofillPlan,
   SegmentAutofillSuggestion,
   SegmentAutofillType,
 } from "@/lib/autofill/types";
@@ -124,7 +125,7 @@ function setCache(key: string, suggestion: SegmentAutofillSuggestion) {
 async function resolveSuggestion(
   payload: SegmentAutofillRequest
 ): Promise<SegmentAutofillSuggestion | null> {
-  let plan: any = null;
+  let plan: SegmentAutofillPlan | null = null;
 
   switch (payload.type) {
     case "flight":

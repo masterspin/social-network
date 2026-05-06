@@ -2,6 +2,15 @@ import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { Database } from "@/types/supabase";
 
+type TravelerInput = {
+  user_id?: unknown;
+  email?: unknown;
+  role?: unknown;
+  invitation_status?: unknown;
+  notifications_enabled?: unknown;
+  color_hex?: unknown;
+};
+
 function getAdminClient() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE;
@@ -61,6 +70,11 @@ async function resolveUserId(request: Request): Promise<string | null> {
 }
 
 export async function GET(request: Request) {
+  if (process.env.NEXT_PUBLIC_DEV_MODE === "true") {
+    const { MOCK_ITINERARIES } = await import("@/lib/dev/mock-data");
+    return NextResponse.json({ data: MOCK_ITINERARIES }, { status: 200 });
+  }
+
   try {
     const userId = await resolveUserId(request);
 
@@ -217,7 +231,7 @@ export async function POST(request: Request) {
     });
 
     if (Array.isArray(travelers)) {
-      travelers.forEach((traveler: any) => {
+      travelers.forEach((traveler: TravelerInput) => {
         if (!traveler) return;
         const userId =
           typeof traveler.user_id === "string" ? traveler.user_id : null;
@@ -287,7 +301,10 @@ export async function POST(request: Request) {
     );
   } catch (error) {
     console.error("[Itineraries API POST]", error);
-    const code = (error as any)?.code;
+    const code =
+      error && typeof error === "object" && "code" in error
+        ? (error as { code?: unknown }).code
+        : undefined;
     const status =
       code === "23505"
         ? 409

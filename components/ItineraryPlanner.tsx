@@ -36,6 +36,7 @@ import AddFlightModal, { type FlightFormData } from "./AddFlightModal";
 import AddStayModal, { type StayFormData } from "./AddStayModal";
 import AddRideModal, { type RideFormData } from "./AddRideModal";
 import ItineraryTimeline from "./ItineraryTimeline";
+import { addAllToGoogleCalendar } from "@/lib/calendar/google-calendar";
 
 const SEGMENT_TYPES = ["flight", "stay", "transport"] as const;
 
@@ -74,6 +75,27 @@ type DetailedItinerary = ItineraryRow & {
 
 type CommentWithAuthor = CommentRow & {
   author?: UserSummary | null;
+};
+
+type SmartFillAirportNode = {
+  airport?: {
+    name?: string;
+    timeZone?: string;
+  };
+  terminal?: string;
+  gate?: string;
+  scheduledTimeLocal?: string;
+  scheduledTime?: {
+    local?: string;
+  };
+};
+
+type SmartFillFlightMetadata = {
+  departure?: SmartFillAirportNode;
+  arrival?: SmartFillAirportNode;
+  airline?: {
+    name?: string;
+  };
 };
 
 type CreateFormState = {
@@ -1952,13 +1974,13 @@ export default function ItineraryPlanner() {
 
       // Convert suggestion to FlightFormData
       // Check metadata for detailed flight info
-      const meta = suggestion.metadata as any;
+      const meta = suggestion.metadata as SmartFillFlightMetadata | null | undefined;
       const dep = meta?.departure;
       const arr = meta?.arrival;
       const airline = meta?.airline;
 
       const getLocalTime = (
-        node: any,
+        node: SmartFillAirportNode | null | undefined,
         fallbackIso: string | null | undefined
       ) => {
         // Try to find specific local time property in metadata
@@ -3113,7 +3135,6 @@ export default function ItineraryPlanner() {
                         );
 
                         if (confirmed) {
-                          const { addAllToGoogleCalendar } = require("@/lib/calendar/google-calendar");
                           addAllToGoogleCalendar(detail.segments);
                         }
                       }}

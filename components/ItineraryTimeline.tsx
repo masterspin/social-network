@@ -19,6 +19,16 @@ import {
 } from "lucide-react";
 
 type SegmentRow = Database["public"]["Tables"]["itinerary_segments"]["Row"];
+type CalendarEventContent = {
+    event: {
+        title: string;
+        extendedProps: {
+            type?: string;
+            location?: string | null;
+        };
+    };
+    timeText: string;
+};
 
 interface ItineraryTimelineProps {
     segments: SegmentRow[];
@@ -145,10 +155,10 @@ export default function ItineraryTimeline({
         };
     }, [segments]);
 
-    const renderEventContent = (eventInfo: any) => {
+    const renderEventContent = (eventInfo: CalendarEventContent) => {
         const { event } = eventInfo;
         const { type, location } = event.extendedProps;
-        const Icon = TYPE_ICONS[type] || CircleDot;
+        const Icon = (type && TYPE_ICONS[type]) || CircleDot;
         const timeText = eventInfo.timeText;
 
         return (

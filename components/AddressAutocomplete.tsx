@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-// @ts-ignore - tz-lookup might be missing types strictly in some envs or just for safety
 import tz from "tz-lookup";
 
 type PlaceResult = {

@@ -428,7 +428,7 @@ export async function POST(
     const { message, history = [], context, user_id } = body;
 
     // Verify user authentication - check body first, then headers/token
-    let userId = user_id || (await resolveUserId(request));
+    const userId = user_id || (await resolveUserId(request));
     if (!userId) {
       return NextResponse.json(
         { message: "", error: "Unauthorized" },
