@@ -2639,7 +2639,7 @@ export default function ItineraryPlanner() {
   const partnersSection = (
     <section className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white/60 dark:bg-gray-950/40 p-4 sm:p-5 space-y-4">
       <div className="flex items-center justify-between">
-        <p className="text-[11px] font-black uppercase tracking-[0.2em] text-gray-400 dark:text-gray-500">
+        <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-400 dark:text-gray-500">
           {partnersHeading}
         </p>
       </div>
@@ -2657,7 +2657,7 @@ export default function ItineraryPlanner() {
                 providerName: e.target.value,
               }))
             }
-            className="w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
             placeholder={providerPlaceholderText}
           />
         </div>
@@ -2674,7 +2674,7 @@ export default function ItineraryPlanner() {
                 confirmationCode: e.target.value,
               }))
             }
-            className="w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
             placeholder={confirmationPlaceholderText}
           />
         </div>
@@ -2693,7 +2693,7 @@ export default function ItineraryPlanner() {
                 transportNumber: e.target.value,
               }))
             }
-            className="w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
             placeholder={referencePlaceholderText}
           />
         </div>
@@ -2712,7 +2712,7 @@ export default function ItineraryPlanner() {
                 seatInfo: e.target.value,
               }))
             }
-            className="w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
             placeholder={seatPlaceholderText}
           />
         </div>
@@ -2723,7 +2723,7 @@ export default function ItineraryPlanner() {
   const budgetSection = (
     <section className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white/60 dark:bg-gray-950/40 p-4 sm:p-5 space-y-4">
       <div className="flex items-center justify-between">
-        <p className="text-[11px] font-black uppercase tracking-[0.2em] text-gray-400 dark:text-gray-500">
+        <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-400 dark:text-gray-500">
           {budgetHeading}
         </p>
       </div>
@@ -2746,7 +2746,7 @@ export default function ItineraryPlanner() {
                 costAmount: e.target.value,
               }))
             }
-            className="w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 pl-7 pr-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 pl-7 pr-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
             placeholder="0.00"
           />
         </div>
@@ -2787,7 +2787,7 @@ export default function ItineraryPlanner() {
           <button
             type="button"
             onClick={() => setSidebarOpen(true)}
-            className="absolute top-3 left-3 z-20 inline-flex h-10 w-10 items-center justify-center rounded-xl border border-gray-200 bg-white text-gray-600 shadow-sm transition hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 dark:hover:bg-gray-800"
+            className="absolute top-3 left-3 z-20 inline-flex h-10 w-10 items-center justify-center rounded-xl border border-gray-200 bg-white text-gray-600 shadow-sm transition hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 dark:hover:bg-gray-800"
             aria-controls="itinerary-sidebar"
             aria-label="Expand itinerary list"
           >
@@ -2812,7 +2812,7 @@ export default function ItineraryPlanner() {
                   onClick={() => setShowCreateForm((open) => !open)}
                   className={`flex h-10 items-center gap-2 rounded-full px-5 py-2 text-sm font-semibold shadow-sm transition-all duration-200 active:scale-95 ${showCreateForm
                     ? "bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200"
-                    : "bg-blue-600 text-white hover:bg-blue-700 hover:shadow-blue-500/20"
+                    : "bg-indigo-600 text-white hover:bg-indigo-700 hover:shadow-indigo-500/20"
                     }`}
                   disabled={loadingUser || listLoading}
                 >
@@ -2826,7 +2826,7 @@ export default function ItineraryPlanner() {
                 <button
                   type="button"
                   onClick={() => setSidebarOpen(false)}
-                  className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-gray-100 bg-white text-gray-400 shadow-sm transition-all hover:text-gray-900 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-500 @lg:hidden"
+                  className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-gray-100 bg-white text-gray-400 shadow-sm transition-all hover:text-gray-900 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-500 @lg:hidden"
                   aria-label="Collapse itinerary list"
                 >
                   <X className="h-5 w-5" />
@@ -2852,7 +2852,7 @@ export default function ItineraryPlanner() {
                           title: event.target.value,
                         }))
                       }
-                      className="mt-1 w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="mt-1 w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                       placeholder="Tokyo R&D Summit"
                       required
                     />
@@ -2862,7 +2862,7 @@ export default function ItineraryPlanner() {
                       <label className="block text-sm font-medium text-gray-700 dark:text-gray-200">
                         Visibility
                       </label>
-                      <select className="mt-1 w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                      <select className="mt-1 w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500">
                         <option value="private">Private</option>
                         <option value="shared">Shared</option>
                         <option value="public">Public</option>
@@ -2871,7 +2871,7 @@ export default function ItineraryPlanner() {
                   </div>
                   <button
                     type="submit"
-                    className="w-full rounded-xl bg-blue-600 text-white px-4 py-2 text-sm font-semibold shadow hover:bg-blue-700 transition disabled:cursor-not-allowed disabled:opacity-70"
+                    className="w-full rounded-xl bg-indigo-600 text-white px-4 py-2 text-sm font-semibold shadow hover:bg-indigo-700 transition disabled:cursor-not-allowed disabled:opacity-70"
                     disabled={creating}
                   >
                     {creating ? "Creating..." : "Create itinerary"}
@@ -2903,7 +2903,7 @@ export default function ItineraryPlanner() {
                         <button
                           onClick={() => handleSelectItinerary(itinerary.id)}
                           className={`group relative w-full rounded-2xl p-4 text-left transition-all duration-300 ${isSelected
-                            ? "bg-blue-50 dark:bg-blue-900/20 shadow-sm ring-1 ring-blue-100 dark:ring-blue-800/50"
+                            ? "bg-indigo-50 dark:bg-indigo-900/20 shadow-sm ring-1 ring-indigo-100 dark:ring-indigo-800/50"
                             : "hover:bg-gray-50 dark:hover:bg-gray-800/40"
                             }`}
                         >
@@ -2911,7 +2911,7 @@ export default function ItineraryPlanner() {
                             <div className="flex items-center justify-between gap-2">
                               <h3
                                 className={`truncate text-sm font-bold tracking-tight ${isSelected
-                                  ? "text-blue-900 dark:text-blue-100"
+                                  ? "text-indigo-900 dark:text-indigo-100"
                                   : "text-gray-900 dark:text-white"
                                   }`}
                               >
@@ -2974,7 +2974,7 @@ export default function ItineraryPlanner() {
 
           {detail && (
             <div className="space-y-6 pt-8">
-              <div className="group relative rounded-[2rem] border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-xl shadow-gray-200/50 dark:shadow-none overflow-hidden transition-all duration-500 pt-6">
+              <div className="group relative rounded-xl border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-xl shadow-gray-200/50 dark:shadow-none overflow-hidden transition-all duration-500 pt-6">
 
                 {isEditingHeader && (
                   <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -2982,9 +2982,9 @@ export default function ItineraryPlanner() {
                       className="absolute inset-0 bg-black/60 backdrop-blur-md"
                       onClick={() => setIsEditingHeader(false)}
                     />
-                    <div className="relative w-full max-w-3xl bg-white dark:bg-gray-900 rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+                    <div className="relative w-full max-w-3xl bg-white dark:bg-gray-900 rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
                       <div className="px-8 py-6 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between bg-gray-50/50 dark:bg-gray-950/50">
-                        <h3 className="text-xl font-black text-gray-900 dark:text-white">
+                        <h3 className="text-xl font-semibold text-gray-900 dark:text-white">
                           Settings
                         </h3>
                         <button
@@ -3017,7 +3017,7 @@ export default function ItineraryPlanner() {
                                     })
                                   }
                                   className={`p-4 rounded-2xl border-2 text-left transition-all ${editHeaderForm.visibility === v
-                                    ? "border-blue-500 bg-blue-50 dark:bg-blue-900/10"
+                                    ? "border-indigo-500 bg-blue-50 dark:bg-blue-900/10"
                                     : "border-gray-100 dark:border-gray-800 hover:border-gray-200"
                                     }`}
                                 >
@@ -3048,7 +3048,7 @@ export default function ItineraryPlanner() {
                                 Collaborate with others on this journey
                               </p>
                             </div>
-                            <button className="px-5 py-2.5 bg-blue-600 text-white rounded-xl text-xs font-bold hover:bg-blue-700 shadow-lg shadow-blue-500/20 transition">
+                            <button className="px-5 py-2.5 bg-indigo-600 text-white rounded-xl text-xs font-bold hover:bg-indigo-700 shadow-lg shadow-indigo-500/20 transition">
                               Invite +
                             </button>
                           </div>
@@ -3078,7 +3078,7 @@ export default function ItineraryPlanner() {
                                       <p className="text-sm font-bold text-gray-900 dark:text-white">
                                         {displayName}
                                       </p>
-                                      <p className="text-[10px] uppercase font-black text-gray-400">
+                                      <p className="text-[10px] uppercase font-semibold text-gray-400">
                                         {traveler.role}
                                       </p>
                                     </div>
@@ -3103,7 +3103,7 @@ export default function ItineraryPlanner() {
                           <button
                             onClick={() => handleUpdateItinerary()}
                             disabled={updatingHeader}
-                            className="px-8 py-3 bg-blue-600 text-white rounded-2xl font-bold shadow-lg shadow-blue-500/30 hover:bg-blue-700 disabled:opacity-50"
+                            className="px-8 py-3 bg-indigo-600 text-white rounded-2xl font-bold shadow-lg shadow-indigo-500/30 hover:bg-indigo-700 disabled:opacity-50"
                           >
                             {updatingHeader ? "Saving..." : "Save Settings"}
                           </button>
@@ -3174,12 +3174,12 @@ export default function ItineraryPlanner() {
                             if (editHeaderForm.title === detail.title)
                               setIsEditingTitle(false);
                           }}
-                          className="w-full bg-gray-50 dark:bg-gray-800/50 text-4xl font-black text-gray-900 dark:text-white px-4 py-2 rounded-2xl border-2 border-blue-500/20 focus:border-blue-500 focus:outline-none transition-all"
+                          className="w-full bg-gray-50 dark:bg-gray-800/50 text-2xl font-semibold text-gray-900 dark:text-white px-4 py-2 rounded-2xl border-2 border-indigo-500/20 focus:border-indigo-500 focus:outline-none transition-all"
                         />
                         <div className="flex gap-2 mt-2">
                           <button
                             onClick={() => handleUpdateItinerary()}
-                            className="px-3 py-1 bg-blue-600 text-white rounded-lg text-xs font-bold shadow-lg"
+                            className="px-3 py-1 bg-indigo-600 text-white rounded-lg text-xs font-bold shadow-lg"
                           >
                             {updatingHeader ? "Saving..." : "Save"}
                           </button>
@@ -3194,7 +3194,7 @@ export default function ItineraryPlanner() {
                     ) : (
                       <div className="group/title relative inline-block">
                         <h2
-                          className="text-4xl font-black text-gray-900 dark:text-white tracking-tight cursor-pointer hover:text-blue-600 dark:hover:text-blue-400 transition-all flex items-center gap-3"
+                          className="text-2xl font-semibold text-gray-900 dark:text-white tracking-tight cursor-pointer hover:text-blue-600 dark:hover:text-blue-400 transition-all flex items-center gap-3"
                           onClick={() => {
                             if (detail.owner_id === userId) {
                               setEditHeaderForm({
@@ -3230,7 +3230,7 @@ export default function ItineraryPlanner() {
 
                     <div className="flex items-center gap-6">
                       <div className="flex items-center gap-3">
-                        <div className="h-12 w-12 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 p-0.5 shadow-lg shadow-blue-500/20">
+                        <div className="h-12 w-12 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 p-0.5 shadow-lg shadow-indigo-500/20">
                           <div className="h-full w-full rounded-full bg-white dark:bg-gray-900 flex items-center justify-center font-bold text-blue-600 dark:text-blue-400">
                             {avatarInitials(
                               detail.owner?.preferred_name ||
@@ -3259,7 +3259,7 @@ export default function ItineraryPlanner() {
                           <p className="text-xs font-bold uppercase tracking-wider text-gray-400 dark:text-gray-500">
                             Travelers
                           </p>
-                          <p className="text-lg font-black text-gray-900 dark:text-white leading-tight">
+                          <p className="text-lg font-semibold text-gray-900 dark:text-white leading-tight">
                             {travelerCount}
                           </p>
                         </div>
@@ -3267,7 +3267,7 @@ export default function ItineraryPlanner() {
                           <p className="text-xs font-bold uppercase tracking-wider text-gray-400 dark:text-gray-500">
                             Segments
                           </p>
-                          <p className="text-lg font-black text-gray-900 dark:text-white leading-tight">
+                          <p className="text-lg font-semibold text-gray-900 dark:text-white leading-tight">
                             {segmentCount}
                           </p>
                         </div>
@@ -3293,7 +3293,7 @@ export default function ItineraryPlanner() {
                         onClick={() =>
                           setShowSegmentTypeSelector(!showSegmentTypeSelector)
                         }
-                        className="rounded-full bg-blue-600 text-white px-4 py-2 text-sm font-medium shadow-sm hover:bg-blue-700 transition flex items-center gap-2"
+                        className="rounded-full bg-indigo-600 text-white px-4 py-2 text-sm font-medium shadow-sm hover:bg-indigo-700 transition flex items-center gap-2"
                       >
                         <Plus className="h-4 w-4" />
                         Add Segment
@@ -3443,7 +3443,7 @@ export default function ItineraryPlanner() {
                               <div className="rounded-2xl border border-dashed border-blue-200/70 dark:border-blue-800/70 bg-blue-50/50 dark:bg-blue-900/10 p-4 space-y-3">
                                 <div className="flex items-center justify-between gap-3">
                                   <div>
-                                    <p className="text-sm font-semibold text-blue-900 dark:text-blue-100">
+                                    <p className="text-sm font-semibold text-indigo-900 dark:text-indigo-100">
                                       Smart fill
                                     </p>
                                     <p className="text-xs text-blue-700/80 dark:text-blue-200/70">
@@ -3469,7 +3469,7 @@ export default function ItineraryPlanner() {
                                       setSmartFillInput(event.target.value)
                                     }
                                     placeholder={smartFillPlaceholder}
-                                    className="w-full rounded-lg border border-blue-200/70 dark:border-blue-800/70 bg-white dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    className="w-full rounded-lg border border-blue-200/70 dark:border-blue-800/70 bg-white dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                                   />
                                   <div className="flex gap-2">
                                     <input
@@ -3478,13 +3478,13 @@ export default function ItineraryPlanner() {
                                       onChange={(event) =>
                                         setSmartFillDate(event.target.value)
                                       }
-                                      className="flex-1 rounded-lg border border-blue-200/70 dark:border-blue-800/70 bg-white dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                      className="flex-1 rounded-lg border border-blue-200/70 dark:border-blue-800/70 bg-white dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                                     />
                                     <button
                                       type="button"
                                       onClick={handleSmartFill}
                                       disabled={smartFillLoading}
-                                      className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 disabled:opacity-50"
+                                      className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-700 disabled:opacity-50"
                                     >
                                       {smartFillLoading
                                         ? "Filling..."
@@ -3499,7 +3499,7 @@ export default function ItineraryPlanner() {
                                 )}
                                 {smartFillSuggestion && (
                                   <div className="rounded-xl border border-blue-200/70 dark:border-blue-800/70 bg-white/80 dark:bg-gray-900/40 px-3 py-3">
-                                    <p className="text-xs font-semibold text-blue-900 dark:text-blue-100">
+                                    <p className="text-xs font-semibold text-indigo-900 dark:text-indigo-100">
                                       Filled via{" "}
                                       {smartFillSuggestion?.source ??
                                         "smart fill"}
@@ -3541,7 +3541,7 @@ export default function ItineraryPlanner() {
                                     type: event.target.value as SegmentType,
                                   }))
                                 }
-                                className="w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                className="w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                               >
                                 {SEGMENT_TYPE_OPTIONS.map((typeOption) => (
                                   <option
@@ -3567,7 +3567,7 @@ export default function ItineraryPlanner() {
                                       title: e.target.value,
                                     }))
                                   }
-                                  className="w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                  className="w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                                   placeholder={titlePlaceholderText}
                                   required
                                 />
@@ -3592,7 +3592,7 @@ export default function ItineraryPlanner() {
                                       costAmount: e.target.value,
                                     }))
                                   }
-                                  className="w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 pl-7 pr-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                  className="w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 pl-7 pr-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                                   placeholder="0.00"
                                 />
                               </div>
@@ -3603,7 +3603,7 @@ export default function ItineraryPlanner() {
                             <div>
                               <section className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white/60 dark:bg-gray-950/40 p-4 sm:p-5 space-y-4">
                                 <div className="flex items-center justify-between">
-                                  <p className="text-[11px] font-black uppercase tracking-[0.2em] text-gray-400 dark:text-gray-500">
+                                  <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-400 dark:text-gray-500">
                                     Location & timing
                                   </p>
                                 </div>
@@ -3612,7 +3612,7 @@ export default function ItineraryPlanner() {
                                     <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
                                       <div className="rounded-2xl border border-gray-200 dark:border-gray-700 bg-white/80 dark:bg-gray-900/40 px-4 py-4 space-y-3">
                                         <div className="flex items-center justify-between">
-                                          <p className="text-[11px] font-black uppercase tracking-[0.2em] text-gray-400 dark:text-gray-500">
+                                          <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-400 dark:text-gray-500">
                                             Departure
                                           </p>
                                           <span className="text-[11px] text-gray-400 dark:text-gray-500">
@@ -3633,7 +3633,7 @@ export default function ItineraryPlanner() {
                                                 e.target.value
                                               )
                                             }
-                                            className="w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                            className="w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                                             placeholder="e.g., SFO · International"
                                           />
                                         </div>
@@ -3652,7 +3652,7 @@ export default function ItineraryPlanner() {
                                                   e.target.value
                                                 )
                                               }
-                                              className="w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                              className="w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                                               placeholder="Terminal / concourse"
                                             />
                                           </div>
@@ -3670,7 +3670,7 @@ export default function ItineraryPlanner() {
                                                   e.target.value
                                                 )
                                               }
-                                              className="w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                              className="w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                                               placeholder="Gate"
                                             />
                                           </div>
@@ -3689,14 +3689,14 @@ export default function ItineraryPlanner() {
                                                 e.target.value
                                               )
                                             }
-                                            className="w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                            className="w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                                             placeholder="America/Los_Angeles"
                                           />
                                         </div>
                                       </div>
                                       <div className="rounded-2xl border border-gray-200 dark:border-gray-700 bg-white/80 dark:bg-gray-900/40 px-4 py-4 space-y-3">
                                         <div className="flex items-center justify-between">
-                                          <p className="text-[11px] font-black uppercase tracking-[0.2em] text-gray-400 dark:text-gray-500">
+                                          <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-400 dark:text-gray-500">
                                             Arrival
                                           </p>
                                           <span className="text-[11px] text-gray-400 dark:text-gray-500">
@@ -3717,7 +3717,7 @@ export default function ItineraryPlanner() {
                                                 e.target.value
                                               )
                                             }
-                                            className="w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                            className="w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                                             placeholder="e.g., Haneda · Terminal 3"
                                           />
                                         </div>
@@ -3736,7 +3736,7 @@ export default function ItineraryPlanner() {
                                                   e.target.value
                                                 )
                                               }
-                                              className="w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                              className="w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                                               placeholder="Terminal / customs"
                                             />
                                           </div>
@@ -3754,7 +3754,7 @@ export default function ItineraryPlanner() {
                                                   e.target.value
                                                 )
                                               }
-                                              className="w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                              className="w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                                               placeholder="Gate or belt"
                                             />
                                           </div>
@@ -3773,7 +3773,7 @@ export default function ItineraryPlanner() {
                                                 e.target.value
                                               )
                                             }
-                                            className="w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                            className="w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                                             placeholder="Asia/Tokyo"
                                           />
                                         </div>
@@ -3823,7 +3823,7 @@ export default function ItineraryPlanner() {
                                           }))
                                         }
                                         disabled={segmentForm.isAllDay}
-                                        className="w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
+                                        className="w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-50"
                                       />
                                     </div>
                                     <div>
@@ -3840,7 +3840,7 @@ export default function ItineraryPlanner() {
                                           }))
                                         }
                                         disabled={segmentForm.isAllDay}
-                                        className="w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
+                                        className="w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-50"
                                       />
                                     </div>
                                   </div>
@@ -3858,7 +3858,7 @@ export default function ItineraryPlanner() {
                                             timezone: e.target.value,
                                           }))
                                         }
-                                        className="w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        className="w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                                         placeholder="e.g., Asia/Tokyo"
                                       />
                                     </div>
@@ -3870,7 +3870,7 @@ export default function ItineraryPlanner() {
                             <div className="grid gap-5">
                               <section className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white/60 dark:bg-gray-950/40 p-4 sm:p-5 space-y-4">
                                 <div className="flex items-center justify-between">
-                                  <p className="text-[11px] font-black uppercase tracking-[0.2em] text-gray-400 dark:text-gray-500">
+                                  <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-400 dark:text-gray-500">
                                     Info
                                   </p>
                                 </div>
@@ -3890,7 +3890,7 @@ export default function ItineraryPlanner() {
                                           providerName: e.target.value,
                                         }))
                                       }
-                                      className="w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                      className="w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                                       placeholder={providerPlaceholderText}
                                     />
                                   </div>
@@ -3907,7 +3907,7 @@ export default function ItineraryPlanner() {
                                           confirmationCode: e.target.value,
                                         }))
                                       }
-                                      className="w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                      className="w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                                       placeholder={confirmationPlaceholderText}
                                     />
                                   </div>
@@ -3925,7 +3925,7 @@ export default function ItineraryPlanner() {
                                             transportNumber: e.target.value,
                                           }))
                                         }
-                                        className="w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        className="w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                                         placeholder={referencePlaceholderText}
                                       />
                                     </div>
@@ -3944,7 +3944,7 @@ export default function ItineraryPlanner() {
                                             seatInfo: e.target.value,
                                           }))
                                         }
-                                        className="w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        className="w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                                         placeholder={seatPlaceholderText}
                                       />
                                     </div>
@@ -3957,7 +3957,7 @@ export default function ItineraryPlanner() {
                               <section className="rounded-2xl border border-blue-200/70 dark:border-blue-800/60 bg-blue-50/50 dark:bg-blue-900/10 p-4 sm:p-5">
                                 <div className="flex flex-wrap items-center justify-between gap-3">
                                   <div>
-                                    <p className="text-[11px] font-black uppercase tracking-[0.2em] text-blue-500">
+                                    <p className="text-[11px] font-semibold uppercase tracking-wide text-blue-500">
                                       Legs & hops
                                     </p>
                                     <p className="text-sm text-blue-700 dark:text-blue-200">
@@ -4028,7 +4028,7 @@ export default function ItineraryPlanner() {
                                                     e.target.value
                                                   )
                                                 }
-                                                className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                                                 placeholder="Airport or station"
                                               />
                                             </div>
@@ -4046,7 +4046,7 @@ export default function ItineraryPlanner() {
                                                     e.target.value
                                                   )
                                                 }
-                                                className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                                                 placeholder="Airport or station"
                                               />
                                             </div>
@@ -4066,7 +4066,7 @@ export default function ItineraryPlanner() {
                                                     e.target.value
                                                   )
                                                 }
-                                                className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                                               />
                                             </div>
                                             <div>
@@ -4083,7 +4083,7 @@ export default function ItineraryPlanner() {
                                                     e.target.value
                                                   )
                                                 }
-                                                className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                                               />
                                             </div>
                                           </div>
@@ -4102,7 +4102,7 @@ export default function ItineraryPlanner() {
                                                     e.target.value
                                                   )
                                                 }
-                                                className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                                                 placeholder="Airline / rail"
                                               />
                                             </div>
@@ -4120,7 +4120,7 @@ export default function ItineraryPlanner() {
                                                     e.target.value
                                                   )
                                                 }
-                                                className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                                                 placeholder="UA 120"
                                               />
                                             </div>
@@ -4138,7 +4138,7 @@ export default function ItineraryPlanner() {
                                                     e.target.value
                                                   )
                                                 }
-                                                className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                                                 placeholder="12A"
                                               />
                                             </div>
@@ -4164,7 +4164,7 @@ export default function ItineraryPlanner() {
                             <button
                               type="submit"
                               disabled={creatingSegment}
-                              className="px-4 py-2 text-sm font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                              className="px-4 py-2 text-sm font-medium bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
                             >
                               {creatingSegment ? "Adding..." : "Add Segment"}
                             </button>
@@ -4400,7 +4400,7 @@ export default function ItineraryPlanner() {
                                         <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-gradient-to-br from-blue-50/50 to-white dark:from-blue-900/10 dark:to-gray-900/30 p-4 space-y-3">
                                           {hasDepDetails && (
                                             <div className="space-y-1">
-                                              <p className="text-[10px] font-black uppercase tracking-wider text-blue-600 dark:text-blue-400 flex items-center gap-1">
+                                              <p className="text-[10px] font-semibold uppercase tracking-wider text-blue-600 dark:text-blue-400 flex items-center gap-1">
                                                 <PlaneTakeoff className="h-3 w-3" />
                                                 Departure
                                               </p>
@@ -4438,7 +4438,7 @@ export default function ItineraryPlanner() {
                                           )}
                                           {hasArrDetails && (
                                             <div className="space-y-1">
-                                              <p className="text-[10px] font-black uppercase tracking-wider text-green-600 dark:text-green-400 flex items-center gap-1">
+                                              <p className="text-[10px] font-semibold uppercase tracking-wider text-green-600 dark:text-green-400 flex items-center gap-1">
                                                 <PlaneLanding className="h-3 w-3" />
                                                 Arrival
                                               </p>
@@ -4504,7 +4504,7 @@ export default function ItineraryPlanner() {
                                           <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-gradient-to-br from-green-50/50 to-white dark:from-green-900/10 dark:to-gray-900/30 p-4 space-y-3">
                                             {depAddr && (
                                               <div className="space-y-1">
-                                                <p className="text-[10px] font-black uppercase tracking-wider text-green-600 dark:text-green-400 flex items-center gap-1">
+                                                <p className="text-[10px] font-semibold uppercase tracking-wider text-green-600 dark:text-green-400 flex items-center gap-1">
                                                   <MapPin className="h-3 w-3" />
                                                   Pickup
                                                 </p>
@@ -4530,7 +4530,7 @@ export default function ItineraryPlanner() {
 
                                             {arrAddr && (
                                               <div className="space-y-1">
-                                                <p className="text-[10px] font-black uppercase tracking-wider text-green-600 dark:text-green-400 flex items-center gap-1">
+                                                <p className="text-[10px] font-semibold uppercase tracking-wider text-green-600 dark:text-green-400 flex items-center gap-1">
                                                   <MapPin className="h-3 w-3" />
                                                   Drop-off
                                                 </p>
@@ -4561,7 +4561,7 @@ export default function ItineraryPlanner() {
                                       segment.location_address && (
                                         <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-gradient-to-br from-indigo-50/50 to-white dark:from-indigo-900/10 dark:to-gray-900/30 p-4">
                                           <div className="space-y-1">
-                                            <p className="text-[10px] font-black uppercase tracking-wider text-indigo-600 dark:text-indigo-400 flex items-center gap-1">
+                                            <p className="text-[10px] font-semibold uppercase tracking-wider text-indigo-600 dark:text-indigo-400 flex items-center gap-1">
                                               <MapPin className="h-3 w-3" />
                                               Address
                                             </p>
@@ -4614,7 +4614,7 @@ export default function ItineraryPlanner() {
                                                     item.id
                                                   )
                                                 }
-                                                className="h-4 w-4 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500 dark:bg-gray-800"
+                                                className="h-4 w-4 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-indigo-500 dark:bg-gray-800"
                                               />
                                               <span
                                                 className={`flex-1 text-sm ${item.completed
@@ -4675,7 +4675,7 @@ export default function ItineraryPlanner() {
                                               }}
                                               placeholder="Task name (max 50 chars)"
                                               autoFocus
-                                              className="flex-1 text-sm rounded-lg border border-blue-300 dark:border-blue-600 bg-white dark:bg-gray-800 px-3 py-2 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                              className="flex-1 text-sm rounded-lg border border-blue-300 dark:border-blue-600 bg-white dark:bg-gray-800 px-3 py-2 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                                             />
                                             <span className="text-[10px] text-gray-400">
                                               {
@@ -4759,7 +4759,7 @@ export default function ItineraryPlanner() {
                                       type="checkbox"
                                       checked={task.status === "completed"}
                                       readOnly
-                                      className="h-4 w-4 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500"
+                                      className="h-4 w-4 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-indigo-500"
                                     />
                                     <span
                                       className={`text-sm ${task.status === "completed"
@@ -4813,7 +4813,7 @@ export default function ItineraryPlanner() {
                           onChange={(event) =>
                             setCommentInput(event.target.value)
                           }
-                          className="w-full rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-4 py-2.5 text-sm text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                          className="w-full rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-4 py-2.5 text-sm text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-none"
                           rows={1}
                           placeholder="Add a comment..."
                           onFocus={(event) => {
@@ -4828,7 +4828,7 @@ export default function ItineraryPlanner() {
                           <div className="mt-3 flex justify-end">
                             <button
                               type="submit"
-                              className="rounded-full bg-blue-600 text-white px-4 py-1.5 text-sm font-medium shadow-sm hover:bg-blue-700 transition disabled:cursor-not-allowed disabled:opacity-50"
+                              className="rounded-full bg-indigo-600 text-white px-4 py-1.5 text-sm font-medium shadow-sm hover:bg-indigo-700 transition disabled:cursor-not-allowed disabled:opacity-50"
                               disabled={commentSubmitting}
                             >
                               {commentSubmitting ? "Posting..." : "Post"}
@@ -4859,7 +4859,7 @@ export default function ItineraryPlanner() {
                             key={comment.id}
                             className="group relative flex gap-4"
                           >
-                            <div className="h-11 w-11 shrink-0 rounded-full bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/10 dark:to-indigo-900/10 border border-blue-100 dark:border-blue-900/30 flex items-center justify-center text-sm font-black text-blue-600 dark:text-blue-400 shadow-sm transition-transform group-hover:scale-110">
+                            <div className="h-11 w-11 shrink-0 rounded-full bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/10 dark:to-indigo-900/10 border border-blue-100 dark:border-blue-900/30 flex items-center justify-center text-sm font-semibold text-blue-600 dark:text-blue-400 shadow-sm transition-transform group-hover:scale-110">
                               {avatarInitials(
                                 comment.author?.preferred_name ||
                                 comment.author?.name,
@@ -4869,14 +4869,14 @@ export default function ItineraryPlanner() {
                             <div className="flex-1 space-y-2">
                               <div className="flex items-center justify-between">
                                 <div className="flex items-center gap-2">
-                                  <span className="text-sm font-black text-gray-900 dark:text-white">
+                                  <span className="text-sm font-semibold text-gray-900 dark:text-white">
                                     {comment.author?.preferred_name ||
                                       comment.author?.name ||
                                       comment.author?.username ||
                                       "Traveler"}
                                   </span>
                                   {isOwner && (
-                                    <span className="inline-flex items-center rounded-full bg-blue-500 px-2 py-0.5 text-[8px] font-black uppercase tracking-widest text-white">
+                                    <span className="inline-flex items-center rounded-full bg-blue-500 px-2 py-0.5 text-[8px] font-semibold uppercase tracking-widest text-white">
                                       Owner
                                     </span>
                                   )}
@@ -4924,7 +4924,7 @@ export default function ItineraryPlanner() {
                                       onChange={(e) =>
                                         setEditCommentText(e.target.value)
                                       }
-                                      className="w-full rounded-lg border border-blue-300 dark:border-blue-600 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                                      className="w-full rounded-lg border border-blue-300 dark:border-blue-600 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"
                                       rows={3}
                                       autoFocus
                                     />
@@ -4934,7 +4934,7 @@ export default function ItineraryPlanner() {
                                         onClick={() =>
                                           handleEditComment(comment.id)
                                         }
-                                        className="px-3 py-1 text-xs font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+                                        className="px-3 py-1 text-xs font-medium bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition"
                                       >
                                         Save
                                       </button>

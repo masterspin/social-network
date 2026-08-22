@@ -3,10 +3,17 @@
 import { useEffect, useState, useRef, useCallback } from "react";
 import dynamic from "next/dynamic";
 import { getCurrentUser, getUserProfile } from "@/lib/supabase/queries";
+import { X } from "lucide-react";
+import { Spinner } from "@/components/ui/Spinner";
 
 const ForceGraph2D = dynamic(() => import("react-force-graph-2d"), {
   ssr: false,
-  loading: () => <div className="text-white p-4">Loading graph...</div>,
+  loading: () => (
+    <div className="flex items-center justify-center h-full gap-3">
+      <Spinner size="md" className="border-gray-600 border-t-gray-300" />
+      <span className="text-sm text-gray-400">Loading graph...</span>
+    </div>
+  ),
 });
 
 type NodeData = {
@@ -500,10 +507,11 @@ export default function NetworkGraph({
     return (
       <div
         ref={containerRef}
-        className="flex items-center justify-center w-full bg-gray-900"
+        className="flex items-center justify-center w-full bg-gray-900 gap-3"
         style={{ height: "calc(100vh - 140px)" }}
       >
-        <div className="text-xl text-gray-400">Loading network...</div>
+        <Spinner size="lg" className="border-gray-600 border-t-gray-300" />
+        <span className="text-sm text-gray-400">Loading network...</span>
       </div>
     );
 
@@ -669,8 +677,9 @@ export default function NetworkGraph({
             />
           </>
         ) : (
-          <div className="flex items-center justify-center h-full text-gray-400">
-            Loading graph... (dims: {dims.w}x{dims.h})
+          <div className="flex items-center justify-center h-full gap-3">
+            <Spinner size="lg" className="border-gray-600 border-t-gray-300" />
+            <span className="text-sm text-gray-400">Loading graph...</span>
           </div>
         )}
       </div>
@@ -678,12 +687,13 @@ export default function NetworkGraph({
       {selectedLink && (
         <div className="absolute top-4 left-4 bg-white dark:bg-gray-800 p-4 rounded-lg shadow-lg z-40 max-w-sm">
           <div className="flex justify-between items-start mb-2">
-            <h3 className="font-bold text-lg">Connection</h3>
+            <h3 className="font-semibold text-sm">Connection</h3>
             <button
               onClick={() => setSelectedLink(null)}
-              className="text-gray-500 hover:text-gray-700"
+              className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-400"
+              aria-label="Close"
             >
-              ✕
+              <X className="w-3.5 h-3.5" />
             </button>
           </div>
           <div className="space-y-2 text-sm">
@@ -719,8 +729,8 @@ export default function NetworkGraph({
       <div className="absolute top-4 right-4 z-50 flex gap-2 pointer-events-auto">
         <button
           onClick={centerOnMe}
-          className={`px-3 py-2 bg-blue-600 text-white rounded shadow transition-transform ${
-            centerPressed ? "scale-90" : "hover:scale-105"
+          className={`px-3 py-1.5 text-sm bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg shadow transition-all ${
+            centerPressed ? "scale-95" : ""
           }`}
         >
           Center on Me

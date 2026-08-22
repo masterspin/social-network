@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import {
   getCurrentUser,
@@ -19,7 +19,6 @@ import NetworkGraph from "./NetworkGraph";
 import ConnectionManager from "./ConnectionManager";
 import UserProfileSidePanel from "./UserProfileSidePanel";
 import Inbox from "./Inbox";
-import MatchMaker from "./MatchMaker";
 import MatchesList from "./MatchesList";
 import ItineraryPlanner from "./ItineraryPlanner";
 import {
@@ -47,6 +46,7 @@ import { Card } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { Modal } from "@/components/ui/Modal";
+import { Spinner } from "@/components/ui/Spinner";
 
 type UserProfile = Database["public"]["Tables"]["users"]["Row"];
 type SocialLink = Database["public"]["Tables"]["social_links"]["Row"];
@@ -156,6 +156,9 @@ export default function Dashboard() {
     profile_image_url: "",
   });
   const [socialInputs, setSocialInputs] = useState<Record<string, string>>({});
+  const [showProfileMenu, setShowProfileMenu] = useState(false);
+  const [inboxUnreadCount, setInboxUnreadCount] = useState(0);
+  const profileMenuRef = useRef<HTMLDivElement>(null);
 
   // Pre-fill social inputs when entering edit mode
   useEffect(() => {
@@ -192,11 +195,23 @@ export default function Dashboard() {
         setShowConnectionsModal(false);
         setShowSearchModal(false);
         setShowBlockedModal(false);
+        setShowProfileMenu(false);
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, []);
+
+  // Close profile menu on outside click
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (profileMenuRef.current && !profileMenuRef.current.contains(e.target as Node)) {
+        setShowProfileMenu(false);
+      }
+    }
+    if (showProfileMenu) document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [showProfileMenu]);
 
   const loadData = async () => {
     const { user } = await getCurrentUser();
@@ -234,6 +249,19 @@ export default function Dashboard() {
       const { data: conns } = await getUserConnections(user.id);
       if (conns) setConnections(conns);
     }
+
+    // Inbox unread count
+    try {
+      const inboxRes = await fetch(`/api/inbox?userId=${encodeURIComponent(user.id)}`);
+      if (inboxRes.ok) {
+        const inboxJson = await inboxRes.json();
+        const inboxData = inboxJson?.data || {};
+        const upgradeReceived = (inboxData.upgradeRequests || []).filter(
+          (c: { upgrade_requested_by: string }) => c.upgrade_requested_by !== user.id
+        );
+        setInboxUnreadCount((inboxData.received || []).length + upgradeReceived.length);
+      }
+    } catch {}
 
     const { data: links } = await getUserSocialLinks(user.id);
     if (links) setSocialLinks(links as SocialLink[]);
@@ -409,13 +437,9 @@ export default function Dashboard() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-gray-50 dark:bg-gray-950">
-        <div className="text-center">
-          <div className="inline-block animate-spin rounded-full h-16 w-16 border-4 border-gray-200 dark:border-gray-800 border-t-gray-900 dark:border-t-white mb-4"></div>
-          <p className="text-xl font-medium text-gray-900 dark:text-white">
-            Loading your network...
-          </p>
-        </div>
+      <div className="flex items-center justify-center min-h-screen bg-gray-50 dark:bg-gray-950 gap-3">
+        <Spinner size="lg" />
+        <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Loading your network...</p>
       </div>
     );
   }
@@ -424,80 +448,102 @@ export default function Dashboard() {
 
   return (
     <div
-      className={`flex flex-col min-h-screen bg-gray-50 dark:bg-gray-950 transition-[margin] duration-300 ${panelOpen ? "sm:mr-[480px]" : ""
-        }`}
+      className={`flex flex-col min-h-screen bg-gray-50 dark:bg-gray-950 transition-[margin] duration-300 ${panelOpen && activeTab !== "network" ? "sm:mr-[480px]" : ""}`}
     >
-      {/* Header */}
+      {/* Combined header + nav */}
       <header className="sticky top-0 z-50 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800">
-        <div className="max-w-7xl mx-auto px-4 py-3">
-          <div className="flex items-center justify-between">
-            {/* Logo & User Info */}
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center">
-                <Network className="w-4 h-4 text-white" />
+        <div className="max-w-7xl mx-auto px-4">
+          <div className="flex items-center gap-2 h-[52px]">
+            {/* Logo */}
+            <div className="flex items-center gap-2 mr-1 flex-shrink-0">
+              <div className="w-7 h-7 bg-indigo-600 rounded-lg flex items-center justify-center">
+                <Network className="w-3.5 h-3.5 text-white" />
               </div>
-              <div>
-                <h1 className="text-base font-semibold tracking-tight text-gray-900 dark:text-gray-100">
-                  Amaedu
-                </h1>
-                {userProfile && (
-                  <p className="text-xs text-gray-500 dark:text-gray-400 leading-none">
-                    @{userProfile.username}
-                  </p>
-                )}
-              </div>
+              <span className="text-sm font-semibold text-gray-900 dark:text-gray-100 hidden md:inline">
+                Amaedu
+              </span>
+            </div>
+
+            <div className="h-4 w-px bg-gray-200 dark:bg-gray-700 flex-shrink-0" />
+
+            {/* Tabs */}
+            <div className="flex items-center gap-0.5 flex-1 overflow-x-auto">
+              {(
+                [
+                  { key: "network", label: "Network", Icon: Network },
+                  { key: "inbox", label: "Inbox", Icon: InboxIcon },
+                  { key: "matches", label: "Matches", Icon: Heart },
+                  { key: "itineraries", label: "Itineraries", Icon: Map },
+                ] as const
+              ).map(({ key, label, Icon }) => (
+                <button
+                  key={key}
+                  onClick={() => setActiveTab(key)}
+                  className={[
+                    "flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors duration-100 whitespace-nowrap flex-shrink-0",
+                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500",
+                    activeTab === key
+                      ? "bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                      : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800/50",
+                  ].join(" ")}
+                >
+                  <Icon className="w-4 h-4" />
+                  <span className="hidden sm:inline">{label}</span>
+                  {key === "inbox" && inboxUnreadCount > 0 && (
+                    <span className="w-1.5 h-1.5 rounded-full bg-red-500 flex-shrink-0" />
+                  )}
+                </button>
+              ))}
             </div>
 
             {/* Actions */}
-            <div className="flex items-center gap-1">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setShowSearchModal(true)}
-              >
+            <div className="flex items-center gap-1 flex-shrink-0">
+              <Button variant="ghost" size="sm" onClick={() => setShowSearchModal(true)}>
                 <Search className="w-4 h-4" />
-                <span className="hidden sm:inline">Search</span>
               </Button>
-              <Button variant="ghost" size="sm" onClick={handleSignOut}>
-                <LogOut className="w-4 h-4" />
-                <span className="hidden sm:inline">Sign out</span>
-              </Button>
+              <div className="relative" ref={profileMenuRef}>
+                <button
+                  onClick={() => setShowProfileMenu((v) => !v)}
+                  className={[
+                    "flex items-center gap-2 px-2 py-1.5 rounded-lg transition-colors",
+                    activeTab === "profile"
+                      ? "bg-gray-100 dark:bg-gray-800"
+                      : "hover:bg-gray-100 dark:hover:bg-gray-800",
+                  ].join(" ")}
+                >
+                  <Avatar
+                    size="xs"
+                    name={userProfile?.preferred_name || userProfile?.name || "?"}
+                    imageUrl={userProfile?.profile_image_url}
+                  />
+                  <span className="hidden sm:inline text-xs font-medium text-gray-700 dark:text-gray-300">
+                    {userProfile?.preferred_name || userProfile?.name}
+                  </span>
+                </button>
+                {showProfileMenu && (
+                  <div className="absolute right-0 top-full mt-1 w-44 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl shadow-lg overflow-hidden z-50">
+                    <button
+                      onClick={() => { setActiveTab("profile"); setShowProfileMenu(false); }}
+                      className="w-full text-left px-4 py-2.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors flex items-center gap-2"
+                    >
+                      <User className="w-3.5 h-3.5 text-gray-400" />
+                      Profile
+                    </button>
+                    <div className="border-t border-gray-100 dark:border-gray-800" />
+                    <button
+                      onClick={handleSignOut}
+                      className="w-full text-left px-4 py-2.5 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors flex items-center gap-2"
+                    >
+                      <LogOut className="w-3.5 h-3.5" />
+                      Sign out
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>
       </header>
-
-      {/* Navigation Tabs */}
-      <nav className="sticky top-[57px] z-40 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800">
-        <div className="max-w-7xl mx-auto px-4">
-          <div className="flex items-center gap-1 py-2">
-            {(
-              [
-                { key: "network", label: "Network", Icon: Network },
-                { key: "inbox", label: "Inbox", Icon: InboxIcon },
-                { key: "matches", label: "Matches", Icon: Heart },
-                { key: "itineraries", label: "Itineraries", Icon: Map },
-                { key: "profile", label: "Profile", Icon: User },
-              ] as const
-            ).map(({ key, label, Icon }) => (
-              <button
-                key={key}
-                onClick={() => setActiveTab(key)}
-                className={[
-                  "flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors duration-100",
-                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500",
-                  activeTab === key
-                    ? "bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100"
-                    : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800/50",
-                ].join(" ")}
-              >
-                <Icon className="w-4 h-4" />
-                <span className="hidden sm:inline">{label}</span>
-              </button>
-            ))}
-          </div>
-        </div>
-      </nav>
 
       {/* Content */}
       <main className="flex-1 overflow-hidden flex flex-col">
@@ -518,7 +564,7 @@ export default function Dashboard() {
         )}
 
         {activeTab === "inbox" && (
-          <div key="inbox" className="animate-fade-in max-w-7xl mx-auto px-4 py-8 w-full">
+          <div key="inbox" className="animate-fade-in flex-1 w-full">
             <Inbox
               onOpenProfile={(userId) => {
                 setSelectedConnectionUser({
@@ -534,11 +580,8 @@ export default function Dashboard() {
         )}
 
         {activeTab === "matches" && (
-          <div key="matches" className="animate-fade-in max-w-7xl mx-auto px-4 py-8 w-full">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <MatchesList />
-              <MatchMaker onMatchCreated={() => loadData()} />
-            </div>
+          <div key="matches" className="animate-fade-in flex-1 flex min-h-0">
+            <MatchesList />
           </div>
         )}
 
@@ -595,22 +638,17 @@ export default function Dashboard() {
                           {userProfile.bio}
                         </p>
                       )}
-                      <div className="flex items-center gap-4">
-                        <button
-                          onClick={() => setShowConnectionsModal(true)}
-                          className="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 transition-colors hover:underline"
-                        >
-                          <span className="font-semibold">{connections.length}</span>{" "}
-                          {connections.length === 1 ? "Connection" : "Connections"}
-                        </button>
-                        <span className="text-gray-300 dark:text-gray-700">·</span>
-                        <button
-                          onClick={() => setShowBlockedModal(true)}
-                          className="text-sm text-gray-500 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-colors hover:underline"
-                        >
-                          {blockedUsers.length > 0 ? `${blockedUsers.length} blocked` : "Blocked users"}
-                        </button>
-                      </div>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
+                        {userProfile.email}
+                        {userProfile.gender ? ` · ${userProfile.gender}` : ""}
+                      </p>
+                      <button
+                        onClick={() => setShowConnectionsModal(true)}
+                        className="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 transition-colors hover:underline"
+                      >
+                        <span className="font-semibold">{connections.length}</span>{" "}
+                        {connections.length === 1 ? "Connection" : "Connections"}
+                      </button>
                     </>
                   ) : (
                     <div className="space-y-3">
@@ -632,6 +670,17 @@ export default function Dashboard() {
                         onChange={(e) => setEditForm({ ...editForm, username: e.target.value })}
                         placeholder="username"
                       />
+                      <Select
+                        label="Gender"
+                        value={editForm.gender}
+                        onChange={(e) => setEditForm({ ...editForm, gender: e.target.value })}
+                      >
+                        <option value="">Prefer not to say</option>
+                        <option value="Male">Male</option>
+                        <option value="Female">Female</option>
+                        <option value="Non-binary">Non-binary</option>
+                        <option value="Other">Other</option>
+                      </Select>
                       <div>
                         <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Bio</label>
                         <textarea

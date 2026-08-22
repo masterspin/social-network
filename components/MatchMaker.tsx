@@ -2,6 +2,11 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { getCurrentUser } from "@/lib/supabase/queries";
+import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
+import { Spinner } from "@/components/ui/Spinner";
+import { useToast } from "@/components/ui/Toast";
+import { Users } from "lucide-react";
 
 type User = {
   id: string;
@@ -21,10 +26,8 @@ type AcceptedConnection = {
   other_user: User | null;
 };
 
-export default function MatchMaker({
-  onClose,
-  onMatchCreated,
-}: MatchMakerProps) {
+export default function MatchMaker({ onClose, onMatchCreated }: MatchMakerProps) {
+  const { toast } = useToast();
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [connections, setConnections] = useState<User[]>([]);
   const [selectedUser1, setSelectedUser1] = useState<string>("");
@@ -33,66 +36,44 @@ export default function MatchMaker({
   const [searchTerm2, setSearchTerm2] = useState("");
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
-  const [message, setMessage] = useState<{
-    type: "success" | "error";
-    text: string;
-  } | null>(null);
 
   useEffect(() => {
     async function loadConnections() {
       const { user } = await getCurrentUser();
-      if (!user) {
-        setLoading(false);
-        return;
-      }
+      if (!user) { setLoading(false); return; }
       setCurrentUserId(user.id);
 
       try {
-        const res = await fetch(
-          `/api/connections/accepted?userId=${encodeURIComponent(user.id)}`
-        );
+        const res = await fetch(`/api/connections/accepted?userId=${encodeURIComponent(user.id)}`);
         const json = await res.json();
-
         if (!res.ok) {
-          setMessage({
-            type: "error",
-            text: json?.error?.message || "Failed to load connections",
-          });
+          toast(json?.error?.message || "Failed to load connections", "error");
           setLoading(false);
           return;
         }
-
-        // Filter only first connections and extract the user objects
         const firstConnections = ((json.data || []) as AcceptedConnection[])
           .filter((conn) => conn.connection_type === "first")
           .map((conn) => conn.other_user)
-          .filter((user): user is User => user !== null);
+          .filter((u): u is User => u !== null);
         setConnections(firstConnections);
         setLoading(false);
       } catch (e) {
-        setMessage({ type: "error", text: (e as Error).message });
+        toast((e as Error).message, "error");
         setLoading(false);
       }
     }
-
     loadConnections();
-  }, []);
+  }, [toast]);
 
   async function createMatch(e: React.FormEvent) {
     e.preventDefault();
     if (!currentUserId || !selectedUser1 || !selectedUser2 || creating) return;
-
     if (selectedUser1 === selectedUser2) {
-      setMessage({
-        type: "error",
-        text: "Please select two different people",
-      });
+      toast("Please select two different people", "error");
       return;
     }
 
     setCreating(true);
-    setMessage(null);
-
     try {
       const res = await fetch("/api/match", {
         method: "POST",
@@ -103,71 +84,41 @@ export default function MatchMaker({
           user2_id: selectedUser2,
         }),
       });
-
       const json = await res.json();
-
       if (!res.ok) {
-        setMessage({
-          type: "error",
-          text: json?.error || "Failed to create match",
-        });
+        toast(json?.error || "Failed to create match", "error");
         setCreating(false);
         return;
       }
-
-      setMessage({ type: "success", text: "Match created successfully!" });
+      toast("Match created successfully!");
       setSelectedUser1("");
       setSelectedUser2("");
       setCreating(false);
-
-      if (onMatchCreated) {
-        setTimeout(() => onMatchCreated(), 1500);
-      }
+      if (onMatchCreated) setTimeout(() => onMatchCreated(), 1500);
     } catch (e) {
-      setMessage({ type: "error", text: (e as Error).message });
+      toast((e as Error).message, "error");
       setCreating(false);
     }
   }
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-12">
-        <div className="text-gray-500">Loading connections...</div>
+      <div className="flex items-center justify-center py-12 gap-3">
+        <Spinner size="md" />
+        <span className="text-sm text-gray-500">Loading connections...</span>
       </div>
     );
   }
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 border border-gray-200 dark:border-gray-700">
-      <div className="flex items-center justify-between mb-6">
-        <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-          Create a Match
-        </h2>
-        {onClose && (
-          <button
-            onClick={onClose}
-            className="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
-          >
-            ✕
-          </button>
-        )}
-      </div>
-
-      {message && (
-        <div
-          className={`mb-4 p-3 rounded ${
-            message.type === "success"
-              ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300"
-              : "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300"
-          }`}
-        >
-          {message.text}
-        </div>
-      )}
-
+    <div>
       {connections.length < 2 ? (
-        <div className="text-center py-8 text-gray-500">
-          You need at least 2 first connections to create a match.
+        <div className="flex flex-col items-center justify-center py-10 text-center">
+          <div className="w-12 h-12 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center mb-3">
+            <Users className="w-5 h-5 text-gray-400" />
+          </div>
+          <p className="text-sm font-medium text-gray-900 dark:text-gray-100">Not enough connections</p>
+          <p className="text-xs text-gray-500 mt-1">You need at least 2 first connections to create a match.</p>
         </div>
       ) : (
         <form onSubmit={createMatch} className="space-y-6">
@@ -180,9 +131,7 @@ export default function MatchMaker({
             onSelect={(id) => {
               setSelectedUser1(id);
               setSearchTerm1("");
-              if (id === selectedUser2) {
-                setSelectedUser2("");
-              }
+              if (id === selectedUser2) setSelectedUser2("");
             }}
             excludeIds={selectedUser2 ? [selectedUser2] : []}
           />
@@ -193,35 +142,26 @@ export default function MatchMaker({
             onSearchChange={setSearchTerm2}
             connections={connections}
             selectedId={selectedUser2}
-            onSelect={(id) => {
-              setSelectedUser2(id);
-              setSearchTerm2("");
-            }}
+            onSelect={(id) => { setSelectedUser2(id); setSearchTerm2(""); }}
             excludeIds={selectedUser1 ? [selectedUser1] : []}
             disabled={!selectedUser1}
-            helperText={
-              !selectedUser1
-                ? "Select the first person before choosing a second"
-                : undefined
-            }
+            helperText={!selectedUser1 ? "Select the first person before choosing a second" : undefined}
           />
 
           <div className="flex gap-2">
-            <button
+            <Button
               type="submit"
+              variant="primary"
+              size="lg"
               disabled={creating || !selectedUser1 || !selectedUser2}
-              className="flex-1 px-6 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex-1"
             >
               {creating ? "Creating..." : "Create Match"}
-            </button>
+            </Button>
             {onClose && (
-              <button
-                type="button"
-                onClick={onClose}
-                className="px-6 py-2 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
-              >
+              <Button type="button" variant="secondary" size="lg" onClick={onClose}>
                 Cancel
-              </button>
+              </Button>
             )}
           </div>
         </form>
@@ -256,20 +196,16 @@ function SearchablePicker({
   const normalizedSearch = searchTerm.trim().toLowerCase();
   const hasSearch = normalizedSearch.length > 0;
 
-  const availableConnections = useMemo(() => {
-    return connections.filter((conn) => !excludeIds.includes(conn.id));
-  }, [connections, excludeIds]);
+  const availableConnections = useMemo(
+    () => connections.filter((conn) => !excludeIds.includes(conn.id)),
+    [connections, excludeIds]
+  );
 
   const filteredConnections = useMemo(() => {
-    if (!hasSearch) {
-      return [];
-    }
-
+    if (!hasSearch) return [];
     return availableConnections
       .filter((conn) => {
-        const target = `${conn.preferred_name || conn.name} ${conn.username}`
-          .trim()
-          .toLowerCase();
+        const target = `${conn.preferred_name || conn.name} ${conn.username}`.trim().toLowerCase();
         return target.includes(normalizedSearch);
       })
       .slice(0, 20);
@@ -282,25 +218,20 @@ function SearchablePicker({
 
   return (
     <div className={disabled ? "opacity-60" : undefined}>
-      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-        {label}
-      </label>
-      <input
+      <Input
+        label={label}
         type="text"
         value={searchTerm}
-        onChange={(event) => onSearchChange(event.target.value)}
+        onChange={(e) => onSearchChange(e.target.value)}
         disabled={disabled}
         placeholder="Search by name or @username"
-        className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
       />
       {helperText && (
-        <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-          {helperText}
-        </p>
+        <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">{helperText}</p>
       )}
 
       {hasSearch && (
-        <div className="mt-3 max-h-56 overflow-y-auto rounded-lg border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-900/40">
+        <div className="mt-2 max-h-56 overflow-y-auto rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 divide-y divide-gray-100 dark:divide-gray-700/50">
           {filteredConnections.length === 0 ? (
             <div className="px-4 py-3 text-sm text-gray-500">
               No matches found. Try a different search.
@@ -309,21 +240,20 @@ function SearchablePicker({
             filteredConnections.map((conn) => {
               const displayName = conn.preferred_name || conn.name;
               const isSelected = selectedId === conn.id;
-
               return (
                 <button
                   key={conn.id}
                   type="button"
                   disabled={disabled}
                   onClick={() => onSelect(conn.id)}
-                  className={`w-full text-left px-4 py-2 text-sm transition-colors ${
+                  className={`w-full text-left px-4 py-2.5 text-sm transition-colors ${
                     isSelected
-                      ? "bg-blue-600 text-white"
-                      : "hover:bg-blue-50 dark:hover:bg-blue-900/40 text-gray-700 dark:text-gray-200"
+                      ? "bg-indigo-600 text-white"
+                      : "hover:bg-gray-50 dark:hover:bg-gray-700/50 text-gray-700 dark:text-gray-200"
                   }`}
                 >
                   <span className="block font-medium">{displayName}</span>
-                  <span className="text-xs opacity-80">@{conn.username}</span>
+                  <span className="text-xs opacity-70">@{conn.username}</span>
                 </button>
               );
             })
@@ -332,16 +262,15 @@ function SearchablePicker({
       )}
 
       {selectedConnection && (
-        <div className="mt-3 flex items-center justify-between rounded-lg border border-blue-200 dark:border-blue-700 bg-blue-50 dark:bg-blue-900/30 px-3 py-2 text-sm text-blue-700 dark:text-blue-200">
+        <div className="mt-2 flex items-center justify-between rounded-lg border border-indigo-200 dark:border-indigo-800 bg-indigo-50 dark:bg-indigo-900/20 px-3 py-2 text-sm text-indigo-700 dark:text-indigo-300">
           <span>
-            Selected:{" "}
-            {selectedConnection.preferred_name || selectedConnection.name} (@
-            {selectedConnection.username})
+            {selectedConnection.preferred_name || selectedConnection.name}{" "}
+            <span className="opacity-70">@{selectedConnection.username}</span>
           </span>
           <button
             type="button"
             onClick={() => onSelect("")}
-            className="text-xs font-semibold uppercase tracking-wide text-blue-700 hover:text-blue-900 dark:text-blue-200 dark:hover:text-white"
+            className="text-xs font-medium text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-200"
           >
             Clear
           </button>

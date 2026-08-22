@@ -2,7 +2,15 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { getCurrentUser } from "@/lib/supabase/queries";
+import { Avatar } from "@/components/ui/Avatar";
+import { Button } from "@/components/ui/Button";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { Modal } from "@/components/ui/Modal";
+import { Spinner } from "@/components/ui/Spinner";
+import { useToast } from "@/components/ui/Toast";
+import { Heart, Plus } from "lucide-react";
 import Chat from "./Chat";
+import MatchMaker from "./MatchMaker";
 
 type Match = {
   id: string;
@@ -25,228 +33,161 @@ type Match = {
   created_at: string;
 };
 
-type MatchesListProps = {
-  onClose?: () => void;
-};
-
-export default function MatchesList({ onClose }: MatchesListProps) {
+export default function MatchesList() {
+  const { toast } = useToast();
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [matches, setMatches] = useState<Match[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedMatch, setSelectedMatch] = useState<Match | null>(null);
-  const [message, setMessage] = useState<{
-    type: "success" | "error";
-    text: string;
-  } | null>(null);
+  const [showMatchMakerModal, setShowMatchMakerModal] = useState(false);
 
   const fetchMatches = useCallback(async (userId: string) => {
     try {
-      const res = await fetch(
-        `/api/match?user_id=${encodeURIComponent(userId)}`
-      );
+      const res = await fetch(`/api/match?user_id=${encodeURIComponent(userId)}`);
       const json = await res.json();
-
       if (!res.ok) {
-        setMessage({
-          type: "error",
-          text: json?.error || "Failed to load matches",
-        });
+        toast(json?.error || "Failed to load matches", "error");
         setLoading(false);
         return;
       }
-
       setMatches(json.data || []);
       setLoading(false);
     } catch (e) {
-      setMessage({ type: "error", text: (e as Error).message });
+      toast((e as Error).message, "error");
       setLoading(false);
     }
-  }, []);
+  }, [toast]);
 
   useEffect(() => {
     async function loadMatches() {
       const { user } = await getCurrentUser();
-      if (!user) {
-        setLoading(false);
-        return;
-      }
+      if (!user) { setLoading(false); return; }
       setCurrentUserId(user.id);
       await fetchMatches(user.id);
     }
-
     loadMatches();
   }, [fetchMatches]);
 
   async function deleteChat(matchId: string) {
     if (!currentUserId) return;
-
-    const confirmDelete = window.confirm(
-      "Are you sure you want to delete this chat? This action cannot be undone."
-    );
-
-    if (!confirmDelete) return;
-
+    if (!window.confirm("Are you sure you want to delete this chat? This action cannot be undone.")) return;
     try {
       const res = await fetch("/api/match/delete", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          match_id: matchId,
-          user_id: currentUserId,
-        }),
+        body: JSON.stringify({ match_id: matchId, user_id: currentUserId }),
       });
-
       const json = await res.json();
-
-      if (!res.ok) {
-        setMessage({
-          type: "error",
-          text: json?.error || "Failed to delete chat",
-        });
-        return;
-      }
-
-      setMessage({ type: "success", text: "Chat deleted successfully" });
+      if (!res.ok) { toast(json?.error || "Failed to delete chat", "error"); return; }
+      toast("Chat deleted");
       setSelectedMatch(null);
-      await fetchMatches(currentUserId);
+      if (currentUserId) await fetchMatches(currentUserId);
     } catch (e) {
-      setMessage({ type: "error", text: (e as Error).message });
+      toast((e as Error).message, "error");
     }
   }
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center py-12">
-        <div className="text-gray-500">Loading matches...</div>
-      </div>
-    );
-  }
-
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 border border-gray-200 dark:border-gray-700 relative">
-      <div className="flex items-center justify-between mb-6">
-        <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-          Your Matches
-        </h2>
-        {onClose && (
-          <button
-            onClick={onClose}
-            className="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
-          >
-            ✕
-          </button>
+    <div className="flex flex-1 min-h-0 bg-white dark:bg-gray-900">
+      {/* Left panel — match list */}
+      <div className="w-72 flex-shrink-0 flex flex-col border-r border-gray-200 dark:border-gray-800">
+        <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between flex-shrink-0">
+          <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Matches</h2>
+          <Button variant="primary" size="sm" onClick={() => setShowMatchMakerModal(true)}>
+            <Plus className="w-3.5 h-3.5" />
+            New
+          </Button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto">
+          {loading ? (
+            <div className="flex items-center justify-center py-12">
+              <Spinner size="md" />
+            </div>
+          ) : matches.length === 0 ? (
+            <EmptyState
+              icon={Heart}
+              title="No matches yet"
+              description="Create a match to connect two friends"
+            />
+          ) : (
+            <div className="divide-y divide-gray-100 dark:divide-gray-800">
+              {matches.map((match) => (
+                <button
+                  key={match.id}
+                  onClick={() => setSelectedMatch(match)}
+                  className={[
+                    "w-full text-left px-4 py-3 transition-colors",
+                    selectedMatch?.id === match.id
+                      ? "bg-indigo-50 dark:bg-indigo-900/20"
+                      : "hover:bg-gray-50 dark:hover:bg-gray-800",
+                    !match.is_active ? "opacity-50" : "",
+                  ].join(" ")}
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <Avatar
+                      size="sm"
+                      name={match.other_user.preferred_name || match.other_user.name}
+                      imageUrl={match.other_user.profile_image_url}
+                      className="flex-shrink-0"
+                    />
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
+                        {match.other_user.preferred_name || match.other_user.name}
+                      </p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                        via {match.matchmaker.preferred_name || match.matchmaker.name}
+                      </p>
+                    </div>
+                    {!match.is_active && (
+                      <span className="text-[10px] text-red-400 flex-shrink-0">Deleted</span>
+                    )}
+                  </div>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Right panel — chat or empty state */}
+      <div className="flex-1 flex flex-col min-w-0 bg-gray-50 dark:bg-gray-950">
+        {selectedMatch && currentUserId ? (
+          <Chat
+            matchId={selectedMatch.id}
+            currentUserId={currentUserId}
+            otherUser={selectedMatch.other_user}
+            onClose={() => setSelectedMatch(null)}
+            onDelete={() => deleteChat(selectedMatch.id)}
+            className="flex flex-col h-full bg-white dark:bg-gray-900"
+          />
+        ) : (
+          <div className="flex flex-1 items-center justify-center">
+            <EmptyState
+              icon={Heart}
+              title="Select a match"
+              description="Choose a match from the list to open the chat"
+            />
+          </div>
         )}
       </div>
 
-      {message && (
-        <div
-          className={`mb-4 p-3 rounded ${
-            message.type === "success"
-              ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300"
-              : "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300"
-          }`}
-        >
-          {message.text}
+      {/* Create Match Modal */}
+      <Modal
+        open={showMatchMakerModal}
+        onClose={() => setShowMatchMakerModal(false)}
+        title="Create a Match"
+      >
+        <div className="p-5">
+          <MatchMaker
+            onClose={() => setShowMatchMakerModal(false)}
+            onMatchCreated={() => {
+              setShowMatchMakerModal(false);
+              if (currentUserId) fetchMatches(currentUserId);
+            }}
+          />
         </div>
-      )}
-
-      {matches.length === 0 ? (
-        <div className="text-center py-8 text-gray-500">
-          No matches yet. You&apos;ll see matches here when someone matches you with
-          one of your connections.
-        </div>
-      ) : (
-        <div className="space-y-3">
-          {matches.map((match) => (
-            <div
-              key={match.id}
-              className={`p-4 rounded-lg border ${
-                match.is_active
-                  ? "bg-gray-50 dark:bg-gray-700/50 border-gray-200 dark:border-gray-600"
-                  : "bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-700 opacity-60"
-              }`}
-            >
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  {match.other_user.profile_image_url ? (
-                    <img
-                      src={match.other_user.profile_image_url}
-                      alt={
-                        match.other_user.preferred_name || match.other_user.name
-                      }
-                      className="w-12 h-12 rounded-full"
-                    />
-                  ) : (
-                    <div className="w-12 h-12 rounded-full bg-blue-500 flex items-center justify-center text-white font-semibold">
-                      {(
-                        match.other_user.preferred_name || match.other_user.name
-                      )
-                        .charAt(0)
-                        .toUpperCase()}
-                    </div>
-                  )}
-                  <div>
-                    <div className="font-semibold text-gray-900 dark:text-gray-100">
-                      {match.other_user.preferred_name || match.other_user.name}
-                    </div>
-                    <div className="text-sm text-gray-500">
-                      @{match.other_user.username}
-                    </div>
-                    <div className="text-xs text-gray-500 mt-1">
-                      Matched by{" "}
-                      {match.matchmaker.preferred_name || match.matchmaker.name}{" "}
-                      • {new Date(match.created_at).toLocaleDateString()}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex gap-2">
-                  {match.is_active ? (
-                    <>
-                      <button
-                        onClick={() => setSelectedMatch(match)}
-                        className="px-4 py-2 rounded bg-blue-600 text-white hover:bg-blue-700"
-                      >
-                        Open Chat
-                      </button>
-                      <button
-                        onClick={() => deleteChat(match.id)}
-                        className="px-4 py-2 rounded bg-red-600 text-white hover:bg-red-700"
-                      >
-                        Delete
-                      </button>
-                    </>
-                  ) : (
-                    <div className="px-4 py-2 rounded bg-gray-300 dark:bg-gray-600 text-gray-700 dark:text-gray-300">
-                      Chat Deleted
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {selectedMatch && currentUserId && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
-          onClick={() => setSelectedMatch(null)}
-        >
-          <div
-            className="relative w-full max-w-3xl h-[600px] mx-4"
-            onClick={(event) => event.stopPropagation()}
-          >
-            <Chat
-              matchId={selectedMatch.id}
-              currentUserId={currentUserId}
-              otherUser={selectedMatch.other_user}
-              onClose={() => setSelectedMatch(null)}
-              onDelete={() => deleteChat(selectedMatch.id)}
-            />
-          </div>
-        </div>
-      )}
+      </Modal>
     </div>
   );
 }

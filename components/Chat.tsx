@@ -30,6 +30,7 @@ type ChatProps = {
   };
   onClose?: () => void;
   onDelete?: () => void;
+  className?: string;
 };
 
 function areMessagesEqual(a: Message[], b: Message[]) {
@@ -56,6 +57,7 @@ export default function Chat({
   otherUser,
   onClose,
   onDelete,
+  className,
 }: ChatProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState("");
@@ -386,7 +388,7 @@ export default function Chat({
   }
 
   return (
-    <div className="flex flex-col h-full bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700">
+    <div className={className ?? "flex flex-col h-full bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700"}>
       {/* Header */}
       <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
         <div className="flex items-center gap-3">

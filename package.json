@@ -2,6 +2,7 @@
   "name": "social-network",
   "version": "0.1.0",
   "private": true,
+  "packageManager": "pnpm@11.22.0",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -9,31 +10,29 @@
     "lint": "eslint"
   },
   "dependencies": {
-    "@fullcalendar/daygrid": "^6.1.19",
-    "@fullcalendar/interaction": "^6.1.19",
-    "@fullcalendar/react": "^6.1.19",
-    "@fullcalendar/timegrid": "^6.1.19",
-    "@supabase/supabase-js": "^2.86.0",
-    "lucide-react": "^0.562.0",
+    "@fullcalendar/react": "^7.0.2",
+    "@supabase/supabase-js": "^2.112.3",
+    "lucide-react": "^1.33.0",
     "moment": "^2.30.1",
-    "next": "16.0.7",
-    "openai": "^6.15.0",
-    "react": "19.2.0",
-    "react-dom": "19.2.0",
-    "react-force-graph-2d": "^1.29.0",
-    "react-icons": "^5.5.0",
+    "next": "16.3.2",
+    "openai": "^7.5.0",
+    "react": "19.2.8",
+    "react-dom": "19.2.8",
+    "react-force-graph-2d": "^1.29.1",
+    "react-icons": "^5.7.0",
+    "temporal-polyfill": "^1.0.4",
     "tz-lookup": "^6.1.25"
   },
   "devDependencies": {
-    "@tailwindcss/postcss": "^4",
-    "@types/node": "^20",
-    "@types/react": "^19",
-    "@types/react-dom": "^19",
+    "@tailwindcss/postcss": "^4.3.3",
+    "@types/node": "^26.2.0",
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.4",
     "@types/tz-lookup": "^6.1.2",
-    "baseline-browser-mapping": "^2.10.27",
-    "eslint": "^9",
-    "eslint-config-next": "16.0.7",
-    "tailwindcss": "^4",
-    "typescript": "^5"
+    "baseline-browser-mapping": "^2.11.18",
+    "eslint": "^9.39.5",
+    "eslint-config-next": "16.3.2",
+    "tailwindcss": "^4.3.3",
+    "typescript": "^6.0.3"
   }
 }

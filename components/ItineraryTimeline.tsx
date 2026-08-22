@@ -2,9 +2,9 @@
 
 import React, { useMemo } from "react";
 import FullCalendar from "@fullcalendar/react";
-import dayGridPlugin from "@fullcalendar/daygrid";
-import timeGridPlugin from "@fullcalendar/timegrid";
-import interactionPlugin from "@fullcalendar/interaction";
+import dayGridPlugin from "@fullcalendar/react/daygrid";
+import timeGridPlugin from "@fullcalendar/react/timegrid";
+import interactionPlugin from "@fullcalendar/react/interaction";
 import { Database } from "@/types/supabase";
 import {
     Plane,
