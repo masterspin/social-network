@@ -57,6 +57,13 @@
       "when": 1787511600000,
       "tag": "0007_remove_profile_gender",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1787515200000,
+      "tag": "0008_cascade_connection_upgrade_requester",
+      "breakpoints": true
     }
   ]
 }

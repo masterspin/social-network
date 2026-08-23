@@ -133,7 +133,7 @@ export const connections = pgTable(
     connectionType: connectionType("connection_type").default("first"),
     upgradeRequestedType: connectionType("upgrade_requested_type"),
     upgradeRequestedBy: uuid("upgrade_requested_by").references(() => users.id, {
-      onDelete: "set null",
+      onDelete: "cascade",
     }),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
