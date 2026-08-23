@@ -196,47 +196,6 @@ export const MOCK_SOCIAL_LINKS = [
   },
 ];
 
-// Matches — dev user is a participant (user1 or user2), not just matchmaker
-// Match 1: Alice matched dev with Bob
-// Match 2: David matched dev with Alice
-export const MOCK_MATCHES = [
-  {
-    id: "00000000-0000-0000-0003-000000000001",
-    matchmaker: {
-      id: ALICE.id,
-      name: ALICE.name,
-      preferred_name: ALICE.preferred_name,
-      profile_image_url: ALICE.profile_image_url,
-    },
-    other_user: {
-      id: BOB.id,
-      name: BOB.name,
-      preferred_name: BOB.preferred_name,
-      profile_image_url: BOB.profile_image_url,
-    },
-    is_active: true,
-    deleted_at: null,
-    created_at: "2024-03-10T00:00:00Z",
-  },
-  {
-    id: "00000000-0000-0000-0003-000000000002",
-    matchmaker: {
-      id: DAVID.id,
-      name: DAVID.name,
-      preferred_name: DAVID.preferred_name,
-      profile_image_url: DAVID.profile_image_url,
-    },
-    other_user: {
-      id: ALICE.id,
-      name: ALICE.name,
-      preferred_name: ALICE.preferred_name,
-      profile_image_url: ALICE.profile_image_url,
-    },
-    is_active: true,
-    deleted_at: null,
-    created_at: "2024-04-01T00:00:00Z",
-  },
-];
 
 // Itineraries
 export const MOCK_ITINERARIES = [

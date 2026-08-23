@@ -19,7 +19,6 @@ import NetworkGraph from "./NetworkGraph";
 import ConnectionManager from "./ConnectionManager";
 import UserProfileSidePanel from "./UserProfileSidePanel";
 import Inbox from "./Inbox";
-import MatchesList from "./MatchesList";
 import {
   FaInstagram,
   FaTwitter,
@@ -32,7 +31,6 @@ import {
 import {
   Network,
   Inbox as InboxIcon,
-  Heart,
   User,
   Search,
   LogOut,
@@ -119,7 +117,7 @@ const SOCIAL_PLATFORMS: Record<string, PlatformConfig> = {
 
 export default function Dashboard() {
   const [activeTab, setActiveTab] = useState<
-    "network" | "inbox" | "profile" | "matches"
+    "network" | "inbox" | "profile"
   >("network");
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [connections, setConnections] = useState<unknown[]>([]);
@@ -456,7 +454,6 @@ export default function Dashboard() {
                 [
                   { key: "network", label: "Network", Icon: Network },
                   { key: "inbox", label: "Inbox", Icon: InboxIcon },
-                  { key: "matches", label: "Matches", Icon: Heart },
                 ] as const
               ).map(({ key, label, Icon }) => (
                 <button
@@ -557,12 +554,6 @@ export default function Dashboard() {
                 });
               }}
             />
-          </div>
-        )}
-
-        {activeTab === "matches" && (
-          <div key="matches" className="animate-fade-in flex-1 flex min-h-0">
-            <MatchesList />
           </div>
         )}
 

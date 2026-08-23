@@ -238,6 +238,3 @@ export async function getAllUsers() {
   const { db, users } = await getServerDeps();
   return { data: await db.select().from(users), error: null };
 }
-
-export async function getMatches() { const { db, matches } = await getServerDeps(); return { data: await db.select().from(matches), error: null }; }
-export async function getMatchChats(matchId: string) { const { db, asc, eq, matchChats } = await getServerDeps(); return { data: await db.select().from(matchChats).where(eq(matchChats.matchId, matchId)).orderBy(asc(matchChats.createdAt)), error: null }; }
