@@ -1,0 +1,9 @@
+DROP TABLE IF EXISTS "itinerary_tasks";--> statement-breakpoint
+DROP TABLE IF EXISTS "itinerary_comments";--> statement-breakpoint
+DROP TABLE IF EXISTS "itinerary_owner_invitations";--> statement-breakpoint
+DROP TABLE IF EXISTS "itinerary_segments";--> statement-breakpoint
+DROP TABLE IF EXISTS "itinerary_travelers";--> statement-breakpoint
+DROP TABLE IF EXISTS "itineraries";--> statement-breakpoint
+DROP TYPE IF EXISTS "public"."itinerary_status";--> statement-breakpoint
+DROP TYPE IF EXISTS "public"."itinerary_visibility_detail";--> statement-breakpoint
+DROP TYPE IF EXISTS "public"."itinerary_visibility";--> statement-breakpoint

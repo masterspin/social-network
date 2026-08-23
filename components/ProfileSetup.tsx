@@ -20,7 +20,6 @@ import {
   addSocialLink,
   deleteSocialLink,
   getUserSocialLinks,
-  checkUsernameAvailable,
 } from "@/lib/supabase/queries";
 import { Database } from "@/types/supabase";
 
@@ -110,11 +109,6 @@ export default function ProfileSetup({
   const totalSteps = 3; // Changed from 3 to 4
 
   const [name, setName] = useState(existingProfile?.name || "");
-  const [username, setUsername] = useState(existingProfile?.username || "");
-  const [usernameAvailable, setUsernameAvailable] = useState<boolean | null>(
-    null
-  );
-  const [usernameChecking, setUsernameChecking] = useState(false);
   const [preferredName, setPreferredName] = useState(
     existingProfile?.preferred_name || ""
   );
@@ -168,35 +162,6 @@ export default function ProfileSetup({
     }
   };
 
-  const handleUsernameChange = async (value: string) => {
-    setUsername(value);
-
-    // Reset validation state if username is empty
-    if (!value.trim()) {
-      setUsernameAvailable(null);
-      return;
-    }
-
-    // Don't check if it's the same as existing (for edit mode)
-    if (isEdit && existingProfile?.username === value) {
-      setUsernameAvailable(true);
-      return;
-    }
-
-    // Validate format (alphanumeric, underscores, hyphens)
-    const usernameRegex = /^[a-zA-Z0-9_-]+$/;
-    if (!usernameRegex.test(value)) {
-      setUsernameAvailable(false);
-      return;
-    }
-
-    // Check availability with debouncing
-    setUsernameChecking(true);
-    const { available } = await checkUsernameAvailable(value);
-    setUsernameAvailable(available);
-    setUsernameChecking(false);
-  };
-
   const handleSocialInputChange = (platform: string, value: string) => {
     setSocialInputs((prev) => ({
       ...prev,
@@ -237,55 +202,6 @@ export default function ProfileSetup({
         setError("Name is required");
         return;
       }
-      if (!username.trim()) {
-        setError("Username is required");
-        return;
-      }
-
-      // Validate username format
-      const usernameRegex = /^[a-zA-Z0-9_-]+$/;
-      if (!usernameRegex.test(username)) {
-        setError(
-          "Username can only contain letters, numbers, underscores, and hyphens"
-        );
-        return;
-      }
-
-      // Check if we need to validate username (skip if editing and username hasn't changed)
-      const shouldSkipCheck = isEdit && existingProfile?.username === username;
-      console.log("Username validation check:", {
-        isEdit,
-        existingUsername: existingProfile?.username,
-        newUsername: username,
-        shouldSkipCheck,
-      });
-
-      if (!shouldSkipCheck) {
-        // Perform real-time check to ensure username is available
-        setUsernameChecking(true);
-        const result = await checkUsernameAvailable(username);
-        setUsernameAvailable(result.available);
-        setUsernameChecking(false);
-
-        console.log("Step 1 username check result:", {
-          username,
-          result,
-          available: result.available,
-          error: result.error,
-        });
-
-        if (result.error) {
-          setError("Error checking username availability. Please try again.");
-          return;
-        }
-
-        if (!result.available) {
-          setError(
-            "This username is already taken. Please choose another one."
-          );
-          return;
-        }
-      }
 
       nextStep();
     } else if (currentStep === 2) {
@@ -306,33 +222,9 @@ export default function ProfileSetup({
       return;
     }
 
-    // Validate username format
-    const usernameRegex = /^[a-zA-Z0-9_-]+$/;
-    if (!usernameRegex.test(username)) {
-      setError(
-        "Username can only contain letters, numbers, underscores, and hyphens"
-      );
-      setLoading(false);
-      return;
-    }
-
-    // Check username availability (skip if editing and username hasn't changed)
-    if (!(isEdit && existingProfile?.username === username)) {
-      const result = await checkUsernameAvailable(username);
-
-      console.log("Final submit username check:", result);
-
-      if (!result.available) {
-        setError("This username is already taken. Please choose another one.");
-        setLoading(false);
-        return;
-      }
-    }
-
     const profileData = {
       id: authUser.id,
       email: authUser.email || "",
-      username,
       name,
       preferred_name: preferredName || null,
       gender: gender || null,
@@ -446,31 +338,6 @@ export default function ProfileSetup({
           onSubmit={async (e) => {
             e.preventDefault();
             setError(null);
-
-            // Validate username format
-            const usernameRegex = /^[a-zA-Z0-9_-]+$/;
-            if (!usernameRegex.test(username)) {
-              setError(
-                "Username can only contain letters, numbers, underscores, and hyphens"
-              );
-              return;
-            }
-
-            // Check if username changed and validate availability
-            if (existingProfile?.username !== username) {
-              setUsernameChecking(true);
-              const result = await checkUsernameAvailable(username);
-              setUsernameAvailable(result.available);
-              setUsernameChecking(false);
-
-              if (!result.available) {
-                setError(
-                  "This username is already taken. Please choose another one."
-                );
-                return;
-              }
-            }
-
             handleFinalSubmit();
           }}
           className="space-y-6"
@@ -897,45 +764,6 @@ export default function ProfileSetup({
                       required
                       autoFocus
                     />
-                  </div>
-
-                  <div>
-                    <label
-                      htmlFor="username"
-                      className="block text-sm font-medium mb-2"
-                    >
-                      Username *
-                    </label>
-                    <div className="relative">
-                      <input
-                        id="username"
-                        type="text"
-                        value={username}
-                        onChange={(e) => handleUsernameChange(e.target.value)}
-                        className={`w-full px-4 py-3 text-lg border ${
-                          usernameAvailable === false
-                            ? "border-red-500"
-                            : usernameAvailable === true
-                            ? "border-green-500"
-                            : "border-gray-300 dark:border-gray-600"
-                        } rounded-xl focus:ring-2 focus:ring-gray-500 focus:border-transparent bg-white dark:bg-gray-700 transition-all`}
-                        placeholder="Choose a unique username"
-                        required
-                      />
-                      {usernameChecking && (
-                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">
-                          Checking...
-                        </span>
-                      )}
-                      {usernameAvailable === false && !usernameChecking && (
-                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-red-500">
-                          ✗ Not available
-                        </span>
-                      )}
-                    </div>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                      Letters, numbers, underscores, and hyphens only
-                    </p>
                   </div>
 
                   <div>

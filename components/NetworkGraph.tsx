@@ -37,7 +37,6 @@ type LinkData = {
 type GraphData = { nodes: NodeData[]; links: LinkData[] };
 type OpenUser = (user: {
   id: string;
-  username?: string;
   name?: string;
   preferred_name?: string | null;
   profile_image_url?: string | null;
@@ -272,7 +271,6 @@ export default function NetworkGraph({
           connection_type?: string;
           other_user: {
             id: string;
-            username: string;
             name: string;
             preferred_name: string | null;
             profile_image_url: string | null;

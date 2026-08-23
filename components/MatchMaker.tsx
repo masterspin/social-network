@@ -10,7 +10,6 @@ import { Users } from "lucide-react";
 
 type User = {
   id: string;
-  username: string;
   name: string;
   preferred_name: string | null;
   profile_image_url: string | null;
@@ -205,7 +204,7 @@ function SearchablePicker({
     if (!hasSearch) return [];
     return availableConnections
       .filter((conn) => {
-        const target = `${conn.preferred_name || conn.name} ${conn.username}`.trim().toLowerCase();
+        const target = `${conn.preferred_name || conn.name}`.trim().toLowerCase();
         return target.includes(normalizedSearch);
       })
       .slice(0, 20);
@@ -224,7 +223,7 @@ function SearchablePicker({
         value={searchTerm}
         onChange={(e) => onSearchChange(e.target.value)}
         disabled={disabled}
-        placeholder="Search by name or @username"
+        placeholder="Search by name"
       />
       {helperText && (
         <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">{helperText}</p>
@@ -253,7 +252,6 @@ function SearchablePicker({
                   }`}
                 >
                   <span className="block font-medium">{displayName}</span>
-                  <span className="text-xs opacity-70">@{conn.username}</span>
                 </button>
               );
             })
@@ -264,8 +262,7 @@ function SearchablePicker({
       {selectedConnection && (
         <div className="mt-2 flex items-center justify-between rounded-lg border border-indigo-200 dark:border-indigo-800 bg-indigo-50 dark:bg-indigo-900/20 px-3 py-2 text-sm text-indigo-700 dark:text-indigo-300">
           <span>
-            {selectedConnection.preferred_name || selectedConnection.name}{" "}
-            <span className="opacity-70">@{selectedConnection.username}</span>
+            {selectedConnection.preferred_name || selectedConnection.name}
           </span>
           <button
             type="button"

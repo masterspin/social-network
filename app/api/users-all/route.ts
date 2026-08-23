@@ -11,14 +11,13 @@ export async function GET() {
   const data = await db
     .select({
       id: users.id,
-      username: profiles.username,
       name: users.name,
       preferred_name: profiles.preferredName,
       profile_image_url: profiles.profileImageUrl,
     })
     .from(users)
     .leftJoin(profiles, eq(users.id, profiles.id))
-    .orderBy(asc(profiles.username))
+    .orderBy(asc(users.name))
     .limit(200);
   return NextResponse.json({ data }, { status: 200 });
 }

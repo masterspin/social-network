@@ -11,7 +11,6 @@ import { connections, profiles, users } from "@/lib/db/schema";
 //     how_met: string;          // description
 //     other_user: {             // the person you're connected to
 //       id: string;
-//       username: string;
 //       name: string;
 //       preferred_name: string | null;
 //       profile_image_url: string | null;
@@ -62,11 +61,11 @@ export async function GET(request: Request) {
     [...accepted, ...allAccepted].forEach((row) => addEdge(row.requesterId, row.recipientId));
     const mySet = adjacency.get(userId) ?? new Set<string>();
     const userRows = await db
-      .select({ id: users.id, username: profiles.username, name: users.name, preferred_name: profiles.preferredName, profile_image_url: profiles.profileImageUrl })
+      .select({ id: users.id, name: users.name, preferred_name: profiles.preferredName, profile_image_url: profiles.profileImageUrl })
       .from(users)
       .leftJoin(profiles, eq(users.id, profiles.id))
       .where(inArray(users.id, neighborIds))
-      .orderBy(asc(profiles.username));
+      .orderBy(asc(users.name));
     const userById = new Map(userRows.map((u) => [u.id, u]));
     const result = accepted.map((c) => {
       const otherId = c.requesterId === userId ? c.recipientId : c.requesterId;

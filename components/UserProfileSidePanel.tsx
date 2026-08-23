@@ -51,14 +51,12 @@ type ConnectionRow = Database["public"]["Tables"]["connections"]["Row"] & {
     name: string;
     preferred_name: string | null;
     profile_image_url: string | null;
-    username?: string;
   };
   recipient: {
     id: string;
     name: string;
     preferred_name: string | null;
     profile_image_url: string | null;
-    username?: string;
   };
 };
 
@@ -450,9 +448,6 @@ export default function UserProfileSidePanel({
                 <div className="min-w-0">
                   <div className="text-lg font-semibold">
                     {profile.preferred_name || profile.name}
-                  </div>
-                  <div className="text-sm text-gray-500 dark:text-gray-400">
-                    @{profile.username}
                   </div>
                   {profile.bio && (
                     <p className="text-sm text-gray-700 dark:text-gray-300 mt-2 leading-snug">

@@ -2,7 +2,6 @@ import {
   boolean,
   index,
   integer,
-  jsonb,
   pgEnum,
   pgTable,
   primaryKey,
@@ -21,24 +20,6 @@ export const connectionStatus = pgEnum("connection_status", [
 export const connectionType = pgEnum("connection_type", [
   "first",
   "one_point_five",
-]);
-
-export const itineraryVisibility = pgEnum("itinerary_visibility", [
-  "private",
-  "shared",
-  "public",
-]);
-
-export const itineraryVisibilityDetail = pgEnum(
-  "itinerary_visibility_detail",
-  ["private", "first_connection", "one_point_five", "public"],
-);
-
-export const itineraryStatus = pgEnum("itinerary_status", [
-  "planning",
-  "confirmed",
-  "completed",
-  "cancelled",
 ]);
 
 export const users = pgTable("users", {
@@ -94,7 +75,6 @@ export const profiles = pgTable("profiles", {
   id: uuid("id")
     .primaryKey()
     .references(() => users.id, { onDelete: "cascade" }),
-  username: text("username").notNull().unique(),
   preferredName: text("preferred_name"),
   gender: text("gender"),
   bio: text("bio"),
@@ -154,90 +134,6 @@ export const blockedUsers = pgTable(
   },
   (table) => [unique().on(table.blockerId, table.blockedId)],
 );
-
-export const itineraries = pgTable("itineraries", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  ownerId: uuid("owner_id")
-    .notNull()
-    .references(() => users.id, { onDelete: "cascade" }),
-  title: text("title").notNull(),
-  description: text("description"),
-  summary: text("summary"),
-  startDate: timestamp("start_date", { withTimezone: true }),
-  endDate: timestamp("end_date", { withTimezone: true }),
-  timezone: text("timezone"),
-  visibility: itineraryVisibility("visibility").default("private"),
-  visibilityDetail: itineraryVisibilityDetail("visibility_detail").default(
-    "private",
-  ),
-  status: itineraryStatus("status").default("planning"),
-  coverImageUrl: text("cover_image_url"),
-  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
-  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
-});
-
-export const itineraryTravelers = pgTable(
-  "itinerary_travelers",
-  {
-    id: uuid("id").primaryKey().defaultRandom(),
-    itineraryId: uuid("itinerary_id")
-      .notNull()
-      .references(() => itineraries.id, { onDelete: "cascade" }),
-    userId: uuid("user_id")
-      .notNull()
-      .references(() => users.id, { onDelete: "cascade" }),
-    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
-  },
-  (table) => [unique().on(table.itineraryId, table.userId)],
-);
-
-export const itinerarySegments = pgTable("itinerary_segments", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  itineraryId: uuid("itinerary_id")
-    .notNull()
-    .references(() => itineraries.id, { onDelete: "cascade" }),
-  title: text("title").notNull(),
-  type: text("type").notNull(),
-  orderIndex: integer("order_index").notNull().default(0),
-  data: jsonb("data"),
-  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
-  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
-});
-
-export const itineraryTasks = pgTable("itinerary_tasks", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  segmentId: uuid("segment_id")
-    .notNull()
-    .references(() => itinerarySegments.id, { onDelete: "cascade" }),
-  title: text("title").notNull(),
-  completed: boolean("completed").default(false),
-  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
-  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
-});
-
-export const itineraryComments = pgTable("itinerary_comments", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  itineraryId: uuid("itinerary_id")
-    .notNull()
-    .references(() => itineraries.id, { onDelete: "cascade" }),
-  authorId: uuid("author_id")
-    .notNull()
-    .references(() => users.id, { onDelete: "cascade" }),
-  body: text("body").notNull(),
-  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
-  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
-});
-
-export const itineraryOwnerInvitations = pgTable("itinerary_owner_invitations", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  itineraryId: uuid("itinerary_id")
-    .notNull()
-    .references(() => itineraries.id, { onDelete: "cascade" }),
-  invitedUserId: uuid("invited_user_id")
-    .notNull()
-    .references(() => users.id, { onDelete: "cascade" }),
-  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
-});
 
 export const matches = pgTable("matches", {
   id: uuid("id").primaryKey().defaultRandom(),

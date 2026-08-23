@@ -6,7 +6,6 @@ export const DEV_USER_ID = "00000000-0000-0000-0000-000000000001";
 export const DEV_USER = {
   id: DEV_USER_ID,
   email: "dev@example.com",
-  username: "devuser",
   name: "Dev User",
   preferred_name: "Dev",
   gender: "Prefer not to say",
@@ -18,7 +17,6 @@ export const DEV_USER = {
 
 const ALICE = {
   id: "00000000-0000-0000-0000-000000000002",
-  username: "alice_chen",
   name: "Alice Chen",
   preferred_name: "Alice",
   profile_image_url: null,
@@ -31,7 +29,6 @@ const ALICE = {
 
 const BOB = {
   id: "00000000-0000-0000-0000-000000000003",
-  username: "bmartin",
   name: "Bob Martinez",
   preferred_name: "Bob",
   profile_image_url: null,
@@ -44,7 +41,6 @@ const BOB = {
 
 const CAROL = {
   id: "00000000-0000-0000-0000-000000000004",
-  username: "carolkim",
   name: "Carol Kim",
   preferred_name: "Carol",
   profile_image_url: null,
@@ -57,7 +53,6 @@ const CAROL = {
 
 const DAVID = {
   id: "00000000-0000-0000-0000-000000000005",
-  username: "dpatel",
   name: "David Patel",
   preferred_name: "David",
   profile_image_url: null,
@@ -92,14 +87,12 @@ const makeConn = (
   updated_at: createdAt,
   requester: {
     id: requester.id,
-    username: requester.username,
     name: requester.name,
     preferred_name: requester.preferred_name,
     profile_image_url: requester.profile_image_url,
   },
   recipient: {
     id: recipient.id,
-    username: recipient.username,
     name: recipient.name,
     preferred_name: recipient.preferred_name,
     profile_image_url: recipient.profile_image_url,
@@ -211,14 +204,12 @@ export const MOCK_MATCHES = [
     id: "00000000-0000-0000-0003-000000000001",
     matchmaker: {
       id: ALICE.id,
-      username: ALICE.username,
       name: ALICE.name,
       preferred_name: ALICE.preferred_name,
       profile_image_url: ALICE.profile_image_url,
     },
     other_user: {
       id: BOB.id,
-      username: BOB.username,
       name: BOB.name,
       preferred_name: BOB.preferred_name,
       profile_image_url: BOB.profile_image_url,
@@ -231,14 +222,12 @@ export const MOCK_MATCHES = [
     id: "00000000-0000-0000-0003-000000000002",
     matchmaker: {
       id: DAVID.id,
-      username: DAVID.username,
       name: DAVID.name,
       preferred_name: DAVID.preferred_name,
       profile_image_url: DAVID.profile_image_url,
     },
     other_user: {
       id: ALICE.id,
-      username: ALICE.username,
       name: ALICE.name,
       preferred_name: ALICE.preferred_name,
       profile_image_url: ALICE.profile_image_url,
@@ -268,7 +257,6 @@ export const MOCK_ITINERARIES = [
     updated_at: "2024-04-08T00:00:00Z",
     owner: {
       id: DEV_USER_ID,
-      username: DEV_USER.username,
       name: DEV_USER.name,
       preferred_name: DEV_USER.preferred_name,
       profile_image_url: DEV_USER.profile_image_url,
@@ -311,7 +299,6 @@ export const MOCK_ITINERARIES = [
     updated_at: "2025-03-01T00:00:00Z",
     owner: {
       id: DEV_USER_ID,
-      username: DEV_USER.username,
       name: DEV_USER.name,
       preferred_name: DEV_USER.preferred_name,
       profile_image_url: DEV_USER.profile_image_url,
@@ -323,7 +310,6 @@ export const MOCK_ITINERARIES = [
 // Minimal user shape for /api/users-all
 export const MOCK_USERS_ALL = MOCK_USERS.map((u) => ({
   id: u.id,
-  username: u.username,
   name: u.name,
   preferred_name: u.preferred_name,
   profile_image_url: u.profile_image_url,

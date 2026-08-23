@@ -60,13 +60,15 @@ export default function HomePage() {
 
   if (!isAuthenticated) {
     return (
-      <div className="min-h-screen flex items-center justify-center p-4">
-        <div className="max-w-6xl w-full">
-          <div className="text-center mb-8">
-            <h1 className="text-4xl font-bold mb-4">Social Network Graph</h1>
-            <p className="text-lg text-gray-600 dark:text-gray-300">
-              Connect with people and visualize your network
+      <div className="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(99,102,241,0.12),_transparent_35%),linear-gradient(180deg,_#f8fafc_0%,_#eef2ff_100%)] px-4 py-10 dark:bg-[radial-gradient(circle_at_top,_rgba(99,102,241,0.18),_transparent_35%),linear-gradient(180deg,_#020617_0%,_#0f172a_100%)]">
+        <div className="mx-auto flex min-h-[calc(100vh-5rem)] w-full max-w-5xl flex-col justify-center gap-8">
+          <div className="max-w-2xl">
+            <p className="mb-3 text-sm font-semibold uppercase tracking-[0.24em] text-indigo-600 dark:text-indigo-400">
+              6steps
             </p>
+            <h1 className="text-4xl font-semibold tracking-tight text-slate-950 dark:text-white sm:text-5xl">
+              Big World made Small
+            </h1>
           </div>
           <AuthForm />
         </div>

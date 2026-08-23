@@ -8,6 +8,20 @@
       "when": 1787434549020,
       "tag": "0000_clammy_lord_hawal",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1787440000000,
+      "tag": "0001_remove_itineraries",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1787443600000,
+      "tag": "0002_remove_profile_username",
+      "breakpoints": true
     }
   ]
 }

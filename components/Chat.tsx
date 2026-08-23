@@ -9,7 +9,6 @@ type Message = {
   created_at: string;
   sender: {
     id: string;
-    username: string;
     name: string;
     preferred_name: string | null;
     profile_image_url: string | null;
@@ -21,7 +20,6 @@ type ChatProps = {
   currentUserId: string;
   otherUser: {
     id: string;
-    username: string;
     name: string;
     preferred_name: string | null;
     profile_image_url: string | null;
@@ -73,7 +71,6 @@ export default function Chat({
   useEffect(() => {
     senderCacheRef.current[otherUser.id] = {
       id: otherUser.id,
-      username: otherUser.username,
       name: otherUser.name,
       preferred_name: otherUser.preferred_name,
       profile_image_url: otherUser.profile_image_url,
@@ -84,7 +81,6 @@ export default function Chat({
     if (!senderCacheRef.current[currentUserId]) {
       senderCacheRef.current[currentUserId] = {
         id: currentUserId,
-        username: "",
         name: "",
         preferred_name: null,
         profile_image_url: null,
@@ -127,7 +123,6 @@ export default function Chat({
             ...enriched,
             sender: {
               id: otherUser.id,
-              username: otherUser.username,
               name: otherUser.name,
               preferred_name: otherUser.preferred_name,
               profile_image_url: otherUser.profile_image_url,
@@ -245,7 +240,6 @@ export default function Chat({
     const optimisticId = `optimistic-${Date.now()}`;
     const optimisticSender = senderCacheRef.current[currentUserId] || {
       id: currentUserId,
-      username: "",
       name: "",
       preferred_name: null,
       profile_image_url: null,
@@ -331,7 +325,6 @@ export default function Chat({
             <h3 className="font-semibold text-gray-900 dark:text-gray-100">
               {otherUser.preferred_name || otherUser.name}
             </h3>
-            <p className="text-xs text-gray-500">@{otherUser.username}</p>
           </div>
         </div>
         <div className="flex gap-2">

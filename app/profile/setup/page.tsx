@@ -7,7 +7,6 @@ import ProfileSetup from "@/components/ProfileSetup";
 type UserProfile = {
   id: string;
   name: string;
-  username: string;
   preferred_name: string | null;
   gender: string | null;
   bio: string | null;

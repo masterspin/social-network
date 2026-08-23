@@ -619,7 +619,6 @@ export type Database = {
           show_profile_image: boolean | null;
           show_social_links: boolean | null;
           updated_at: string | null;
-          username: string;
           visibility_level: number | null;
         };
         Insert: {
@@ -636,7 +635,6 @@ export type Database = {
           show_profile_image?: boolean | null;
           show_social_links?: boolean | null;
           updated_at?: string | null;
-          username: string;
           visibility_level?: number | null;
         };
         Update: {
@@ -653,7 +651,6 @@ export type Database = {
           show_profile_image?: boolean | null;
           show_social_links?: boolean | null;
           updated_at?: string | null;
-          username?: string;
           visibility_level?: number | null;
         };
         Relationships: [];

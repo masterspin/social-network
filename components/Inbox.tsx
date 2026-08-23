@@ -30,14 +30,12 @@ type ConnectionRow = Database["public"]["Tables"]["connections"]["Row"] & {
     name: string;
     preferred_name: string | null;
     profile_image_url: string | null;
-    username?: string;
   };
   recipient: {
     id: string;
     name: string;
     preferred_name: string | null;
     profile_image_url: string | null;
-    username?: string;
   };
 };
 

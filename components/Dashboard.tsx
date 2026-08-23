@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
+import { signOut as nextAuthSignOut } from "next-auth/react";
 import {
   getCurrentUser,
   getUserProfile,
@@ -12,7 +13,6 @@ import {
   deleteSocialLink,
   getBlockedUsers,
   unblockUser,
-  signOut,
 } from "@/lib/supabase/queries";
 import { Database } from "@/types/supabase";
 import NetworkGraph from "./NetworkGraph";
@@ -20,7 +20,6 @@ import ConnectionManager from "./ConnectionManager";
 import UserProfileSidePanel from "./UserProfileSidePanel";
 import Inbox from "./Inbox";
 import MatchesList from "./MatchesList";
-import ItineraryPlanner from "./ItineraryPlanner";
 import {
   FaInstagram,
   FaTwitter,
@@ -34,7 +33,6 @@ import {
   Network,
   Inbox as InboxIcon,
   Heart,
-  Map,
   User,
   Search,
   LogOut,
@@ -121,7 +119,7 @@ const SOCIAL_PLATFORMS: Record<string, PlatformConfig> = {
 
 export default function Dashboard() {
   const [activeTab, setActiveTab] = useState<
-    "network" | "inbox" | "profile" | "matches" | "itineraries"
+    "network" | "inbox" | "profile" | "matches"
   >("network");
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [connections, setConnections] = useState<unknown[]>([]);
@@ -142,14 +140,12 @@ export default function Dashboard() {
   } | null>(null);
   const [selectedConnectionUser, setSelectedConnectionUser] = useState<{
     id: string;
-    username: string;
     name: string;
     preferred_name: string | null;
     profile_image_url: string | null;
   } | null>(null);
   const [editForm, setEditForm] = useState({
     name: "",
-    username: "",
     preferred_name: "",
     gender: "",
     bio: "",
@@ -226,7 +222,6 @@ export default function Dashboard() {
       setUserProfile(typedProfile);
       setEditForm({
         name: typedProfile.name || "",
-        username: typedProfile.username || "",
         preferred_name: typedProfile.preferred_name || "",
         gender: typedProfile.gender || "",
         bio: typedProfile.bio || "",
@@ -286,7 +281,6 @@ export default function Dashboard() {
   // Build a flat list of the other user for accepted connections
   const connectionUsers: {
     id: string;
-    username: string;
     name: string;
     preferred_name: string | null;
     profile_image_url: string | null;
@@ -307,7 +301,6 @@ export default function Dashboard() {
       return [
         {
           id: other.id as string,
-          username: other.username as string,
           name: other.name as string,
           preferred_name: (other.preferred_name as string) ?? null,
           profile_image_url: (other.profile_image_url as string) ?? null,
@@ -332,7 +325,7 @@ export default function Dashboard() {
     // Filter by search
     const q = connectionsSearch.trim().toLowerCase();
     if (!q) return true;
-    const display = `${u.username} ${u.name} ${u.preferred_name ?? ""
+    const display = `${u.name} ${u.preferred_name ?? ""
       }`.toLowerCase();
     return display.includes(q);
   });
@@ -345,7 +338,6 @@ export default function Dashboard() {
     if (userProfile) {
       setEditForm({
         name: userProfile.name,
-        username: userProfile.username,
         preferred_name: userProfile.preferred_name || "",
         gender: userProfile.gender || "",
         bio: userProfile.bio || "",
@@ -360,7 +352,6 @@ export default function Dashboard() {
 
     const { error } = await updateUserProfile(userProfile.id, {
       name: editForm.name,
-      username: editForm.username,
       preferred_name: editForm.preferred_name || null,
       gender: editForm.gender || null,
       bio: editForm.bio || null,
@@ -431,8 +422,7 @@ export default function Dashboard() {
   };
 
   const handleSignOut = async () => {
-    await signOut();
-    window.location.href = "/";
+    await nextAuthSignOut({ callbackUrl: "/" });
   };
 
   if (loading) {
@@ -454,15 +444,9 @@ export default function Dashboard() {
       <header className="sticky top-0 z-50 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800">
         <div className="max-w-7xl mx-auto px-4">
           <div className="flex items-center gap-2 h-[52px]">
-            {/* Logo */}
-            <div className="flex items-center gap-2 mr-1 flex-shrink-0">
-              <div className="w-7 h-7 bg-indigo-600 rounded-lg flex items-center justify-center">
-                <Network className="w-3.5 h-3.5 text-white" />
-              </div>
-              <span className="text-sm font-semibold text-gray-900 dark:text-gray-100 hidden md:inline">
-                Amaedu
-              </span>
-            </div>
+            <span className="text-sm font-semibold text-gray-900 dark:text-gray-100 hidden md:inline">
+              6steps
+            </span>
 
             <div className="h-4 w-px bg-gray-200 dark:bg-gray-700 flex-shrink-0" />
 
@@ -473,7 +457,6 @@ export default function Dashboard() {
                   { key: "network", label: "Network", Icon: Network },
                   { key: "inbox", label: "Inbox", Icon: InboxIcon },
                   { key: "matches", label: "Matches", Icon: Heart },
-                  { key: "itineraries", label: "Itineraries", Icon: Map },
                 ] as const
               ).map(({ key, label, Icon }) => (
                 <button
@@ -553,7 +536,6 @@ export default function Dashboard() {
               onOpenUser={(u) =>
                 setSelectedConnectionUser({
                   id: u.id,
-                  username: "",
                   name: u.name || "",
                   preferred_name: u.preferred_name ?? null,
                   profile_image_url: u.profile_image_url ?? null,
@@ -569,7 +551,6 @@ export default function Dashboard() {
               onOpenProfile={(userId) => {
                 setSelectedConnectionUser({
                   id: userId,
-                  username: "",
                   name: "",
                   preferred_name: null,
                   profile_image_url: null,
@@ -582,12 +563,6 @@ export default function Dashboard() {
         {activeTab === "matches" && (
           <div key="matches" className="animate-fade-in flex-1 flex min-h-0">
             <MatchesList />
-          </div>
-        )}
-
-        {activeTab === "itineraries" && (
-          <div key="itineraries" className="animate-fade-in flex-1 relative">
-            <ItineraryPlanner />
           </div>
         )}
 
@@ -630,9 +605,6 @@ export default function Dashboard() {
                       <h1 className="text-2xl font-bold mb-1 text-gray-900 dark:text-gray-100">
                         {userProfile.preferred_name || userProfile.name}
                       </h1>
-                      <p className="text-sm text-gray-500 dark:text-gray-400 mb-3">
-                        @{userProfile.username}
-                      </p>
                       {userProfile.bio && (
                         <p className="text-sm text-gray-700 dark:text-gray-300 mb-4 max-w-2xl">
                           {userProfile.bio}
@@ -663,12 +635,6 @@ export default function Dashboard() {
                         value={editForm.preferred_name}
                         onChange={(e) => setEditForm({ ...editForm, preferred_name: e.target.value })}
                         placeholder="Preferred Name (optional)"
-                      />
-                      <Input
-                        label="Username"
-                        value={editForm.username}
-                        onChange={(e) => setEditForm({ ...editForm, username: e.target.value })}
-                        placeholder="username"
                       />
                       <Select
                         label="Gender"
@@ -873,7 +839,6 @@ export default function Dashboard() {
                 id: string;
                 blocked_id: string;
                 blocked_user: {
-                  username: string;
                   preferred_name: string | null;
                   name: string;
                   profile_image_url: string | null;
@@ -895,7 +860,6 @@ export default function Dashboard() {
                         onClick={() => {
                           setSelectedConnectionUser({
                             id: blockedData.blocked_id,
-                            username: blockedData.blocked_user.username || "",
                             name: blockedData.blocked_user.name,
                             preferred_name: blockedData.blocked_user.preferred_name,
                             profile_image_url: blockedData.blocked_user.profile_image_url,
@@ -933,7 +897,7 @@ export default function Dashboard() {
           <Input
             value={connectionsSearch}
             onChange={(e) => setConnectionsSearch(e.target.value)}
-            placeholder="Search by name or username..."
+            placeholder="Search by name..."
           />
           <div className="flex gap-2">
             {(
@@ -996,7 +960,6 @@ export default function Dashboard() {
                       <span className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
                         {u.preferred_name || u.name}
                       </span>
-                      <span className="text-xs text-gray-500 dark:text-gray-400">@{u.username}</span>
                       {u.connection_type && (
                         <Badge variant={connectionTypeBadge(u.connection_type)} />
                       )}

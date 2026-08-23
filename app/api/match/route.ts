@@ -52,7 +52,7 @@ export async function GET(request: Request) {
     .select()
     .from(matches)
     .where(or(eq(matches.user1Id, userId), eq(matches.user2Id, userId)));
-  const people = await db.select({ id: users.id, username: profiles.username, name: users.name, preferred_name: profiles.preferredName, profile_image_url: profiles.profileImageUrl }).from(users).leftJoin(profiles, eq(users.id, profiles.id));
+  const people = await db.select({ id: users.id, name: users.name, preferred_name: profiles.preferredName, profile_image_url: profiles.profileImageUrl }).from(users).leftJoin(profiles, eq(users.id, profiles.id));
   const byId = new Map(people.map((u) => [u.id, u]));
 
   return NextResponse.json(

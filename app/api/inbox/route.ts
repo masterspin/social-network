@@ -24,7 +24,6 @@ export async function GET(request: Request) {
   const usersRows = await db
     .select({
       id: users.id,
-      username: profiles.username,
       name: users.name,
       preferred_name: profiles.preferredName,
       profile_image_url: profiles.profileImageUrl,

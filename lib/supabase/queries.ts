@@ -39,7 +39,6 @@ function mapUserRow(row: Record<string, unknown>) {
     id: row.id as string,
     email: row.email as string | null,
     name: (row.name as string | null) ?? "",
-    username: (row.username as string | null) ?? "",
     preferred_name: (row.preferred_name as string | null) ?? null,
     gender: (row.gender as string | null) ?? null,
     bio: (row.bio as string | null) ?? null,
@@ -86,12 +85,6 @@ export async function updateUserProfile(userId: string, updates: Record<string, 
   const { db, eq, profiles } = await getServerDeps();
   const data = await db.update(profiles).set(updates as never).where(eq(profiles.id, userId)).returning();
   return { data: data[0] ?? null, error: null };
-}
-
-export async function checkUsernameAvailable(username: string) {
-  const { db, eq, profiles } = await getServerDeps();
-  const found = await db.select({ id: profiles.id }).from(profiles).where(eq(profiles.username, username)).limit(1);
-  return { available: found.length === 0, error: null };
 }
 
 export async function getUserSocialLinks(userId: string) {
@@ -246,11 +239,5 @@ export async function getAllUsers() {
   return { data: await db.select().from(users), error: null };
 }
 
-export async function getItineraryById(id: string) { const { db, eq, itineraries } = await getServerDeps(); return { data: (await db.select().from(itineraries).where(eq(itineraries.id, id)).limit(1))[0] ?? null, error: null }; }
-export async function getItineraryTravelers(itineraryId: string) { const { db, eq, itineraryTravelers } = await getServerDeps(); return { data: await db.select().from(itineraryTravelers).where(eq(itineraryTravelers.itineraryId, itineraryId)), error: null }; }
-export async function getItinerarySegments(itineraryId: string) { const { db, eq, itinerarySegments } = await getServerDeps(); return { data: await db.select().from(itinerarySegments).where(eq(itinerarySegments.itineraryId, itineraryId)), error: null }; }
-export async function getItineraryTasks(segmentId: string) { const { db, eq, itineraryTasks } = await getServerDeps(); return { data: await db.select().from(itineraryTasks).where(eq(itineraryTasks.segmentId, segmentId)), error: null }; }
-export async function getItineraryComments(itineraryId: string) { const { db, eq, itineraryComments } = await getServerDeps(); return { data: await db.select().from(itineraryComments).where(eq(itineraryComments.itineraryId, itineraryId)), error: null }; }
-export async function getItineraryInvitations(itineraryId: string) { const { db, eq, itineraryOwnerInvitations } = await getServerDeps(); return { data: await db.select().from(itineraryOwnerInvitations).where(eq(itineraryOwnerInvitations.itineraryId, itineraryId)), error: null }; }
 export async function getMatches() { const { db, matches } = await getServerDeps(); return { data: await db.select().from(matches), error: null }; }
 export async function getMatchChats(matchId: string) { const { db, asc, eq, matchChats } = await getServerDeps(); return { data: await db.select().from(matchChats).where(eq(matchChats.matchId, matchId)).orderBy(asc(matchChats.createdAt)), error: null }; }

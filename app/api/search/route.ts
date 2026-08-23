@@ -36,7 +36,6 @@ export async function GET(request: Request) {
     filters.push(
       or(
         ilike(users.name, `%${q}%`),
-        ilike(profiles.username, `%${q}%`),
         ilike(profiles.preferredName, `%${q}%`),
       ),
     );
@@ -48,7 +47,6 @@ export async function GET(request: Request) {
   const rows = await db
     .select({
       id: users.id,
-      username: profiles.username,
       name: users.name,
       preferred_name: profiles.preferredName,
       profile_image_url: profiles.profileImageUrl,

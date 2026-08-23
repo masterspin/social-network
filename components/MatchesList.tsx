@@ -16,14 +16,12 @@ type Match = {
   id: string;
   matchmaker: {
     id: string;
-    username: string;
     name: string;
     preferred_name: string | null;
     profile_image_url: string | null;
   };
   other_user: {
     id: string;
-    username: string;
     name: string;
     preferred_name: string | null;
     profile_image_url: string | null;

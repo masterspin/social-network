@@ -21,7 +21,6 @@ export async function GET(
         id: users.id,
         email: users.email,
         name: users.name,
-        username: profiles.username,
         preferred_name: profiles.preferredName,
         profile_image_url: profiles.profileImageUrl,
         bio: profiles.bio,

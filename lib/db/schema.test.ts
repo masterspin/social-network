@@ -8,7 +8,6 @@ describe("database schema", () => {
     expect(schema.sessions).toBeDefined();
     expect(schema.profiles).toBeDefined();
     expect(schema.connections).toBeDefined();
-    expect(schema.itineraries).toBeDefined();
     expect(schema.matchChats).toBeDefined();
   });
 });

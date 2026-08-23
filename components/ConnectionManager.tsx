@@ -10,7 +10,6 @@ import {
 
 type OpenUserHandler = (user: {
   id: string;
-  username: string;
   name: string;
   preferred_name: string | null;
   profile_image_url: string | null;
@@ -22,7 +21,6 @@ interface Props {
 
 type UserSearchResult = {
   id: string;
-  username: string;
   name: string;
   preferred_name: string | null;
   profile_image_url: string | null;
@@ -225,7 +223,7 @@ export default function ConnectionManager({ onOpenUser }: Props) {
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search by name or username..."
+            placeholder="Search by name..."
             className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600"
           />
           {searching && (
@@ -254,7 +252,6 @@ export default function ConnectionManager({ onOpenUser }: Props) {
                 onClick={() => {
                   onOpenUser?.({
                     id: user.id,
-                    username: user.username,
                     name: user.name,
                     preferred_name: user.preferred_name,
                     profile_image_url: user.profile_image_url,
@@ -264,9 +261,6 @@ export default function ConnectionManager({ onOpenUser }: Props) {
                 <div>
                   <p className="font-medium">
                     {user.preferred_name || user.name}
-                  </p>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">
-                    @{user.username}
                   </p>
                   {user.mutualCount !== undefined && user.mutualCount > 0 && (
                     <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">

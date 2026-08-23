@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Amaedu",
+  title: "6steps",
   description: "Your private social network",
 };
 

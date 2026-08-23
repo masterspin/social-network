@@ -79,7 +79,7 @@ export default function AddressAutocomplete({
         `&limit=5`,
         {
           headers: {
-            "User-Agent": "ItineraryPlanner/1.0",
+            "User-Agent": "SocialNetwork/1.0",
           },
         }
       );
