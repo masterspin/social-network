@@ -1,7 +1,8 @@
-import { and, eq, or } from "drizzle-orm";
+import { and, eq, inArray, or } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { blockedUsers, connections } from "@/lib/db/schema";
+import { mapBlockedUsers } from "@/lib/blocked-users";
+import { blockedUsers, connections, profiles, users } from "@/lib/db/schema";
 
 export async function GET(request: Request) {
   const blockerId = new URL(request.url).searchParams.get("blockerId");
@@ -19,7 +20,24 @@ export async function GET(request: Request) {
     .from(blockedUsers)
     .where(eq(blockedUsers.blockerId, blockerId));
 
-  return NextResponse.json({ data: rows }, { status: 200 });
+  const blockedIds = rows.map((row) => row.blocked_id);
+  const userRows = blockedIds.length
+    ? await db
+        .select({
+          id: users.id,
+          name: users.name,
+          preferred_name: profiles.preferredName,
+          profile_image_url: profiles.profileImageUrl,
+        })
+        .from(users)
+        .leftJoin(profiles, eq(users.id, profiles.id))
+        .where(inArray(users.id, blockedIds))
+    : [];
+
+  return NextResponse.json(
+    { data: mapBlockedUsers({ rows, users: userRows }) },
+    { status: 200 },
+  );
 }
 
 export async function POST(request: Request) {

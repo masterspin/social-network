@@ -29,11 +29,14 @@ import {
   FaSnapchat,
 } from "react-icons/fa";
 import {
+  Check,
   Network,
   Inbox as InboxIcon,
   User,
   Search,
   LogOut,
+  Pencil,
+  X,
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Avatar } from "@/components/ui/Avatar";
@@ -155,9 +158,13 @@ export default function Dashboard() {
   const [blockedUsers, setBlockedUsers] = useState<unknown[]>([]);
   const [loading, setLoading] = useState(true);
   const [isEditingProfile, setIsEditingProfile] = useState(false);
+  const [isEditingSocials, setIsEditingSocials] = useState(false);
   const [showConnectionsModal, setShowConnectionsModal] = useState(false);
   const [showSearchModal, setShowSearchModal] = useState(false);
   const [showBlockedModal, setShowBlockedModal] = useState(false);
+  const [profileSection, setProfileSection] = useState<"about" | "socials">(
+    "about",
+  );
   const [connectionsSearch, setConnectionsSearch] = useState("");
   const [connectionTypeFilter, setConnectionTypeFilter] = useState<
     "all" | "first" | "one_point_five"
@@ -650,337 +657,423 @@ export default function Dashboard() {
             key="profile"
             className="animate-fade-in max-w-7xl mx-auto px-4 py-8 w-full"
           >
-            {/* Hero Card */}
-            <Card className="mb-6">
-              <div className="flex flex-col md:flex-row items-start gap-6">
-                {/* Avatar */}
-                <div className="flex-shrink-0">
-                  {isEditingProfile ? (
-                    <div className="flex flex-col items-center gap-3">
-                      <Avatar
-                        name={editForm.name || "?"}
-                        imageUrl={editForm.profile_image_url || null}
-                        size="xl"
-                      />
-                      <Input
-                        value={editForm.profile_image_url}
-                        onChange={(e) =>
-                          setEditForm({
-                            ...editForm,
-                            profile_image_url: e.target.value,
-                          })
-                        }
-                        placeholder="Image URL (optional)"
-                        className="w-48 text-xs"
-                      />
-                    </div>
-                  ) : (
-                    <Avatar
-                      name={userProfile.preferred_name || userProfile.name}
-                      imageUrl={userProfile.profile_image_url}
-                      size="xl"
-                    />
-                  )}
-                </div>
-
-                {/* User Info */}
-                <div className="flex-1 min-w-0">
-                  {!isEditingProfile ? (
-                    <>
-                      <h1 className="text-2xl font-bold mb-1 text-gray-900 dark:text-gray-100">
-                        {userProfile.preferred_name || userProfile.name}
-                      </h1>
-                      {userProfile.bio && (
-                        <p className="text-sm text-gray-700 dark:text-gray-300 mb-4 max-w-2xl">
-                          {userProfile.bio}
-                        </p>
-                      )}
-                      <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
-                        {userProfile.email}
-                      </p>
-                      <button
-                        onClick={() => setShowConnectionsModal(true)}
-                        className="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 transition-colors hover:underline"
-                      >
-                        <span className="font-semibold">
-                          {connections.length}
-                        </span>{" "}
-                        {connections.length === 1
-                          ? "Connection"
-                          : "Connections"}
-                      </button>
-                    </>
-                  ) : (
-                    <div className="space-y-3">
-                      <Input
-                        label="Full Name"
-                        value={editForm.name}
-                        onChange={(e) =>
-                          setEditForm({ ...editForm, name: e.target.value })
-                        }
-                        placeholder="Full Name"
-                      />
-                      <Input
-                        label="Preferred Name"
-                        value={editForm.preferred_name}
-                        onChange={(e) =>
-                          setEditForm({
-                            ...editForm,
-                            preferred_name: e.target.value,
-                          })
-                        }
-                        placeholder="Preferred Name (optional)"
-                      />
-                      <div>
-                        <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
-                          Bio
-                        </label>
-                        <textarea
-                          value={editForm.bio}
-                          onChange={(e) =>
-                            setEditForm({ ...editForm, bio: e.target.value })
-                          }
-                          placeholder="A short bio..."
-                          rows={3}
-                          className="w-full px-3 py-2.5 text-sm rounded-lg resize-none bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                        />
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {/* Action Buttons */}
-                <div className="flex-shrink-0 flex flex-col gap-2">
-                  {!isEditingProfile ? (
-                    <Button
-                      variant="secondary"
-                      size="md"
-                      onClick={handleEditProfile}
-                    >
-                      Edit Profile
-                    </Button>
-                  ) : (
-                    <>
-                      <Button
-                        variant="primary"
-                        size="md"
-                        onClick={handleSaveProfile}
-                      >
-                        Save
-                      </Button>
-                      <Button
-                        variant="secondary"
-                        size="md"
-                        onClick={handleCancelEdit}
-                      >
-                        Cancel
-                      </Button>
-                    </>
-                  )}
+            <div className="space-y-6">
+              <div className="border-b border-gray-200 dark:border-gray-800">
+                <div className="flex items-center justify-center gap-8">
+                  <button
+                    type="button"
+                    onClick={() => setProfileSection("about")}
+                    className={[
+                      "border-b-2 px-1 pb-3 text-xs font-semibold uppercase tracking-[0.14em] transition-colors",
+                      profileSection === "about"
+                        ? "border-gray-900 text-gray-900 dark:border-gray-100 dark:text-gray-100"
+                        : "border-transparent text-gray-400 hover:text-gray-700 dark:text-gray-500 dark:hover:text-gray-300",
+                    ].join(" ")}
+                  >
+                    About
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setProfileSection("socials")}
+                    className={[
+                      "border-b-2 px-1 pb-3 text-xs font-semibold uppercase tracking-[0.14em] transition-colors",
+                      profileSection === "socials"
+                        ? "border-gray-900 text-gray-900 dark:border-gray-100 dark:text-gray-100"
+                        : "border-transparent text-gray-400 hover:text-gray-700 dark:text-gray-500 dark:hover:text-gray-300",
+                    ].join(" ")}
+                  >
+                    Socials
+                  </button>
                 </div>
               </div>
-            </Card>
 
-            <div className="space-y-6">
-              {/* Social Links Card */}
-              <Card>
-                <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-4">
-                  Socials
-                </h3>
+              {profileSection === "about" && (
+                <Card>
+                  <div className="flex flex-col md:flex-row items-start gap-6">
+                    {/* Avatar */}
+                    <div className="flex-shrink-0">
+                      {isEditingProfile ? (
+                        <div className="flex flex-col items-center gap-3">
+                          <Avatar
+                            name={editForm.name || "?"}
+                            imageUrl={editForm.profile_image_url || null}
+                            size="xl"
+                          />
+                          <Input
+                            value={editForm.profile_image_url}
+                            onChange={(e) =>
+                              setEditForm({
+                                ...editForm,
+                                profile_image_url: e.target.value,
+                              })
+                            }
+                            placeholder="Image URL (optional)"
+                            className="w-48 text-xs"
+                          />
+                        </div>
+                      ) : (
+                        <Avatar
+                          name={userProfile.preferred_name || userProfile.name}
+                          imageUrl={userProfile.profile_image_url}
+                          size="xl"
+                        />
+                      )}
+                    </div>
 
-                {!isEditingProfile ? (
-                  /* View mode: only show platforms that have links */
-                  socialLinks.length === 0 &&
-                  verifiedSocialRows.length === 0 ? (
-                    <p className="text-xs text-gray-400 dark:text-gray-500">
-                      No socials added yet.
-                    </p>
-                  ) : (
-                    <div className="space-y-2">
-                      {socialLinks.map((link) => {
-                        const config = SOCIAL_PLATFORMS[link.platform];
-                        const Icon = config?.icon;
-                        const verification = getVerification(link.platform);
-                        const canVerify =
-                          getSocialLinkEntryMode(link.platform) ===
-                          "verified-sign-in";
-                        const handle = link.url
-                          .replace(/^https?:\/\//, "")
-                          .replace(
-                            config?.baseUrl?.replace(/^https?:\/\//, "") || "",
-                            "",
-                          )
-                          .replace(config?.prefix || "", "")
-                          .replace(/^\//, "");
-                        return (
-                          <div
-                            key={link.id}
-                            className="flex items-center gap-3 px-3 py-2.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800"
+                    {/* User Info */}
+                    <div className="flex-1 min-w-0">
+                      {!isEditingProfile ? (
+                        <>
+                          <h1 className="text-2xl font-bold mb-1 text-gray-900 dark:text-gray-100">
+                            {userProfile.preferred_name || userProfile.name}
+                          </h1>
+                          {userProfile.bio && (
+                            <p className="text-sm text-gray-700 dark:text-gray-300 mb-4 max-w-2xl">
+                              {userProfile.bio}
+                            </p>
+                          )}
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
+                            {userProfile.email}
+                          </p>
+                          <button
+                            onClick={() => setShowConnectionsModal(true)}
+                            className="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 transition-colors hover:underline"
                           >
-                            {Icon && (
-                              <Icon
-                                className={`text-base flex-shrink-0 ${config.color}`}
-                              />
-                            )}
-                            <span className="text-sm text-gray-900 dark:text-gray-100 font-medium flex-shrink-0">
-                              {link.platform}
-                            </span>
-                            <a
-                              href={link.url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-xs text-gray-500 dark:text-gray-400 truncate flex-1 hover:text-indigo-600 dark:hover:text-indigo-400"
+                            <span className="font-semibold">
+                              {connections.length}
+                            </span>{" "}
+                            {connections.length === 1
+                              ? "Connection"
+                              : "Connections"}
+                          </button>
+                          {blockedUsers.length > 0 && (
+                            <button
+                              type="button"
+                              onClick={() => setShowBlockedModal(true)}
+                              className="mt-1 block text-xs text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 transition-colors hover:underline"
                             >
-                              {handle || link.url}
-                            </a>
-                            {verification ? (
-                              <span
-                                title={
-                                  verification.display_name ||
-                                  verification.provider_account_id
-                                }
-                                className="rounded-md bg-emerald-50 px-2 py-1 text-xs font-medium text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300"
-                              >
-                                Verified
-                              </span>
-                            ) : canVerify ? (
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  handleVerifySocial(link.platform)
-                                }
-                                className="rounded-md bg-indigo-600 px-2 py-1 text-xs font-medium text-white hover:bg-indigo-500"
-                              >
-                                Verify
-                              </button>
-                            ) : null}
+                              {blockedUsers.length} blocked
+                            </button>
+                          )}
+                        </>
+                      ) : (
+                        <div className="space-y-3">
+                          <Input
+                            label="Full Name"
+                            value={editForm.name}
+                            onChange={(e) =>
+                              setEditForm({
+                                ...editForm,
+                                name: e.target.value,
+                              })
+                            }
+                            placeholder="Full Name"
+                          />
+                          <Input
+                            label="Preferred Name"
+                            value={editForm.preferred_name}
+                            onChange={(e) =>
+                              setEditForm({
+                                ...editForm,
+                                preferred_name: e.target.value,
+                              })
+                            }
+                            placeholder="Preferred Name (optional)"
+                          />
+                          <div>
+                            <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
+                              Bio
+                            </label>
+                            <textarea
+                              value={editForm.bio}
+                              onChange={(e) =>
+                                setEditForm({
+                                  ...editForm,
+                                  bio: e.target.value,
+                                })
+                              }
+                              placeholder="A short bio..."
+                              rows={3}
+                              className="w-full px-3 py-2.5 text-sm rounded-lg resize-none bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                            />
                           </div>
-                        );
-                      })}
-                      {verifiedSocialRows.map((row) => {
-                        const config = SOCIAL_PLATFORMS[row.platform];
-                        const Icon = config?.icon;
+                        </div>
+                      )}
+                    </div>
 
-                        return (
-                          <div
-                            key={`verified-${row.platform}`}
-                            className="flex items-center gap-3 px-3 py-2.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800"
+                    {/* Action Buttons */}
+                    <div className="flex-shrink-0 flex flex-col gap-2">
+                      {!isEditingProfile ? (
+                        <button
+                          type="button"
+                          aria-label="Edit profile"
+                          title="Edit profile"
+                          onClick={handleEditProfile}
+                          className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-500 transition-colors hover:bg-gray-50 hover:text-gray-900 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-gray-100"
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </button>
+                      ) : (
+                        <>
+                          <button
+                            type="button"
+                            aria-label="Save profile"
+                            title="Save profile"
+                            onClick={handleSaveProfile}
+                            className="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-indigo-600 text-white transition-colors hover:bg-indigo-500"
                           >
-                            {Icon && (
-                              <Icon
-                                className={`text-base flex-shrink-0 ${config.color}`}
-                              />
-                            )}
-                            <span className="text-sm text-gray-900 dark:text-gray-100 font-medium flex-shrink-0">
-                              {row.platform}
-                            </span>
-                            {row.url ? (
+                            <Check className="h-4 w-4" />
+                          </button>
+                          <button
+                            type="button"
+                            aria-label="Cancel profile edit"
+                            title="Cancel profile edit"
+                            onClick={handleCancelEdit}
+                            className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-500 transition-colors hover:bg-gray-50 hover:text-gray-900 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-gray-100"
+                          >
+                            <X className="h-4 w-4" />
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                </Card>
+              )}
+
+              {profileSection === "socials" && (
+                <Card>
+                  <div className="mb-4 flex items-center justify-between gap-3">
+                    <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                      Socials
+                    </h3>
+                    {!isEditingSocials ? (
+                      <button
+                        type="button"
+                        aria-label="Edit socials"
+                        title="Edit socials"
+                        onClick={() => setIsEditingSocials(true)}
+                        className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-100"
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </button>
+                    ) : (
+                      <div className="flex items-center gap-1">
+                        <button
+                          type="button"
+                          aria-label="Save socials"
+                          title="Save socials"
+                          onClick={() => setIsEditingSocials(false)}
+                          className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-600 text-white transition-colors hover:bg-indigo-500"
+                        >
+                          <Check className="h-4 w-4" />
+                        </button>
+                        <button
+                          type="button"
+                          aria-label="Cancel socials edit"
+                          title="Cancel socials edit"
+                          onClick={() => setIsEditingSocials(false)}
+                          className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-100"
+                        >
+                          <X className="h-4 w-4" />
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  {!isEditingSocials ? (
+                    /* View mode: only show platforms that have links */
+                    socialLinks.length === 0 &&
+                    verifiedSocialRows.length === 0 ? (
+                      <p className="text-xs text-gray-400 dark:text-gray-500">
+                        No socials added yet.
+                      </p>
+                    ) : (
+                      <div className="space-y-2">
+                        {socialLinks.map((link) => {
+                          const config = SOCIAL_PLATFORMS[link.platform];
+                          const Icon = config?.icon;
+                          const verification = getVerification(link.platform);
+                          const canVerify =
+                            getSocialLinkEntryMode(link.platform) ===
+                            "verified-sign-in";
+                          const handle = link.url
+                            .replace(/^https?:\/\//, "")
+                            .replace(
+                              config?.baseUrl?.replace(/^https?:\/\//, "") ||
+                                "",
+                              "",
+                            )
+                            .replace(config?.prefix || "", "")
+                            .replace(/^\//, "");
+                          return (
+                            <div
+                              key={link.id}
+                              className="flex items-center gap-3 px-3 py-2.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800"
+                            >
+                              {Icon && (
+                                <Icon
+                                  className={`text-base flex-shrink-0 ${config.color}`}
+                                />
+                              )}
+                              <span className="text-sm text-gray-900 dark:text-gray-100 font-medium flex-shrink-0">
+                                {link.platform}
+                              </span>
                               <a
-                                href={row.url}
+                                href={link.url}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="text-xs text-gray-500 dark:text-gray-400 truncate flex-1 hover:text-indigo-600 dark:hover:text-indigo-400"
                               >
-                                {row.label}
+                                {handle || link.url}
                               </a>
-                            ) : (
-                              <span className="text-xs text-gray-500 dark:text-gray-400 truncate flex-1">
-                                {row.label}
+                              {verification ? (
+                                <span
+                                  title={
+                                    verification.display_name ||
+                                    verification.provider_account_id
+                                  }
+                                  className="rounded-md bg-emerald-50 px-2 py-1 text-xs font-medium text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300"
+                                >
+                                  Verified
+                                </span>
+                              ) : canVerify ? (
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    handleVerifySocial(link.platform)
+                                  }
+                                  className="rounded-md bg-indigo-600 px-2 py-1 text-xs font-medium text-white hover:bg-indigo-500"
+                                >
+                                  Verify
+                                </button>
+                              ) : null}
+                            </div>
+                          );
+                        })}
+                        {verifiedSocialRows.map((row) => {
+                          const config = SOCIAL_PLATFORMS[row.platform];
+                          const Icon = config?.icon;
+
+                          return (
+                            <div
+                              key={`verified-${row.platform}`}
+                              className="flex items-center gap-3 px-3 py-2.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800"
+                            >
+                              {Icon && (
+                                <Icon
+                                  className={`text-base flex-shrink-0 ${config.color}`}
+                                />
+                              )}
+                              <span className="text-sm text-gray-900 dark:text-gray-100 font-medium flex-shrink-0">
+                                {row.platform}
                               </span>
-                            )}
-                            <span className="rounded-md bg-emerald-50 px-2 py-1 text-xs font-medium text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300">
-                              Verified
-                            </span>
+                              {row.url ? (
+                                <a
+                                  href={row.url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-xs text-gray-500 dark:text-gray-400 truncate flex-1 hover:text-indigo-600 dark:hover:text-indigo-400"
+                                >
+                                  {row.label}
+                                </a>
+                              ) : (
+                                <span className="text-xs text-gray-500 dark:text-gray-400 truncate flex-1">
+                                  {row.label}
+                                </span>
+                              )}
+                              <span className="rounded-md bg-emerald-50 px-2 py-1 text-xs font-medium text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300">
+                                Verified
+                              </span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )
+                  ) : (
+                    <div className="space-y-3">
+                      {Object.entries(SOCIAL_PLATFORMS).map(([key, config]) => {
+                        const Icon = config.icon;
+                        const existingLink = socialLinks.find(
+                          (l) => l.platform === key,
+                        );
+                        const verification = getVerification(key);
+                        const isSignInOnly =
+                          getSocialLinkEntryMode(key) === "verified-sign-in";
+
+                        if (isSignInOnly) {
+                          return (
+                            <div
+                              key={key}
+                              className="flex items-center gap-3 rounded-lg border border-gray-200 bg-white px-3 py-2.5 dark:border-gray-700 dark:bg-gray-800"
+                            >
+                              <Icon
+                                className={`text-base flex-shrink-0 w-5 ${config.color}`}
+                              />
+                              <div className="min-w-0 flex-1">
+                                <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                                  {config.name}
+                                </p>
+                                <p className="truncate text-xs text-gray-500 dark:text-gray-400">
+                                  {verification
+                                    ? verification.display_name ||
+                                      verification.provider_account_id
+                                    : "Verify by signing in"}
+                                </p>
+                              </div>
+                              {verification ? (
+                                <span className="rounded-md bg-emerald-50 px-2 py-1 text-xs font-medium text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300">
+                                  Verified
+                                </span>
+                              ) : (
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  onClick={() => handleVerifySocial(key)}
+                                >
+                                  Sign in
+                                </Button>
+                              )}
+                            </div>
+                          );
+                        }
+
+                        return (
+                          <div key={key} className="flex items-center gap-3">
+                            <Icon
+                              className={`text-base flex-shrink-0 w-5 ${config.color}`}
+                            />
+                            <div className="flex-1 flex items-center border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 focus-within:ring-2 focus-within:ring-indigo-500 focus-within:border-transparent overflow-hidden">
+                              <span className="px-3 py-2.5 text-xs text-gray-400 dark:text-gray-500 border-r border-gray-200 dark:border-gray-700 whitespace-nowrap flex-shrink-0">
+                                {config.prefix}
+                              </span>
+                              <input
+                                type="text"
+                                value={socialInputs[key] || ""}
+                                onChange={(e) =>
+                                  setSocialInputs({
+                                    ...socialInputs,
+                                    [key]: e.target.value,
+                                  })
+                                }
+                                onBlur={(e) => {
+                                  const value = e.target.value.trim();
+                                  if (value) {
+                                    handleAddSocialLink(key, value);
+                                  } else if (existingLink) {
+                                    handleDeleteSocialLink(existingLink.id);
+                                  }
+                                }}
+                                placeholder={config.placeholder || "username"}
+                                className="flex-1 px-3 py-2.5 text-sm bg-transparent border-0 focus:outline-none focus:ring-0 text-gray-900 dark:text-gray-100"
+                              />
+                            </div>
                           </div>
                         );
                       })}
                     </div>
-                  )
-                ) : (
-                  /* Edit mode: show typed inputs or provider sign-in */
-                  <div className="space-y-3">
-                    {Object.entries(SOCIAL_PLATFORMS).map(([key, config]) => {
-                      const Icon = config.icon;
-                      const existingLink = socialLinks.find(
-                        (l) => l.platform === key,
-                      );
-                      const verification = getVerification(key);
-                      const isSignInOnly =
-                        getSocialLinkEntryMode(key) === "verified-sign-in";
-
-                      if (isSignInOnly) {
-                        return (
-                          <div
-                            key={key}
-                            className="flex items-center gap-3 rounded-lg border border-gray-200 bg-white px-3 py-2.5 dark:border-gray-700 dark:bg-gray-800"
-                          >
-                            <Icon
-                              className={`text-base flex-shrink-0 w-5 ${config.color}`}
-                            />
-                            <div className="min-w-0 flex-1">
-                              <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                                {config.name}
-                              </p>
-                              <p className="truncate text-xs text-gray-500 dark:text-gray-400">
-                                {verification
-                                  ? verification.display_name ||
-                                    verification.provider_account_id
-                                  : "Verify by signing in"}
-                              </p>
-                            </div>
-                            {verification ? (
-                              <span className="rounded-md bg-emerald-50 px-2 py-1 text-xs font-medium text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300">
-                                Verified
-                              </span>
-                            ) : (
-                              <Button
-                                type="button"
-                                size="sm"
-                                onClick={() => handleVerifySocial(key)}
-                              >
-                                Sign in
-                              </Button>
-                            )}
-                          </div>
-                        );
-                      }
-
-                      return (
-                        <div key={key} className="flex items-center gap-3">
-                          <Icon
-                            className={`text-base flex-shrink-0 w-5 ${config.color}`}
-                          />
-                          <div className="flex-1 flex items-center border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 focus-within:ring-2 focus-within:ring-indigo-500 focus-within:border-transparent overflow-hidden">
-                            <span className="px-3 py-2.5 text-xs text-gray-400 dark:text-gray-500 border-r border-gray-200 dark:border-gray-700 whitespace-nowrap flex-shrink-0">
-                              {config.prefix}
-                            </span>
-                            <input
-                              type="text"
-                              value={socialInputs[key] || ""}
-                              onChange={(e) =>
-                                setSocialInputs({
-                                  ...socialInputs,
-                                  [key]: e.target.value,
-                                })
-                              }
-                              onBlur={(e) => {
-                                const value = e.target.value.trim();
-                                if (value) {
-                                  handleAddSocialLink(key, value);
-                                } else if (existingLink) {
-                                  handleDeleteSocialLink(existingLink.id);
-                                }
-                              }}
-                              placeholder={config.placeholder || "username"}
-                              className="flex-1 px-3 py-2.5 text-sm bg-transparent border-0 focus:outline-none focus:ring-0 text-gray-900 dark:text-gray-100"
-                            />
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </Card>
+                  )}
+                </Card>
+              )}
             </div>
           </div>
         )}
