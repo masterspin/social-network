@@ -572,11 +572,8 @@ export default function UserProfileSidePanel({
     if (isMe) return null;
 
     return (
-      <div className="rounded-lg border border-gray-200 bg-white p-3 dark:border-gray-700 dark:bg-gray-800/50">
+      <div>
         <div className="flex items-center justify-between gap-3">
-          <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
-            Shortest path
-          </div>
           <Button
             size="sm"
             variant="secondary"
