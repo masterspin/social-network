@@ -51,6 +51,13 @@ type SocialVerification = {
   display_name: string | null;
   profile_url: string | null;
 };
+type PrivateConnectionNote = {
+  id: string;
+  connection_id: string;
+  user_id: string;
+  description: string | null;
+  year: string | null;
+};
 type ConnectionRow = Database["public"]["Tables"]["connections"]["Row"] & {
   requester: {
     id: string;
@@ -170,9 +177,13 @@ export default function UserProfileSidePanel({
   const [isBlocked, setIsBlocked] = useState(false);
   const [blockBusy, setBlockBusy] = useState(false);
   const [changingType, setChangingType] = useState(false);
+  const [noteBusy, setNoteBusy] = useState(false);
 
   const [description, setDescription] = useState("");
   const [year, setYear] = useState("");
+  const [privateNote, setPrivateNote] = useState<PrivateConnectionNote | null>(
+    null,
+  );
   const [connectionType, setConnectionType] = useState<
     "first" | "one_point_five"
   >("first");
@@ -180,22 +191,6 @@ export default function UserProfileSidePanel({
   const [sidebarSection, setSidebarSection] = useState<
     "connection" | "socials"
   >("connection");
-
-  function formatHowMet(desc: string, y?: string) {
-    const base = (desc || "").trim();
-    const yy = (y || "").trim();
-    if (yy && /^\d{4}$/.test(yy)) return `${base} (Year: ${yy})`;
-    return base;
-  }
-  function parseYearFromHowMet(how_met?: string | null) {
-    if (!how_met) return "";
-    const m = how_met.match(/\(\s*Year:\s*(\d{4})\s*\)\s*$/i);
-    return m ? m[1] : "";
-  }
-  function stripYearFromHowMet(how_met?: string | null) {
-    if (!how_met) return "";
-    return how_met.replace(/\s*\(\s*Year:\s*\d{4}\s*\)\s*$/i, "").trim();
-  }
 
   useEffect(() => {
     if (!open) return;
@@ -231,6 +226,13 @@ export default function UserProfileSidePanel({
         setLinks(pj?.data?.links || []);
         setSocialVerifications(pj?.data?.verifications || []);
         setConnection(cj?.data || null);
+        if (cj?.data?.id) {
+          await loadPrivateNote(cj.data.id);
+        } else {
+          setPrivateNote(null);
+          setDescription("");
+          setYear("");
+        }
         if (currentUserId !== userId) {
           const { isBlocked } = await isUserBlocked(currentUserId, userId);
           setIsBlocked(!!isBlocked);
@@ -243,6 +245,7 @@ export default function UserProfileSidePanel({
         setLinks([]);
         setSocialVerifications([]);
         setConnection(null);
+        setPrivateNote(null);
       } finally {
         setLoading(false);
       }
@@ -256,23 +259,65 @@ export default function UserProfileSidePanel({
     if (res.ok) {
       const j = (await res.json()) as { data: ConnectionRow | null };
       setConnection(j.data || null);
+      if (j.data?.id) await loadPrivateNote(j.data.id);
+    }
+  }
+
+  async function loadPrivateNote(connectionId: string) {
+    const res = await fetch(
+      `/api/connection-notes?connectionId=${encodeURIComponent(connectionId)}&userId=${encodeURIComponent(currentUserId)}`,
+    );
+    if (!res.ok) return;
+    const payload = (await res.json()) as {
+      data: PrivateConnectionNote | null;
+    };
+    setPrivateNote(payload.data);
+    setDescription(payload.data?.description || "");
+    setYear(payload.data?.year || "");
+  }
+
+  async function saveConnectionNote(connectionId = connection?.id) {
+    if (!connectionId) return;
+    if (year && !/^\d{4}$/.test(year)) {
+      setError("Year must be a 4-digit number.");
+      return;
+    }
+    setNoteBusy(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/connection-notes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          connectionId,
+          userId: currentUserId,
+          description,
+          year,
+        }),
+      });
+      const payload = (await res.json()) as {
+        data?: PrivateConnectionNote | null;
+        error?: { message?: string };
+      };
+      if (!res.ok) throw new Error(payload.error?.message || "Failed to save");
+      setPrivateNote(payload.data || null);
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setNoteBusy(false);
     }
   }
 
   async function sendRequest() {
     setError(null);
-    if (!description.trim()) {
-      setError("Connection description is required.");
-      return;
-    }
     if (year && !/^\d{4}$/.test(year)) {
       setError("Year must be a 4-digit number.");
       return;
     }
-    const { error: e } = await createConnectionRequest({
+    const { data, error: e } = await createConnectionRequest({
       requester_id: currentUserId,
       recipient_id: userId,
-      how_met: formatHowMet(description, year),
+      how_met: "Private note",
       connection_type: connectionType,
       status: "pending",
     });
@@ -280,6 +325,8 @@ export default function UserProfileSidePanel({
       setError(e.message);
       return;
     }
+    const connectionId = (data as { id?: string } | null)?.id;
+    if (connectionId) await saveConnectionNote(connectionId);
     setDescription("");
     setYear("");
     setConnectionType("first");
@@ -324,12 +371,7 @@ export default function UserProfileSidePanel({
 
   async function amendPending(id: string) {
     setError(null);
-    if (year && !/^\d{4}$/.test(year)) {
-      setError("Year must be a 4-digit number.");
-      return;
-    }
     const { error: e } = await updateConnectionRequestDetails(id, {
-      how_met: formatHowMet(description || "", year),
       connection_type: connectionType,
     });
     if (e) {
@@ -813,15 +855,31 @@ export default function UserProfileSidePanel({
                             </div>
                           )}
 
-                          <p className="text-sm text-gray-700 dark:text-gray-300">
-                            {stripYearFromHowMet(connection.how_met)}
-                            {parseYearFromHowMet(connection.how_met) && (
-                              <span className="text-gray-500">
-                                {" "}
-                                · {parseYearFromHowMet(connection.how_met)}
-                              </span>
-                            )}
-                          </p>
+                          <div className="space-y-3 rounded-lg border border-gray-200 bg-white p-3 dark:border-gray-700 dark:bg-gray-800/50">
+                            <div className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                              Private note
+                            </div>
+                            <Input
+                              label="Description"
+                              value={description}
+                              onChange={(e) => setDescription(e.target.value)}
+                              placeholder="How you know them"
+                            />
+                            <Input
+                              label="Year (optional)"
+                              value={year}
+                              onChange={(e) => setYear(e.target.value)}
+                              placeholder="e.g., 2023"
+                            />
+                            <Button
+                              size="sm"
+                              variant="secondary"
+                              onClick={() => saveConnectionNote()}
+                              disabled={noteBusy}
+                            >
+                              Save note
+                            </Button>
+                          </div>
 
                           {/* Manage connection type */}
                           {!connection.upgrade_requested_type && (
@@ -887,11 +945,34 @@ export default function UserProfileSidePanel({
                                   — awaiting response
                                 </span>
                               </div>
-                              <div className="text-sm text-gray-700 dark:text-gray-300">
-                                <span className="text-gray-500">
-                                  Description:{" "}
-                                </span>
-                                {stripYearFromHowMet(connection.how_met) || "—"}
+                              <div className="space-y-3 rounded-lg border border-gray-200 bg-white p-3 dark:border-gray-700 dark:bg-gray-800/50">
+                                <div className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                                  Private note
+                                </div>
+                                <Input
+                                  label="Description"
+                                  value={description}
+                                  onChange={(e) =>
+                                    setDescription(e.target.value)
+                                  }
+                                  placeholder="How you know them"
+                                />
+                                <Input
+                                  label="Year (optional)"
+                                  value={year}
+                                  onChange={(e) => setYear(e.target.value)}
+                                  placeholder="e.g., 2023"
+                                />
+                                <Button
+                                  size="sm"
+                                  variant="secondary"
+                                  onClick={() =>
+                                    saveConnectionNote(connection.id)
+                                  }
+                                  disabled={noteBusy}
+                                >
+                                  Save note
+                                </Button>
                               </div>
 
                               {amendMode ? (
@@ -914,20 +995,6 @@ export default function UserProfileSidePanel({
                                       Weak (acquaintance, coworker, schoolmate)
                                     </option>
                                   </Select>
-                                  <Input
-                                    label="Description"
-                                    value={description}
-                                    onChange={(e) =>
-                                      setDescription(e.target.value)
-                                    }
-                                    placeholder="How you met and relationship"
-                                  />
-                                  <Input
-                                    label="Year (optional)"
-                                    value={year}
-                                    onChange={(e) => setYear(e.target.value)}
-                                    placeholder="e.g., 2023"
-                                  />
                                   <div className="flex gap-2">
                                     <Button
                                       size="sm"
@@ -966,12 +1033,6 @@ export default function UserProfileSidePanel({
                                     variant="ghost"
                                     className="flex-1"
                                     onClick={() => {
-                                      setDescription(
-                                        stripYearFromHowMet(connection.how_met),
-                                      );
-                                      setYear(
-                                        parseYearFromHowMet(connection.how_met),
-                                      );
                                       setConnectionType(
                                         (connection.connection_type ||
                                           "first") as
@@ -981,7 +1042,7 @@ export default function UserProfileSidePanel({
                                       setAmendMode(true);
                                     }}
                                   >
-                                    Amend
+                                    Change type
                                   </Button>
                                 </div>
                               )}

@@ -52,7 +52,7 @@ export async function POST(request: Request) {
       // Update the existing reverse, remove the original
       const [up] = await db
         .update(connections)
-        .set({ howMet, connectionType: typeToUse, status: "pending" })
+        .set({ howMet: how_met, connectionType: typeToUse, status: "pending" })
         .where(eq(connections.id, existingReverse.id))
         .returning();
       await db.delete(connections).where(eq(connections.id, conn.id));
@@ -64,7 +64,7 @@ export async function POST(request: Request) {
       .set({
         requesterId: currentUserId,
         recipientId: otherId,
-        howMet,
+        howMet: how_met,
         connectionType: typeToUse,
         status: "pending",
       })

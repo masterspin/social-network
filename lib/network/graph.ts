@@ -22,6 +22,10 @@ export type NetworkGraphInput = {
   links: NetworkGraphLink[];
 };
 
+export function graphEdgeKey(source: string, target: string) {
+  return [source, target].sort().join("__");
+}
+
 export function buildNetworkGraph(input: NetworkGraphInput) {
   const graph = new Graph({ multi: false, type: "undirected" });
 
@@ -31,7 +35,12 @@ export function buildNetworkGraph(input: NetworkGraphInput) {
 
   for (const link of input.links) {
     if (!graph.hasNode(link.source) || !graph.hasNode(link.target)) continue;
-    graph.mergeEdge(link.source, link.target, link);
+    graph.mergeEdgeWithKey(
+      graphEdgeKey(link.source, link.target),
+      link.source,
+      link.target,
+      link,
+    );
   }
 
   return graph;
@@ -50,9 +59,22 @@ export function getPathEdgeKeys(graph: Graph, path: string[]): Set<string> {
   const edgeKeys = new Set<string>();
 
   for (let i = 0; i < path.length - 1; i++) {
+    if (!graph.hasNode(path[i]) || !graph.hasNode(path[i + 1])) continue;
     const edge = graph.edge(path[i], path[i + 1]);
     if (edge) edgeKeys.add(edge);
   }
 
   return edgeKeys;
+}
+
+export function isEdgeOnPath(
+  graph: Graph,
+  edge: string,
+  pathEdgeKeys: Set<string>,
+  pathPairs: Set<string>,
+) {
+  if (!graph.hasEdge(edge)) return false;
+
+  const [source, target] = graph.extremities(edge);
+  return pathEdgeKeys.has(edge) || pathPairs.has(graphEdgeKey(source, target));
 }

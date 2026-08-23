@@ -26,7 +26,7 @@ export async function GET(request: Request) {
     {
       data: rows.map((row) => ({
         id: row.id,
-        how_met: row.howMet,
+        how_met: "",
         status: row.status,
         requester: byId.get(row.requesterId) ?? null,
         recipient: byId.get(row.recipientId) ?? null,

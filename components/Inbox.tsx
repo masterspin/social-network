@@ -38,25 +38,6 @@ type ConnectionRow = Database["public"]["Tables"]["connections"]["Row"] & {
   };
 };
 
-// Encode optional year inside how_met: "description (Year: YYYY)"
-function formatHowMet(description: string, year?: string) {
-  const base = (description || "").trim();
-  const y = (year || "").trim();
-  if (y && /^\d{4}$/.test(y)) return `${base} (Year: ${y})`;
-  return base;
-}
-
-function parseYearFromHowMet(how_met: string | null | undefined): string {
-  if (!how_met) return "";
-  const m = how_met.match(/\(\s*Year:\s*(\d{4})\s*\)\s*$/i);
-  return m ? m[1] : "";
-}
-
-function stripYearFromHowMet(how_met: string | null | undefined): string {
-  if (!how_met) return "";
-  return how_met.replace(/\s*\(\s*Year:\s*\d{4}\s*\)\s*$/i, "").trim();
-}
-
 type InboxProps = {
   onOpenProfile?: (userId: string) => void;
 };
@@ -143,8 +124,8 @@ export default function Inbox({ onOpenProfile }: InboxProps = {}) {
     setFormValues((prev) => ({
       ...prev,
       [conn.id]: {
-        description: stripYearFromHowMet(conn.how_met),
-        year: parseYearFromHowMet(conn.how_met),
+        description: "",
+        year: "",
         connectionType: (conn.connection_type || "first") as
           | "first"
           | "one_point_five",
@@ -157,8 +138,8 @@ export default function Inbox({ onOpenProfile }: InboxProps = {}) {
     setFormValues((prev) => ({
       ...prev,
       [conn.id]: {
-        description: stripYearFromHowMet(conn.how_met),
-        year: parseYearFromHowMet(conn.how_met),
+        description: "",
+        year: "",
         connectionType: (conn.connection_type || "first") as
           | "first"
           | "one_point_five",
@@ -180,12 +161,7 @@ export default function Inbox({ onOpenProfile }: InboxProps = {}) {
   async function saveAmendSent(conn: ConnectionRow) {
     const vals = formValues[conn.id];
     if (!vals) return;
-    if (vals.year && !/^\d{4}$/.test(vals.year)) {
-      toast("Year must be a 4-digit number.", "error");
-      return;
-    }
     const { error } = await updateConnectionRequestDetails(conn.id, {
-      how_met: formatHowMet(vals.description, vals.year),
       connection_type: vals.connectionType,
     });
     if (error) {
@@ -230,10 +206,6 @@ export default function Inbox({ onOpenProfile }: InboxProps = {}) {
   async function amendReceived(conn: ConnectionRow) {
     const vals = formValues[conn.id];
     if (!vals || !currentUserId) return;
-    if (vals.year && !/^\d{4}$/.test(vals.year)) {
-      toast("Year must be a 4-digit number.", "error");
-      return;
-    }
     try {
       const res = await fetch("/api/connections/counter", {
         method: "POST",
@@ -241,7 +213,7 @@ export default function Inbox({ onOpenProfile }: InboxProps = {}) {
         body: JSON.stringify({
           connectionId: conn.id,
           currentUserId,
-          how_met: formatHowMet(vals.description, vals.year),
+          how_met: "Private note",
           connection_type: vals.connectionType,
         }),
       });
@@ -394,12 +366,6 @@ export default function Inbox({ onOpenProfile }: InboxProps = {}) {
                                 }
                               />
                             </div>
-                            <p className="text-xs text-gray-500 mt-0.5">
-                              {stripYearFromHowMet(conn.how_met)}
-                              {parseYearFromHowMet(conn.how_met)
-                                ? ` · ${parseYearFromHowMet(conn.how_met)}`
-                                : ""}
-                            </p>
                           </div>
                           <div className="flex gap-2 flex-shrink-0">
                             <Button
@@ -448,26 +414,6 @@ export default function Inbox({ onOpenProfile }: InboxProps = {}) {
                                 Weak (acquaintance, coworker, schoolmate)
                               </option>
                             </Select>
-                            <Input
-                              label="Description"
-                              value={formValues[conn.id]?.description || ""}
-                              onChange={(e) =>
-                                changeField(
-                                  conn.id,
-                                  "description",
-                                  e.target.value,
-                                )
-                              }
-                              placeholder="How you met and relationship"
-                            />
-                            <Input
-                              label="Year (optional)"
-                              value={formValues[conn.id]?.year || ""}
-                              onChange={(e) =>
-                                changeField(conn.id, "year", e.target.value)
-                              }
-                              placeholder="e.g., 2023"
-                            />
                             <div className="flex gap-2">
                               <Button
                                 size="sm"
@@ -596,12 +542,6 @@ export default function Inbox({ onOpenProfile }: InboxProps = {}) {
                                 }
                               />
                             </div>
-                            <p className="text-xs text-gray-500 mt-0.5">
-                              {stripYearFromHowMet(conn.how_met)}
-                              {parseYearFromHowMet(conn.how_met)
-                                ? ` · ${parseYearFromHowMet(conn.how_met)}`
-                                : ""}
-                            </p>
                           </div>
                           <div className="flex gap-2 flex-shrink-0">
                             <Button
@@ -643,26 +583,6 @@ export default function Inbox({ onOpenProfile }: InboxProps = {}) {
                                 Weak (acquaintance, coworker, schoolmate)
                               </option>
                             </Select>
-                            <Input
-                              label="Description"
-                              value={formValues[conn.id]?.description || ""}
-                              onChange={(e) =>
-                                changeField(
-                                  conn.id,
-                                  "description",
-                                  e.target.value,
-                                )
-                              }
-                              placeholder="How you met and relationship"
-                            />
-                            <Input
-                              label="Year (optional)"
-                              value={formValues[conn.id]?.year || ""}
-                              onChange={(e) =>
-                                changeField(conn.id, "year", e.target.value)
-                              }
-                              placeholder="e.g., 2023"
-                            />
                             <div className="flex gap-2">
                               <Button
                                 size="sm"

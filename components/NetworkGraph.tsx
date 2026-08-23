@@ -8,17 +8,22 @@ import {
   useRegisterEvents,
   useSigma,
 } from "@react-sigma/core";
-import forceAtlas2 from "graphology-layout-forceatlas2";
-import { type NodeLabelDrawingFunction, type NodeHoverDrawingFunction } from "sigma/rendering";
+import {
+  type NodeHoverDrawingFunction,
+  type NodeLabelDrawingFunction,
+} from "sigma/rendering";
 import { Crosshair } from "lucide-react";
 import { getCurrentUser, getUserProfile } from "@/lib/supabase/queries";
 import {
   buildNetworkGraph,
+  graphEdgeKey,
   getPathEdgeKeys,
   getShortestPath,
+  isEdgeOnPath,
   type NetworkGraphLink,
   type NetworkGraphNode,
 } from "@/lib/network/graph";
+import { layoutCompactNetworkNodes } from "@/lib/network/compact-layout";
 import { Spinner } from "@/components/ui/Spinner";
 
 type NodeData = {
@@ -57,6 +62,8 @@ const COLOR = {
   path: "#f97316",
 };
 
+const NODE_SIZE = 9;
+
 function nodeColor(node: NodeData) {
   if (node.distance === 0) return COLOR.me;
   if (node.connection_type === "pending" || node.path_type === "pending") {
@@ -75,10 +82,6 @@ function nodeColor(node: NodeData) {
 function displayName(node?: NodeData | null) {
   if (!node) return "";
   return node.preferred_name || node.name || "Unknown";
-}
-
-function graphKey(source: string, target: string) {
-  return [source, target].sort().join("__");
 }
 
 const drawNodeLabelBelow: NodeLabelDrawingFunction = (context, data) => {
@@ -111,16 +114,16 @@ const drawNodeHoverGlow: NodeHoverDrawingFunction = (context, data) => {
 
 function createGraph(data: GraphData) {
   const graphInput = {
-    nodes: data.nodes.map<NetworkGraphNode>((node, index) => ({
-      ...node,
-      id: node.id,
-      type: "circle",
-      label: displayName(node),
-      color: nodeColor(node),
-      size: node.distance === 0 ? 13 : 8,
-      x: Math.cos((index / Math.max(data.nodes.length, 1)) * Math.PI * 2),
-      y: Math.sin((index / Math.max(data.nodes.length, 1)) * Math.PI * 2),
-    })),
+    nodes: layoutCompactNetworkNodes(
+      data.nodes.map<NetworkGraphNode>((node) => ({
+        ...node,
+        id: node.id,
+        type: "circle",
+        label: node.distance === 0 ? "You" : displayName(node),
+        color: nodeColor(node),
+        size: NODE_SIZE,
+      })),
+    ),
     links: data.links.map<NetworkGraphLink>((link) => ({
       ...link,
       source: link.source,
@@ -129,18 +132,7 @@ function createGraph(data: GraphData) {
       size: 1,
     })),
   };
-  const graph = buildNetworkGraph(graphInput);
-  forceAtlas2.assign(graph, {
-    iterations: Math.min(250, Math.max(80, data.nodes.length * 12)),
-    settings: {
-      barnesHutOptimize: data.nodes.length > 100,
-      gravity: 0.45,
-      scalingRatio: 12,
-      slowDown: 8,
-    },
-  });
-
-  return graph;
+  return buildNetworkGraph(graphInput);
 }
 
 function GraphEvents({
@@ -163,24 +155,26 @@ function GraphEvents({
   const sigma = useSigma();
   const loadGraph = useLoadGraph();
   const registerEvents = useRegisterEvents();
-  const { gotoNode } = useCamera({ duration: 450 });
+  const { goto } = useCamera({ duration: 450 });
 
   const graph = useMemo(() => createGraph(graphData), [graphData]);
 
   useEffect(() => {
     loadGraph(graph);
-  }, [graph, loadGraph]);
+  }, [goto, graph, loadGraph]);
 
   useEffect(() => {
     const pathNodeIds = new Set(selectedPath);
     const pathEdgeKeys = getPathEdgeKeys(graph, selectedPath);
     const pathPairs = new Set(
       selectedPath.slice(0, -1).map((source, index) => {
-        return graphKey(source, selectedPath[index + 1]);
+        return graphEdgeKey(source, selectedPath[index + 1]);
       }),
     );
 
     sigma.setSetting("nodeReducer", (node, data) => {
+      if (!graph.hasNode(node)) return data;
+
       const isSelected = pathNodeIds.has(node);
       const muted = selectedPath.length > 0 && !isSelected;
       return {
@@ -193,9 +187,7 @@ function GraphEvents({
     });
 
     sigma.setSetting("edgeReducer", (edge, data) => {
-      const extremities = graph.extremities(edge);
-      const onPath =
-        pathEdgeKeys.has(edge) || pathPairs.has(graphKey(extremities[0], extremities[1]));
+      const onPath = isEdgeOnPath(graph, edge, pathEdgeKeys, pathPairs);
       const muted = selectedPath.length > 0 && !onPath;
       return {
         ...data,
@@ -211,10 +203,16 @@ function GraphEvents({
   useEffect(() => {
     registerEvents({
       clickNode: ({ node }) => {
+        if (!graph.hasNode(node)) return;
+
         const selected = graphData.nodes.find((candidate) => candidate.id === node);
         onSelectNode(selected || null);
 
-        if (currentUserId && node !== currentUserId) {
+        if (
+          currentUserId &&
+          node !== currentUserId &&
+          graph.hasNode(currentUserId)
+        ) {
           onPath(getShortestPath(graph, currentUserId, node));
         } else {
           onPath([]);
@@ -246,9 +244,19 @@ function GraphEvents({
 
   useEffect(() => {
     if (currentUserId && graph.hasNode(currentUserId)) {
-      requestAnimationFrame(() => gotoNode(currentUserId));
+      requestAnimationFrame(() => {
+        const nodeDisplayData = sigma.getNodeDisplayData(currentUserId);
+        if (!nodeDisplayData) return;
+        goto(
+          {
+            x: nodeDisplayData.x,
+            y: nodeDisplayData.y,
+          },
+          { duration: 450 },
+        );
+      });
     }
-  }, [centerNonce, currentUserId, gotoNode, graph]);
+  }, [centerNonce, currentUserId, goto, graph, sigma]);
 
   return null;
 }
@@ -348,7 +356,7 @@ export default function NetworkGraph({
             });
           }
 
-          const key = graphKey(item.id, other.id);
+          const key = graphEdgeKey(item.id, other.id);
           if (!links.has(key)) {
             links.set(key, {
               source: item.id,

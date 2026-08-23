@@ -142,6 +142,28 @@ export const connections = pgTable(
   ],
 );
 
+export const connectionNotes = pgTable(
+  "connection_notes",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    connectionId: uuid("connection_id")
+      .notNull()
+      .references(() => connections.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    description: text("description"),
+    year: text("year"),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
+  },
+  (table) => [
+    unique().on(table.connectionId, table.userId),
+    index("connection_notes_user_id_idx").on(table.userId),
+    index("connection_notes_connection_id_idx").on(table.connectionId),
+  ],
+);
+
 export const blockedUsers = pgTable(
   "blocked_users",
   {

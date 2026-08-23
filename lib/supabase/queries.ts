@@ -270,13 +270,23 @@ export async function getNetworkData(userId: string) {
       error: null,
     };
   }
-  const { db, eq, connections } = await getServerDeps();
+  const { db, eq, connections, connectionNotes } = await getServerDeps();
   const current = await getUserProfile(userId);
   const accepted = await db.select().from(connections).where(eq(connections.status, "accepted"));
+  const notes = await db.select().from(connectionNotes).where(eq(connectionNotes.userId, userId));
+  const noteByConnectionId = new Map(notes.map((note) => [note.connectionId, note]));
   return {
     data: {
       nodes: current.data ? [current.data] : [],
-      edges: accepted.map((c) => ({ source: c.requesterId, target: c.recipientId, label: c.howMet, how_met: c.howMet })),
+      edges: accepted.map((c) => {
+        const note = noteByConnectionId.get(c.id);
+        return {
+          source: c.requesterId,
+          target: c.recipientId,
+          label: note?.description || "",
+          how_met: note?.description || "",
+        };
+      }),
     },
     error: null,
   };

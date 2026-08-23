@@ -1,14 +1,14 @@
 import { NextResponse } from "next/server";
 import { and, asc, eq, inArray, or } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { connections, profiles, users } from "@/lib/db/schema";
+import { connectionNotes, connections, profiles, users } from "@/lib/db/schema";
 
 // Returns the list of a user's accepted, direct connections with mutual counts.
 // Response shape:
 // {
 //   data: Array<{
 //     id: string;               // connection row id
-//     how_met: string;          // description
+//     how_met: string;          // current user's private note description
 //     other_user: {             // the person you're connected to
 //       id: string;
 //       name: string;
@@ -67,14 +67,29 @@ export async function GET(request: Request) {
       .where(inArray(users.id, neighborIds))
       .orderBy(asc(users.name));
     const userById = new Map(userRows.map((u) => [u.id, u]));
+    const noteRows = await db
+      .select()
+      .from(connectionNotes)
+      .where(eq(connectionNotes.userId, userId));
+    const noteByConnectionId = new Map(
+      noteRows.map((note) => [note.connectionId, note]),
+    );
     const result = accepted.map((c) => {
       const otherId = c.requesterId === userId ? c.recipientId : c.requesterId;
       const other = userById.get(otherId) || null;
+      const note = noteByConnectionId.get(c.id);
       let mutual = 0;
       adjacency.get(otherId)?.forEach((x) => {
         if (x !== userId && x !== otherId && mySet.has(x)) mutual += 1;
       });
-      return { id: c.id, how_met: c.howMet, status: c.status, connection_type: c.connectionType, other_user: other, mutualCount: mutual };
+      return {
+        id: c.id,
+        how_met: note?.description || "",
+        status: c.status,
+        connection_type: c.connectionType,
+        other_user: other,
+        mutualCount: mutual,
+      };
     });
 
     return NextResponse.json({ data: result }, { status: 200 });
