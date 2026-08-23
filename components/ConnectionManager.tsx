@@ -90,7 +90,7 @@ export default function ConnectionManager({
 
   const loadPendingRequests = async (userId: string) => {
     const { data } = await getPendingConnectionRequests(userId);
-    if (data) setPendingRequests(data);
+    if (data) setPendingRequests(data as PendingRequest[]);
   };
 
   const handleSearch = useCallback(async () => {
@@ -132,7 +132,7 @@ export default function ConnectionManager({
     const { error } = await updateConnectionStatus(requestId, "accepted");
 
     if (error) {
-      setMessage({ type: "error", text: error.message });
+      setMessage({ type: "error", text: (error as Error).message });
     } else {
       setMessage({ type: "success", text: "Connection accepted!" });
       if (currentUserId) loadPendingRequests(currentUserId);
@@ -145,7 +145,7 @@ export default function ConnectionManager({
     const { error } = await updateConnectionStatus(requestId, "rejected");
 
     if (error) {
-      setMessage({ type: "error", text: error.message });
+      setMessage({ type: "error", text: (error as Error).message });
     } else {
       setMessage({ type: "success", text: "Connection rejected." });
       if (currentUserId) loadPendingRequests(currentUserId);

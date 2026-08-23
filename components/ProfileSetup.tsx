@@ -24,6 +24,12 @@ import {
 import { Database } from "@/types/supabase";
 
 type SocialLink = Database["public"]["Tables"]["social_links"]["Row"];
+type ExistingProfile = Pick<
+  Database["public"]["Tables"]["users"]["Row"],
+  "id" | "name" | "preferred_name" | "gender" | "bio" | "profile_image_url"
+> & {
+  email?: string | null;
+};
 
 interface PlatformConfig {
   name: string;
@@ -95,7 +101,7 @@ const SOCIAL_PLATFORMS: Record<string, PlatformConfig> = {
 
 interface ProfileSetupProps {
   isEdit?: boolean;
-  existingProfile?: Database["public"]["Tables"]["users"]["Row"];
+  existingProfile?: ExistingProfile;
 }
 
 export default function ProfileSetup({
@@ -135,7 +141,7 @@ export default function ProfileSetup({
     if (!existingProfile) return;
     const { data } = await getUserSocialLinks(existingProfile.id);
     if (data) {
-      setSocialLinks(data);
+      setSocialLinks(data as SocialLink[]);
       // Pre-populate socialInputs with existing links
       const inputs: Record<string, string> = {};
       (data as SocialLink[]).forEach((link) => {
@@ -172,7 +178,7 @@ export default function ProfileSetup({
   const handleRemoveSocialLink = async (linkId: string) => {
     const { error } = await deleteSocialLink(linkId);
     if (error) {
-      setError(error.message);
+      setError((error as Error).message);
     } else {
       setSocialLinks(socialLinks.filter((link) => link.id !== linkId));
     }

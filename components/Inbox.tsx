@@ -176,7 +176,7 @@ export default function Inbox({
       connection_type: vals.connectionType,
     });
     if (error) {
-      toast(error.message, "error");
+      toast((error as Error).message, "error");
       return;
     }
     setEditingSent(null);
@@ -188,7 +188,7 @@ export default function Inbox({
   async function cancelSent(conn: ConnectionRow) {
     const { error } = await deleteConnection(conn.id);
     if (error) {
-      toast(error.message, "error");
+      toast((error as Error).message, "error");
       return;
     }
     if (currentUserId) await refresh(currentUserId);
@@ -199,7 +199,7 @@ export default function Inbox({
   async function acceptReceived(conn: ConnectionRow) {
     const { error } = await updateConnectionStatus(conn.id, "accepted");
     if (error) {
-      toast(error.message, "error");
+      toast((error as Error).message, "error");
       return;
     }
     if (currentUserId) await refresh(currentUserId);
@@ -211,7 +211,7 @@ export default function Inbox({
   async function rejectReceived(conn: ConnectionRow) {
     const { error } = await updateConnectionStatus(conn.id, "rejected");
     if (error) {
-      toast(error.message, "error");
+      toast((error as Error).message, "error");
       return;
     }
     if (currentUserId) await refresh(currentUserId);
@@ -323,7 +323,7 @@ export default function Inbox({
                             onClick={async () => {
                               const { error } =
                                 await acceptConnectionTypeUpgrade(conn.id);
-                              if (error) toast(error.message, "error");
+                              if (error) toast((error as Error).message, "error");
                               else {
                                 toast("Upgrade accepted!");
                                 if (currentUserId) await refresh(currentUserId);
@@ -339,7 +339,7 @@ export default function Inbox({
                             onClick={async () => {
                               const { error } =
                                 await rejectConnectionTypeUpgrade(conn.id);
-                              if (error) toast(error.message, "error");
+                              if (error) toast((error as Error).message, "error");
                               else {
                                 toast("Upgrade declined");
                                 if (currentUserId) await refresh(currentUserId);
@@ -514,7 +514,7 @@ export default function Inbox({
                           onClick={async () => {
                             const { error } =
                               await cancelConnectionTypeUpgradeRequest(conn.id);
-                            if (error) toast(error.message, "error");
+                            if (error) toast((error as Error).message, "error");
                             else {
                               toast("Upgrade request cancelled");
                               if (currentUserId) await refresh(currentUserId);
