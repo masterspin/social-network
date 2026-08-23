@@ -13,8 +13,12 @@ import {
   acceptConnectionTypeUpgrade,
   rejectConnectionTypeUpgrade,
   removeConnection,
-} from "@/lib/supabase/queries";
-import type { Database } from "@/types/supabase";
+} from "@/lib/api/queries";
+import type {
+  ConnectionRow as BaseConnectionRow,
+  SocialLinkRow,
+  UserRow,
+} from "@/types/db";
 import {
   FaInstagram,
   FaTwitter,
@@ -53,8 +57,7 @@ type Props = {
   refreshNonce?: number;
 };
 
-type UserRow = Database["public"]["Tables"]["users"]["Row"];
-type SocialLink = Database["public"]["Tables"]["social_links"]["Row"];
+type SocialLink = SocialLinkRow;
 type SocialVerification = {
   provider: string;
   provider_account_id: string;
@@ -79,7 +82,7 @@ type ShortestPathLink = {
   target: string;
   connection_type?: string | null;
 };
-type ConnectionRow = Database["public"]["Tables"]["connections"]["Row"] & {
+type ConnectionRow = BaseConnectionRow & {
   requester: {
     id: string;
     name: string;

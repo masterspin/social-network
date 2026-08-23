@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { getCurrentUser, getUserProfile } from "@/lib/supabase/queries";
+import { getCurrentUser, getUserProfile } from "@/lib/api/queries";
 import AuthForm from "@/components/AuthForm";
 import Dashboard from "@/components/Dashboard";
 

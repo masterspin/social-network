@@ -38,7 +38,6 @@ function mapUserRow(row: Record<string, unknown>) {
     email: row.email as string | null,
     name: (row.name as string | null) ?? "",
     preferred_name: (row.preferred_name as string | null) ?? null,
-    gender: (row.gender as string | null) ?? null,
     bio: (row.bio as string | null) ?? null,
     profile_image_url: (row.profile_image_url as string | null) ?? null,
     created_at: row.created_at as string | null,

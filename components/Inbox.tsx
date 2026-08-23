@@ -9,7 +9,7 @@ import {
   acceptConnectionTypeUpgrade,
   rejectConnectionTypeUpgrade,
   cancelConnectionTypeUpgradeRequest,
-} from "@/lib/supabase/queries";
+} from "@/lib/api/queries";
 import { Button } from "@/components/ui/Button";
 import { Avatar } from "@/components/ui/Avatar";
 import { Badge } from "@/components/ui/Badge";
@@ -21,9 +21,9 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { useToast } from "@/components/ui/Toast";
 import { Inbox as InboxIcon } from "lucide-react";
 
-import type { Database } from "@/types/supabase";
+import type { ConnectionRow as BaseConnectionRow } from "@/types/db";
 
-type ConnectionRow = Database["public"]["Tables"]["connections"]["Row"] & {
+type ConnectionRow = BaseConnectionRow & {
   requester: {
     id: string;
     name: string;

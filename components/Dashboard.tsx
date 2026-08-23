@@ -14,8 +14,8 @@ import {
   deleteSocialLink,
   getBlockedUsers,
   unblockUser,
-} from "@/lib/supabase/queries";
-import { Database } from "@/types/supabase";
+} from "@/lib/api/queries";
+import type { SocialLinkRow, UserRow } from "@/types/db";
 import ConnectionManager from "./ConnectionManager";
 import UserProfileSidePanel from "./UserProfileSidePanel";
 import Inbox from "./Inbox";
@@ -62,8 +62,8 @@ const NetworkGraph = dynamic(() => import("./NetworkGraph"), {
   ),
 });
 
-type UserProfile = Database["public"]["Tables"]["users"]["Row"];
-type SocialLink = Database["public"]["Tables"]["social_links"]["Row"];
+type UserProfile = UserRow;
+type SocialLink = SocialLinkRow;
 type SocialVerification = {
   provider: string;
   provider_account_id: string;
@@ -1302,7 +1302,7 @@ export default function Dashboard() {
           {filteredConnectionUsers.length === 0 ? (
             <p className="text-sm text-gray-500 dark:text-gray-400 py-8 text-center">
               {connectionsSearch.trim()
-                ? "No matches found"
+                ? "No users found"
                 : "No connections yet"}
             </p>
           ) : (

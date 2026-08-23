@@ -20,13 +20,13 @@ import {
   addSocialLink,
   deleteSocialLink,
   getUserSocialLinks,
-} from "@/lib/supabase/queries";
-import { Database } from "@/types/supabase";
+} from "@/lib/api/queries";
+import type { SocialLinkRow, UserRow } from "@/types/db";
 
-type SocialLink = Database["public"]["Tables"]["social_links"]["Row"];
+type SocialLink = SocialLinkRow;
 type ExistingProfile = Pick<
-  Database["public"]["Tables"]["users"]["Row"],
-  "id" | "name" | "preferred_name" | "gender" | "bio" | "profile_image_url"
+  UserRow,
+  "id" | "name" | "preferred_name" | "bio" | "profile_image_url"
 > & {
   email?: string | null;
 };
@@ -118,7 +118,6 @@ export default function ProfileSetup({
   const [preferredName, setPreferredName] = useState(
     existingProfile?.preferred_name || ""
   );
-  const [gender, setGender] = useState(existingProfile?.gender || "");
   const [bio, setBio] = useState(existingProfile?.bio || "");
   const [profileImageUrl, setProfileImageUrl] = useState(
     existingProfile?.profile_image_url || ""
@@ -233,7 +232,6 @@ export default function ProfileSetup({
       email: authUser.email || "",
       name,
       preferred_name: preferredName || null,
-      gender: gender || null,
       bio: bio || null,
       profile_image_url: profileImageUrl || null,
     };
@@ -397,18 +395,6 @@ export default function ProfileSetup({
                 </div>
               </div>
 
-              {/* Gender */}
-              {gender && (
-                <div className="bg-white dark:bg-gray-800 p-3 rounded-lg">
-                  <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">
-                    Gender
-                  </div>
-                  <div className="font-medium text-gray-900 dark:text-gray-100">
-                    {gender}
-                  </div>
-                </div>
-              )}
-
               {/* Bio */}
               {bio && (
                 <div className="md:col-span-2 bg-white dark:bg-gray-800 p-3 rounded-lg">
@@ -522,23 +508,6 @@ export default function ProfileSetup({
                   type="text"
                   value={preferredName}
                   onChange={(e) => setPreferredName(e.target.value)}
-                  className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600"
-                />
-              </div>
-
-              <div>
-                <label
-                  htmlFor="gender"
-                  className="block text-sm font-medium mb-2"
-                >
-                  Gender (optional)
-                </label>
-                <input
-                  id="gender"
-                  type="text"
-                  value={gender}
-                  onChange={(e) => setGender(e.target.value)}
-                  placeholder="e.g., Male, Female, Non-binary, Prefer not to say"
                   className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600"
                 />
               </div>
@@ -803,23 +772,6 @@ export default function ProfileSetup({
                 </p>
 
                 <div className="space-y-4">
-                  <div>
-                    <label
-                      htmlFor="gender"
-                      className="block text-sm font-medium mb-2"
-                    >
-                      Gender (optional)
-                    </label>
-                    <input
-                      id="gender"
-                      type="text"
-                      value={gender}
-                      onChange={(e) => setGender(e.target.value)}
-                      placeholder="e.g., Male, Female, Non-binary, Prefer not to say"
-                      className="w-full px-4 py-3 text-lg border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-gray-500 focus:border-transparent bg-white dark:bg-gray-700 transition-all"
-                    />
-                  </div>
-
                   <div>
                     <label
                       htmlFor="bio"

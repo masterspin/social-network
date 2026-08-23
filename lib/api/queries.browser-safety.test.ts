@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 
 describe("browser query safety", () => {
   it("guards server database imports from browser-callable query functions", () => {
-    const source = readFileSync("lib/supabase/queries.ts", "utf8");
+    const source = readFileSync("lib/api/queries.ts", "utf8");
     const functions = source
       .split(/\nexport async function /)
       .slice(1)

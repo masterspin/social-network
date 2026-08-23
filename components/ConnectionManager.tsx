@@ -5,7 +5,7 @@ import {
   getPendingConnectionRequests,
   updateConnectionStatus,
   getCurrentUser,
-} from "@/lib/supabase/queries";
+} from "@/lib/api/queries";
 import { Avatar } from "@/components/ui/Avatar";
 
 type OpenUserHandler = (user: {

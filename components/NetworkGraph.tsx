@@ -13,7 +13,7 @@ import {
   type NodeLabelDrawingFunction,
 } from "sigma/rendering";
 import { Crosshair } from "lucide-react";
-import { getCurrentUser, getUserProfile } from "@/lib/supabase/queries";
+import { getCurrentUser, getUserProfile } from "@/lib/api/queries";
 import {
   buildNetworkGraph,
   graphEdgeKey,

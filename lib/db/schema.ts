@@ -76,7 +76,6 @@ export const profiles = pgTable("profiles", {
     .primaryKey()
     .references(() => users.id, { onDelete: "cascade" }),
   preferredName: text("preferred_name"),
-  gender: text("gender"),
   bio: text("bio"),
   profileImageUrl: text("profile_image_url"),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),

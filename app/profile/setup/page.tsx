@@ -2,14 +2,13 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { getCurrentUser, getUserProfile } from "@/lib/supabase/queries";
+import { getCurrentUser, getUserProfile } from "@/lib/api/queries";
 import ProfileSetup from "@/components/ProfileSetup";
 type UserProfile = {
   id: string;
   email: string | null;
   name: string;
   preferred_name: string | null;
-  gender: string | null;
   bio: string | null;
   profile_image_url: string | null;
 };

@@ -26,7 +26,6 @@ export async function GET(
         preferred_name: profiles.preferredName,
         profile_image_url: profiles.profileImageUrl,
         bio: profiles.bio,
-        gender: profiles.gender,
         created_at: profiles.createdAt,
         updated_at: profiles.updatedAt,
       })
@@ -113,7 +112,6 @@ export async function PATCH(
         preferred_name: profiles.preferredName,
         profile_image_url: profiles.profileImageUrl,
         bio: profiles.bio,
-        gender: profiles.gender,
         created_at: profiles.createdAt,
         updated_at: profiles.updatedAt,
       })
