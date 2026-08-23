@@ -23,7 +23,10 @@ import {
   type NetworkGraphLink,
   type NetworkGraphNode,
 } from "@/lib/network/graph";
-import { layoutCompactNetworkNodes } from "@/lib/network/compact-layout";
+import {
+  layoutCompactNetworkNodes,
+  layoutPathNetworkNodes,
+} from "@/lib/network/compact-layout";
 import { Spinner } from "@/components/ui/Spinner";
 
 type NodeData = {
@@ -34,6 +37,7 @@ type NodeData = {
   distance?: number;
   connection_type?: string;
   path_type?: "first" | "one_point_five" | "pending";
+  parent_id?: string;
 };
 
 type LinkData = {
@@ -44,6 +48,23 @@ type LinkData = {
 };
 
 type GraphData = { nodes: NodeData[]; links: LinkData[] };
+
+type WeightedPathData = {
+  nodeIds: string[];
+  nodes: PathFilter["nodes"];
+  links: PathFilter["links"];
+};
+
+type ShortestPathResponse = {
+  data?: {
+    nodeIds?: string[];
+    path?: PathFilter["nodes"] | null;
+    links?: PathFilter["links"];
+  };
+  error?: {
+    message?: string;
+  };
+};
 
 type PathFilter = {
   nodes: Array<{
@@ -112,6 +133,42 @@ function displayName(node?: NodeData | null) {
   return node.preferred_name || node.name || "Unknown";
 }
 
+function orderPathNodes(pathFilter: PathFilter, currentUserId: string | null) {
+  if (!currentUserId) return pathFilter.nodes;
+
+  const nodesById = new Map(pathFilter.nodes.map((node) => [node.id, node]));
+  const linksByNode = new Map<string, string[]>();
+
+  for (const link of pathFilter.links) {
+    if (!linksByNode.has(link.source)) linksByNode.set(link.source, []);
+    if (!linksByNode.has(link.target)) linksByNode.set(link.target, []);
+    linksByNode.get(link.source)!.push(link.target);
+    linksByNode.get(link.target)!.push(link.source);
+  }
+
+  const ordered = [];
+  const visited = new Set<string>();
+  let previousId: string | null = null;
+  let nodeId: string | null = currentUserId;
+
+  while (nodeId && nodesById.has(nodeId) && !visited.has(nodeId)) {
+    ordered.push(nodesById.get(nodeId)!);
+    visited.add(nodeId);
+    const nextId: string | null =
+      linksByNode.get(nodeId)?.find((candidate) => {
+        return candidate !== previousId && !visited.has(candidate);
+      }) ?? null;
+    previousId = nodeId;
+    nodeId = nextId;
+  }
+
+  for (const node of pathFilter.nodes) {
+    if (!visited.has(node.id)) ordered.push(node);
+  }
+
+  return ordered;
+}
+
 async function fetchAcceptedConnections(userId: string) {
   const res = await fetch(
     `/api/connections/accepted?userId=${encodeURIComponent(userId)}`,
@@ -120,6 +177,23 @@ async function fetchAcceptedConnections(userId: string) {
 
   const json = await res.json();
   return (json.data || []) as AcceptedConnectionRow[];
+}
+
+async function fetchWeightedShortestPath(source: string, target: string) {
+  const res = await fetch(
+    `/api/network/shortest-path?source=${encodeURIComponent(source)}&target=${encodeURIComponent(target)}`,
+  );
+  const payload = (await res.json().catch(() => ({}))) as ShortestPathResponse;
+  if (!res.ok) throw new Error(payload.error?.message || "Failed to find path");
+
+  const nodes = payload.data?.path ?? [];
+  const nodeIds = payload.data?.nodeIds ?? nodes.map((node) => node.id);
+
+  return {
+    nodeIds,
+    nodes,
+    links: payload.data?.links ?? [],
+  };
 }
 
 function mergeConnectionRows(
@@ -154,6 +228,7 @@ function mergeConnectionRows(
         distance: nextDistance,
         connection_type: connectionType,
         path_type: pathType,
+        parent_id: sourceNode.id,
       });
     }
 
@@ -199,18 +274,19 @@ const drawNodeHoverGlow: NodeHoverDrawingFunction = (context, data) => {
   context.restore();
 };
 
-function createGraph(data: GraphData) {
+function createGraph(data: GraphData, pathLayout = false, currentUserId?: string | null) {
+  const nodes = data.nodes.map<NetworkGraphNode>((node) => ({
+    ...node,
+    id: node.id,
+    type: "circle",
+    label: node.distance === 0 ? "You" : displayName(node),
+    color: nodeColor(node),
+    size: NODE_SIZE,
+  }));
   const graphInput = {
-    nodes: layoutCompactNetworkNodes(
-      data.nodes.map<NetworkGraphNode>((node) => ({
-        ...node,
-        id: node.id,
-        type: "circle",
-        label: node.distance === 0 ? "You" : displayName(node),
-        color: nodeColor(node),
-        size: NODE_SIZE,
-      })),
-    ),
+    nodes: pathLayout
+      ? layoutPathNetworkNodes(nodes, currentUserId)
+      : layoutCompactNetworkNodes(nodes),
     links: data.links.map<NetworkGraphLink>((link) => ({
       ...link,
       source: link.source,
@@ -227,7 +303,9 @@ function GraphEvents({
   currentUserId,
   selectedPath,
   centerNonce,
+  pathLayout,
   onPath,
+  onWeightedPath,
   onOpenUser,
   onSelectNode,
 }: {
@@ -235,7 +313,9 @@ function GraphEvents({
   currentUserId: string | null;
   selectedPath: string[];
   centerNonce: number;
+  pathLayout?: boolean;
   onPath: (path: string[]) => void;
+  onWeightedPath?: (path: WeightedPathData) => void;
   onOpenUser?: OpenUser;
   onSelectNode: (node: NodeData | null) => void;
 }) {
@@ -244,7 +324,10 @@ function GraphEvents({
   const registerEvents = useRegisterEvents();
   const { goto } = useCamera({ duration: 450 });
 
-  const graph = useMemo(() => createGraph(graphData), [graphData]);
+  const graph = useMemo(
+    () => createGraph(graphData, pathLayout, currentUserId),
+    [currentUserId, graphData, pathLayout],
+  );
 
   useEffect(() => {
     loadGraph(graph);
@@ -300,7 +383,19 @@ function GraphEvents({
           node !== currentUserId &&
           graph.hasNode(currentUserId)
         ) {
-          onPath(getShortestPath(graph, currentUserId, node));
+          void fetchWeightedShortestPath(currentUserId, node)
+            .then((path) => {
+              if (path.nodeIds.length > 0) {
+                onWeightedPath?.(path);
+                onPath(path.nodeIds);
+                return;
+              }
+
+              onPath(getShortestPath(graph, currentUserId, node));
+            })
+            .catch(() => {
+              onPath(getShortestPath(graph, currentUserId, node));
+            });
         } else {
           onPath([]);
         }
@@ -325,6 +420,7 @@ function GraphEvents({
     graphData.nodes,
     onOpenUser,
     onPath,
+    onWeightedPath,
     onSelectNode,
     registerEvents,
   ]);
@@ -367,49 +463,69 @@ export default function NetworkGraph({
   const [graphError, setGraphError] = useState<string | null>(null);
   const [expandedUserIds, setExpandedUserIds] = useState<string[]>([]);
   const [expandingUserId, setExpandingUserId] = useState<string | null>(null);
-  const filteredGraphData = useMemo<GraphData | null>(() => {
-    if (!pathFilter) return null;
-    const existingNodes = new Map(graphData.nodes.map((node) => [node.id, node]));
-
-    return {
-      nodes: pathFilter.nodes.map((node, index) => {
-        const existingNode = existingNodes.get(node.id);
-        const previousNodeId = pathFilter.nodes[index - 1]?.id;
-        const incomingLink = pathFilter.links.find(
-          (link) =>
-            (link.source === previousNodeId && link.target === node.id) ||
-            (link.target === previousNodeId && link.source === node.id),
+  const mergeWeightedPath = useCallback(
+    (path: WeightedPathData) => {
+      setGraphData((current) => {
+        const nodes = new Map(current.nodes.map((node) => [node.id, node]));
+        const links = new Map(
+          current.links.map((link) => [graphEdgeKey(link.source, link.target), link]),
         );
-        const pathType =
-          incomingLink?.connection_type === "one_point_five"
-            ? "one_point_five"
-            : "first";
 
-        return {
-          id: node.id,
-          name: node.name,
-          preferred_name: node.preferred_name,
-          profile_image_url: node.profile_image_url,
-          distance:
-            existingNode?.distance ?? (node.id === currentUserId ? 0 : 1),
-          connection_type:
-            existingNode?.connection_type ??
-            (node.id === currentUserId ? undefined : pathType),
-          path_type:
-            existingNode?.path_type ??
-            (node.id === currentUserId ? "first" : pathType),
-        };
-      }),
-      links: pathFilter.links.map((link) => ({
-        source: link.source,
-        target: link.target,
-        how_met: "",
-        connection_type: link.connection_type || "first",
-      })),
-    };
-  }, [currentUserId, graphData.nodes, pathFilter]);
-  const displayedGraphData = filteredGraphData ?? graphData;
-  const displayedSelectedPath = filteredGraphData ? [] : selectedPath;
+        path.nodes.forEach((node, index) => {
+          if (nodes.has(node.id)) return;
+          const previousNodeId = path.nodeIds[index - 1];
+          const incomingLink = path.links.find((link) => {
+            return (
+              (link.source === previousNodeId && link.target === node.id) ||
+              (link.target === previousNodeId && link.source === node.id)
+            );
+          });
+          const pathType =
+            incomingLink?.connection_type === "one_point_five"
+              ? "one_point_five"
+              : "first";
+
+          nodes.set(node.id, {
+            id: node.id,
+            name: node.name,
+            preferred_name: node.preferred_name,
+            profile_image_url: node.profile_image_url,
+            distance: node.id === currentUserId ? 0 : index,
+            connection_type: node.id === currentUserId ? undefined : pathType,
+            path_type: node.id === currentUserId ? "first" : pathType,
+            parent_id: previousNodeId,
+          });
+        });
+
+        path.links.forEach((link) => {
+          const key = graphEdgeKey(link.source, link.target);
+          if (links.has(key)) return;
+          links.set(key, {
+            source: link.source,
+            target: link.target,
+            how_met: "",
+            connection_type: link.connection_type || "first",
+          });
+        });
+
+        return { nodes: [...nodes.values()], links: [...links.values()] };
+      });
+    },
+    [currentUserId],
+  );
+
+  useEffect(() => {
+    if (!pathFilter) return;
+    const orderedPathNodes = orderPathNodes(pathFilter, currentUserId);
+    const nodeIds = orderedPathNodes.map((node) => node.id);
+
+    mergeWeightedPath({
+      nodeIds,
+      nodes: orderedPathNodes,
+      links: pathFilter.links,
+    });
+    setSelectedPath(nodeIds);
+  }, [currentUserId, mergeWeightedPath, pathFilter]);
 
   const expandUserConnections = useCallback(
     async (userId: string) => {
@@ -483,7 +599,6 @@ export default function NetworkGraph({
 
   useEffect(() => {
     if (
-      filteredGraphData ||
       loading ||
       expandingUserId ||
       graphData.nodes.length === 0
@@ -508,7 +623,6 @@ export default function NetworkGraph({
     expandedUserIds,
     expandUserConnections,
     expandingUserId,
-    filteredGraphData,
     graphData.nodes,
     loading,
   ]);
@@ -563,11 +677,13 @@ export default function NetworkGraph({
         }}
       >
         <GraphEvents
-          graphData={displayedGraphData}
+          graphData={graphData}
           currentUserId={currentUserId}
-          selectedPath={displayedSelectedPath}
+          selectedPath={selectedPath}
           centerNonce={centerNonce}
+          pathLayout={false}
           onPath={setSelectedPath}
+          onWeightedPath={mergeWeightedPath}
           onOpenUser={onOpenUser}
           onSelectNode={() => {}}
         />
@@ -604,7 +720,7 @@ export default function NetworkGraph({
       `}</style>
 
       <div className="absolute right-4 top-4 z-40 flex gap-2">
-        {filteredGraphData && (
+        {selectedPath.length > 0 && (
           <button
             type="button"
             onClick={() => {
