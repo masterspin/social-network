@@ -43,6 +43,13 @@
       "when": 1787504400000,
       "tag": "0005_add_connection_notes",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1787508000000,
+      "tag": "0006_add_connection_upgrade_requests",
+      "breakpoints": true
     }
   ]
 }

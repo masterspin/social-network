@@ -132,6 +132,10 @@ export const connections = pgTable(
     howMet: text("how_met").notNull(),
     status: connectionStatus("status").default("pending"),
     connectionType: connectionType("connection_type").default("first"),
+    upgradeRequestedType: connectionType("upgrade_requested_type"),
+    upgradeRequestedBy: uuid("upgrade_requested_by").references(() => users.id, {
+      onDelete: "set null",
+    }),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
   },

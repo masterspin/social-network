@@ -39,10 +39,16 @@ type ConnectionRow = Database["public"]["Tables"]["connections"]["Row"] & {
 };
 
 type InboxProps = {
+  onChanged?: () => void;
   onOpenProfile?: (userId: string) => void;
+  refreshNonce?: number;
 };
 
-export default function Inbox({ onOpenProfile }: InboxProps = {}) {
+export default function Inbox({
+  onChanged,
+  onOpenProfile,
+  refreshNonce = 0,
+}: InboxProps = {}) {
   const { toast } = useToast();
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [received, setReceived] = useState<ConnectionRow[]>([]);
@@ -119,6 +125,11 @@ export default function Inbox({ onOpenProfile }: InboxProps = {}) {
     })();
   }, [refresh]);
 
+  useEffect(() => {
+    if (!currentUserId) return;
+    void refresh(currentUserId);
+  }, [currentUserId, refresh, refreshNonce]);
+
   function startEditSent(conn: ConnectionRow) {
     setEditingSent(conn.id);
     setFormValues((prev) => ({
@@ -170,6 +181,7 @@ export default function Inbox({ onOpenProfile }: InboxProps = {}) {
     }
     setEditingSent(null);
     if (currentUserId) await refresh(currentUserId);
+    onChanged?.();
     toast("Request updated.");
   }
 
@@ -180,6 +192,7 @@ export default function Inbox({ onOpenProfile }: InboxProps = {}) {
       return;
     }
     if (currentUserId) await refresh(currentUserId);
+    onChanged?.();
     toast("Request deleted.");
   }
 
@@ -190,6 +203,8 @@ export default function Inbox({ onOpenProfile }: InboxProps = {}) {
       return;
     }
     if (currentUserId) await refresh(currentUserId);
+    onChanged?.();
+    onOpenProfile?.(conn.requester.id);
     toast("Connection accepted.");
   }
 
@@ -200,6 +215,7 @@ export default function Inbox({ onOpenProfile }: InboxProps = {}) {
       return;
     }
     if (currentUserId) await refresh(currentUserId);
+    onChanged?.();
     toast("Connection rejected.");
   }
 
@@ -228,6 +244,7 @@ export default function Inbox({ onOpenProfile }: InboxProps = {}) {
     }
     setEditingReceived(null);
     await refresh(currentUserId);
+    onChanged?.();
     toast("Counter request sent.");
   }
 
@@ -298,12 +315,6 @@ export default function Inbox({ onOpenProfile }: InboxProps = {}) {
                           <p className="text-xs text-gray-600 dark:text-gray-400 mt-0.5">
                             Wants to upgrade to Strong
                           </p>
-                          <p className="text-xs text-gray-500 mt-0.5">
-                            Current:{" "}
-                            {conn.connection_type === "first"
-                              ? "Strong"
-                              : "Weak"}
-                          </p>
                         </div>
                         <div className="flex gap-2 flex-shrink-0">
                           <Button
@@ -316,6 +327,7 @@ export default function Inbox({ onOpenProfile }: InboxProps = {}) {
                               else {
                                 toast("Upgrade accepted!");
                                 if (currentUserId) await refresh(currentUserId);
+                                onChanged?.();
                               }
                             }}
                           >
@@ -331,6 +343,7 @@ export default function Inbox({ onOpenProfile }: InboxProps = {}) {
                               else {
                                 toast("Upgrade declined");
                                 if (currentUserId) await refresh(currentUserId);
+                                onChanged?.();
                               }
                             }}
                           >
@@ -494,9 +507,6 @@ export default function Inbox({ onOpenProfile }: InboxProps = {}) {
                           <p className="text-xs text-gray-600 dark:text-gray-400 mt-0.5">
                             Upgrade to Strong requested
                           </p>
-                          <p className="text-xs text-gray-500 mt-0.5">
-                            Waiting for approval...
-                          </p>
                         </div>
                         <Button
                           size="sm"
@@ -508,6 +518,7 @@ export default function Inbox({ onOpenProfile }: InboxProps = {}) {
                             else {
                               toast("Upgrade request cancelled");
                               if (currentUserId) await refresh(currentUserId);
+                              onChanged?.();
                             }
                           }}
                         >

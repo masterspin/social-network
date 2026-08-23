@@ -74,6 +74,22 @@ type SocialVerification = {
   verified_at: string | null;
 };
 
+type SelectedConnectionUser = {
+  id: string;
+  name: string;
+  preferred_name: string | null;
+  profile_image_url: string | null;
+};
+
+type NetworkPathFilter = {
+  nodes: SelectedConnectionUser[];
+  links: Array<{
+    source: string;
+    target: string;
+    connection_type?: string | null;
+  }>;
+};
+
 interface PlatformConfig {
   name: string;
   baseUrl: string;
@@ -142,6 +158,15 @@ const SOCIAL_PLATFORMS: Record<string, PlatformConfig> = {
   },
 };
 
+function selectedUserFromId(id: string): SelectedConnectionUser {
+  return {
+    id,
+    name: "",
+    preferred_name: null,
+    profile_image_url: null,
+  };
+}
+
 export default function Dashboard() {
   const [activeTab, setActiveTab] = useState<"network" | "inbox" | "profile">(
     () =>
@@ -173,12 +198,12 @@ export default function Dashboard() {
     type: "success" | "error";
     text: string;
   } | null>(null);
-  const [selectedConnectionUser, setSelectedConnectionUser] = useState<{
-    id: string;
-    name: string;
-    preferred_name: string | null;
-    profile_image_url: string | null;
-  } | null>(null);
+  const [selectedConnectionUser, setSelectedConnectionUser] =
+    useState<SelectedConnectionUser | null>(() => {
+      if (typeof window === "undefined") return null;
+      const profileId = new URLSearchParams(window.location.search).get("profile");
+      return profileId ? selectedUserFromId(profileId) : null;
+    });
   const [editForm, setEditForm] = useState({
     name: "",
     preferred_name: "",
@@ -188,6 +213,9 @@ export default function Dashboard() {
   const [socialInputs, setSocialInputs] = useState<Record<string, string>>({});
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [inboxUnreadCount, setInboxUnreadCount] = useState(0);
+  const [networkGraphRefresh, setNetworkGraphRefresh] = useState(0);
+  const [networkPathFilter, setNetworkPathFilter] =
+    useState<NetworkPathFilter | null>(null);
   const profileMenuRef = useRef<HTMLDivElement>(null);
   const verifiedSocialRows = useMemo(
     () =>
@@ -220,6 +248,39 @@ export default function Dashboard() {
     }
   }, [isEditingProfile, socialLinks]);
   const router = useRouter();
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (activeTab === "network") {
+      params.delete("tab");
+    } else {
+      params.set("tab", activeTab);
+    }
+
+    if (selectedConnectionUser) {
+      params.set("profile", selectedConnectionUser.id);
+    } else {
+      params.delete("profile");
+    }
+
+    const nextSearch = params.toString();
+    const nextUrl = `${window.location.pathname}${nextSearch ? `?${nextSearch}` : ""}`;
+    if (nextUrl !== `${window.location.pathname}${window.location.search}`) {
+      window.history.replaceState(null, "", nextUrl);
+    }
+  }, [activeTab, selectedConnectionUser]);
+
+  useEffect(() => {
+    const onPopState = () => {
+      const params = new URLSearchParams(window.location.search);
+      setActiveTab(getInitialDashboardTab(window.location.search));
+      const profileId = params.get("profile");
+      setSelectedConnectionUser(profileId ? selectedUserFromId(profileId) : null);
+    };
+
+    window.addEventListener("popstate", onPopState);
+    return () => window.removeEventListener("popstate", onPopState);
+  }, []);
 
   useEffect(() => {
     loadData();
@@ -338,6 +399,16 @@ export default function Dashboard() {
     }
 
     setLoading(false);
+  };
+
+  const handleConnectionChanged = () => {
+    setNetworkGraphRefresh((value) => value + 1);
+    void loadData();
+  };
+
+  const handleShortestPathFilter = (path: NetworkPathFilter) => {
+    setNetworkPathFilter(path);
+    setActiveTab("network");
   };
 
   // Build a flat list of the other user for accepted connections
@@ -522,7 +593,7 @@ export default function Dashboard() {
 
   return (
     <div
-      className={`flex flex-col min-h-screen bg-gray-50 dark:bg-gray-950 transition-[margin] duration-300 ${panelOpen && activeTab !== "network" ? "sm:mr-[480px]" : ""}`}
+      className={`flex flex-col min-h-screen bg-gray-50 dark:bg-gray-950 transition-[margin-right] duration-300 ${panelOpen ? "sm:mr-[480px]" : ""}`}
     >
       {/* Combined header + nav */}
       <header className="sticky top-0 z-50 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800">
@@ -625,6 +696,9 @@ export default function Dashboard() {
         {activeTab === "network" && (
           <div key="network" className="animate-fade-in flex-1 flex flex-col">
             <NetworkGraph
+              pathFilter={networkPathFilter}
+              refreshNonce={networkGraphRefresh}
+              onClearPathFilter={() => setNetworkPathFilter(null)}
               onOpenUser={(u) =>
                 setSelectedConnectionUser({
                   id: u.id,
@@ -640,13 +714,10 @@ export default function Dashboard() {
         {activeTab === "inbox" && (
           <div key="inbox" className="animate-fade-in flex-1 w-full">
             <Inbox
+              onChanged={handleConnectionChanged}
+              refreshNonce={networkGraphRefresh}
               onOpenProfile={(userId) => {
-                setSelectedConnectionUser({
-                  id: userId,
-                  name: "",
-                  preferred_name: null,
-                  profile_image_url: null,
-                });
+                setSelectedConnectionUser(selectedUserFromId(userId));
               }}
             />
           </div>
@@ -1292,7 +1363,9 @@ export default function Dashboard() {
           currentUserId={userProfile.id}
           userId={selectedConnectionUser.id}
           onClose={() => setSelectedConnectionUser(null)}
-          onChanged={() => loadData()}
+          onChanged={handleConnectionChanged}
+          onShortestPath={handleShortestPathFilter}
+          refreshNonce={networkGraphRefresh}
         />
       )}
     </div>

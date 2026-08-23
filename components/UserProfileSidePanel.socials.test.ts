@@ -31,4 +31,36 @@ describe("user profile side panel socials", () => {
     expect(source).toContain("verifications");
     expect(source).toContain("profile_url");
   });
+
+  it("keeps private notes collapsed until edit is clicked", () => {
+    const source = readFileSync("components/UserProfileSidePanel.tsx", "utf8");
+
+    expect(source).toContain("noteEditMode");
+    expect(source).toContain('aria-label="Edit private note"');
+    expect(source).toContain('aria-label="Save private note"');
+    expect(source).toContain("Check");
+    expect(source).not.toContain("No private note yet.");
+    expect(source).not.toContain("Save note");
+  });
+
+  it("puts connection actions behind a three-dot menu", () => {
+    const source = readFileSync("components/UserProfileSidePanel.tsx", "utf8");
+
+    expect(source).toContain("MoreHorizontal");
+    expect(source).toContain('aria-label="Connection actions"');
+    expect(source).toContain("actionsOpen");
+    expect(source).toContain("Downgrade to Weak");
+    expect(source).toContain("Block User");
+    expect(source).not.toContain("Manage Connection Type");
+    expect(source).not.toContain('className="flex-1"\\n                                  onClick={handleRemoveConnection}');
+  });
+
+  it("confirms menu actions before changing connection state", () => {
+    const source = readFileSync("components/UserProfileSidePanel.tsx", "utf8");
+
+    expect(source).toContain('confirm("Downgrade this connection to Weak?")');
+    expect(source).toContain('confirm("Request to upgrade this connection to Strong?")');
+    expect(source).toContain('confirm("Remove this connection? This cannot be undone.")');
+    expect(source).toContain("Block this user?");
+  });
 });

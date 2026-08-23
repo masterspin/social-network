@@ -45,6 +45,33 @@ type LinkData = {
 
 type GraphData = { nodes: NodeData[]; links: LinkData[] };
 
+type PathFilter = {
+  nodes: Array<{
+    id: string;
+    name: string;
+    preferred_name: string | null;
+    profile_image_url: string | null;
+  }>;
+  links: Array<{
+    source: string;
+    target: string;
+    connection_type?: string | null;
+  }>;
+};
+
+type AcceptedConnectionRow = {
+  id: string;
+  how_met: string;
+  status: string;
+  connection_type?: string;
+  other_user: {
+    id: string;
+    name: string;
+    preferred_name: string | null;
+    profile_image_url: string | null;
+  } | null;
+};
+
 type OpenUser = (user: {
   id: string;
   name?: string;
@@ -66,6 +93,7 @@ const NODE_SIZE = 9;
 
 function nodeColor(node: NodeData) {
   if (node.distance === 0) return COLOR.me;
+  if ((node.distance ?? 0) > 1) return COLOR.distant;
   if (node.connection_type === "pending" || node.path_type === "pending") {
     return COLOR.pending;
   }
@@ -82,6 +110,65 @@ function nodeColor(node: NodeData) {
 function displayName(node?: NodeData | null) {
   if (!node) return "";
   return node.preferred_name || node.name || "Unknown";
+}
+
+async function fetchAcceptedConnections(userId: string) {
+  const res = await fetch(
+    `/api/connections/accepted?userId=${encodeURIComponent(userId)}`,
+  );
+  if (!res.ok) return [];
+
+  const json = await res.json();
+  return (json.data || []) as AcceptedConnectionRow[];
+}
+
+function mergeConnectionRows(
+  graphData: GraphData,
+  sourceNode: NodeData,
+  rows: AcceptedConnectionRow[],
+) {
+  const nodes = new Map(graphData.nodes.map((node) => [node.id, node]));
+  const links = new Map(
+    graphData.links.map((link) => [graphEdgeKey(link.source, link.target), link]),
+  );
+
+  for (const row of rows) {
+    if (!row.other_user) continue;
+
+    const other = row.other_user;
+    const nextDistance = (sourceNode.distance ?? 0) + 1;
+    const connectionType =
+      row.status === "pending" ? "pending" : row.connection_type || "first";
+    const pathType =
+      sourceNode.distance === 0
+        ? (connectionType as NodeData["path_type"])
+        : sourceNode.path_type || "first";
+    const existing = nodes.get(other.id);
+
+    if (!existing || nextDistance < (existing.distance ?? Infinity)) {
+      nodes.set(other.id, {
+        id: other.id,
+        name: other.name,
+        preferred_name: other.preferred_name,
+        profile_image_url: other.profile_image_url,
+        distance: nextDistance,
+        connection_type: connectionType,
+        path_type: pathType,
+      });
+    }
+
+    const key = graphEdgeKey(sourceNode.id, other.id);
+    if (!links.has(key)) {
+      links.set(key, {
+        source: sourceNode.id,
+        target: other.id,
+        how_met: row.how_met,
+        connection_type: connectionType,
+      });
+    }
+  }
+
+  return { nodes: [...nodes.values()], links: [...links.values()] };
 }
 
 const drawNodeLabelBelow: NodeLabelDrawingFunction = (context, data) => {
@@ -262,9 +349,15 @@ function GraphEvents({
 }
 
 export default function NetworkGraph({
+  onClearPathFilter,
   onOpenUser,
+  pathFilter,
+  refreshNonce = 0,
 }: {
+  onClearPathFilter?: () => void;
   onOpenUser?: OpenUser;
+  pathFilter?: PathFilter | null;
+  refreshNonce?: number;
 }) {
   const [graphData, setGraphData] = useState<GraphData>({ nodes: [], links: [] });
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
@@ -272,10 +365,63 @@ export default function NetworkGraph({
   const [centerNonce, setCenterNonce] = useState(0);
   const [loading, setLoading] = useState(true);
   const [graphError, setGraphError] = useState<string | null>(null);
+  const [expandedUserIds, setExpandedUserIds] = useState<string[]>([]);
+  const [expandingUserId, setExpandingUserId] = useState<string | null>(null);
+  const filteredGraphData = useMemo<GraphData | null>(() => {
+    if (!pathFilter) return null;
+
+    return {
+      nodes: pathFilter.nodes.map((node, index) => ({
+        id: node.id,
+        name: node.name,
+        preferred_name: node.preferred_name,
+        profile_image_url: node.profile_image_url,
+        distance: node.id === currentUserId ? 0 : index + 1,
+        path_type: "first",
+      })),
+      links: pathFilter.links.map((link) => ({
+        source: link.source,
+        target: link.target,
+        how_met: "",
+        connection_type: link.connection_type || "first",
+      })),
+    };
+  }, [currentUserId, pathFilter]);
+  const displayedGraphData = filteredGraphData ?? graphData;
+  const displayedSelectedPath = filteredGraphData ? [] : selectedPath;
+
+  const expandUserConnections = useCallback(
+    async (userId: string) => {
+      if (expandedUserIds.includes(userId) || expandingUserId === userId) return;
+
+      const sourceNode = graphData.nodes.find((node) => node.id === userId);
+      if (!sourceNode || sourceNode.connection_type === "pending") {
+        setExpandedUserIds((ids) => (ids.includes(userId) ? ids : [...ids, userId]));
+        return;
+      }
+
+      setExpandingUserId(userId);
+
+      try {
+        const rows = await fetchAcceptedConnections(userId);
+        setGraphData((current) => {
+          const currentSource = current.nodes.find((node) => node.id === userId);
+          if (!currentSource) return current;
+          return mergeConnectionRows(current, currentSource, rows);
+        });
+        setExpandedUserIds((ids) => (ids.includes(userId) ? ids : [...ids, userId]));
+      } finally {
+        setExpandingUserId(null);
+      }
+    },
+    [expandedUserIds, expandingUserId, graphData.nodes],
+  );
 
   const loadNetwork = useCallback(async () => {
     setLoading(true);
     setGraphError(null);
+    setExpandedUserIds([]);
+    setExpandingUserId(null);
 
     try {
       const { user } = await getCurrentUser();
@@ -288,95 +434,19 @@ export default function NetworkGraph({
         name: string;
         preferred_name: string | null;
         profile_image_url: string | null;
-        visibility_level?: number | null;
       } | null;
-      const maxDepth = Number(viewer?.visibility_level) || 3;
-      const nodes = new Map<string, NodeData>();
-      const links = new Map<string, LinkData>();
-      const queue: Array<{ id: string; depth: number; pathType?: NodeData["path_type"] }> = [
-        { id: user.id, depth: 0 },
-      ];
-      const visited = new Set<string>();
-
-      nodes.set(user.id, {
+      const viewerNode: NodeData = {
         id: user.id,
         name: viewer?.name || "You",
         preferred_name: viewer?.preferred_name || null,
         profile_image_url: viewer?.profile_image_url || null,
         distance: 0,
         path_type: "first",
-      });
+      };
+      const rows = await fetchAcceptedConnections(user.id);
 
-      while (queue.length > 0) {
-        const item = queue.shift();
-        if (!item || visited.has(item.id) || item.depth >= maxDepth) continue;
-        visited.add(item.id);
-
-        const res = await fetch(
-          `/api/connections/accepted?userId=${encodeURIComponent(item.id)}`,
-        );
-        if (!res.ok) continue;
-
-        const json = await res.json();
-        const rows = (json.data || []) as Array<{
-          id: string;
-          how_met: string;
-          status: string;
-          connection_type?: string;
-          other_user: {
-            id: string;
-            name: string;
-            preferred_name: string | null;
-            profile_image_url: string | null;
-          };
-        }>;
-
-        for (const row of rows) {
-          if (!row.other_user) continue;
-
-          const other = row.other_user;
-          const nextDepth = item.depth + 1;
-          const connectionType =
-            row.status === "pending" ? "pending" : row.connection_type || "first";
-          const pathType =
-            item.depth === 0
-              ? (connectionType as NodeData["path_type"])
-              : item.pathType || "first";
-          const existing = nodes.get(other.id);
-
-          if (!existing || nextDepth < (existing.distance ?? Infinity)) {
-            nodes.set(other.id, {
-              id: other.id,
-              name: other.name,
-              preferred_name: other.preferred_name,
-              profile_image_url: other.profile_image_url,
-              distance: nextDepth,
-              connection_type: connectionType,
-              path_type: pathType,
-            });
-          }
-
-          const key = graphEdgeKey(item.id, other.id);
-          if (!links.has(key)) {
-            links.set(key, {
-              source: item.id,
-              target: other.id,
-              how_met: row.how_met,
-              connection_type: connectionType,
-            });
-          }
-
-          if (
-            nextDepth < maxDepth &&
-            connectionType !== "pending" &&
-            !visited.has(other.id)
-          ) {
-            queue.push({ id: other.id, depth: nextDepth, pathType });
-          }
-        }
-      }
-
-      setGraphData({ nodes: [...nodes.values()], links: [...links.values()] });
+      setGraphData(mergeConnectionRows({ nodes: [viewerNode], links: [] }, viewerNode, rows));
+      setExpandedUserIds([user.id]);
     } catch (error) {
       setGraphData({ nodes: [], links: [] });
       setCurrentUserId(null);
@@ -388,7 +458,39 @@ export default function NetworkGraph({
 
   useEffect(() => {
     loadNetwork();
-  }, [loadNetwork]);
+  }, [loadNetwork, refreshNonce]);
+
+  useEffect(() => {
+    if (
+      filteredGraphData ||
+      loading ||
+      expandingUserId ||
+      graphData.nodes.length === 0
+    ) {
+      return;
+    }
+
+    const nextNode = graphData.nodes.find((node) => {
+      return (
+        !expandedUserIds.includes(node.id) &&
+        node.connection_type !== "pending"
+      );
+    });
+    if (!nextNode) return;
+
+    const timer = window.setTimeout(() => {
+      void expandUserConnections(nextNode.id);
+    }, 350);
+
+    return () => window.clearTimeout(timer);
+  }, [
+    expandedUserIds,
+    expandUserConnections,
+    expandingUserId,
+    filteredGraphData,
+    graphData.nodes,
+    loading,
+  ]);
 
   if (loading && graphData.nodes.length === 0) {
     return (
@@ -440,9 +542,9 @@ export default function NetworkGraph({
         }}
       >
         <GraphEvents
-          graphData={graphData}
+          graphData={displayedGraphData}
           currentUserId={currentUserId}
-          selectedPath={selectedPath}
+          selectedPath={displayedSelectedPath}
           centerNonce={centerNonce}
           onPath={setSelectedPath}
           onOpenUser={onOpenUser}
@@ -481,6 +583,18 @@ export default function NetworkGraph({
       `}</style>
 
       <div className="absolute right-4 top-4 z-40 flex gap-2">
+        {filteredGraphData && (
+          <button
+            type="button"
+            onClick={() => {
+              setSelectedPath([]);
+              onClearPathFilter?.();
+            }}
+            className="inline-flex items-center gap-2 rounded-lg bg-slate-800 px-3 py-2 text-sm text-white shadow hover:bg-slate-700"
+          >
+            Clear path
+          </button>
+        )}
         <button
           type="button"
           onClick={() => setCenterNonce((value) => value + 1)}
@@ -503,6 +617,9 @@ export default function NetworkGraph({
         </span>
         <span className="rounded-full bg-slate-900/90 px-3 py-1 text-amber-300">
           Pending
+        </span>
+        <span className="rounded-full bg-slate-900/90 px-3 py-1 text-slate-300">
+          Other
         </span>
       </div>
     </div>

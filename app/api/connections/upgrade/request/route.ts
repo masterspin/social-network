@@ -37,7 +37,8 @@ export async function POST(request: Request) {
     const [updated] = await db
       .update(connections)
       .set({
-        connectionType: "one_point_five",
+        upgradeRequestedType: "first",
+        upgradeRequestedBy: requesterId,
       })
       .where(and(eq(connections.id, connectionId), eq(connections.status, "accepted")))
       .returning();
@@ -45,5 +46,89 @@ export async function POST(request: Request) {
     return NextResponse.json({ data: updated }, { status: 200 });
   } catch (error) {
     return NextResponse.json({ error: { message: (error as Error).message } }, { status: 500 });
+  }
+}
+
+export async function PATCH(request: Request) {
+  try {
+    const { connectionId, action } = (await request.json()) as {
+      connectionId?: string;
+      action?: "accept" | "reject";
+    };
+
+    if (!connectionId || !action) {
+      return NextResponse.json(
+        { error: { message: "connectionId and action are required" } },
+        { status: 400 },
+      );
+    }
+
+    const [connection] = await db
+      .select()
+      .from(connections)
+      .where(eq(connections.id, connectionId))
+      .limit(1);
+
+    if (!connection) {
+      return NextResponse.json(
+        { error: { message: "Connection not found" } },
+        { status: 404 },
+      );
+    }
+
+    if (!connection.upgradeRequestedType) {
+      return NextResponse.json(
+        { error: { message: "No upgrade request pending" } },
+        { status: 400 },
+      );
+    }
+
+    const [updated] = await db
+      .update(connections)
+      .set({
+        ...(action === "accept"
+          ? { connectionType: connection.upgradeRequestedType }
+          : {}),
+        upgradeRequestedType: null,
+        upgradeRequestedBy: null,
+      })
+      .where(eq(connections.id, connectionId))
+      .returning();
+
+    return NextResponse.json({ data: updated ?? null }, { status: 200 });
+  } catch (error) {
+    return NextResponse.json(
+      { error: { message: (error as Error).message } },
+      { status: 500 },
+    );
+  }
+}
+
+export async function DELETE(request: Request) {
+  try {
+    const connectionId = new URL(request.url).searchParams.get("connectionId");
+
+    if (!connectionId) {
+      return NextResponse.json(
+        { error: { message: "connectionId is required" } },
+        { status: 400 },
+      );
+    }
+
+    const [updated] = await db
+      .update(connections)
+      .set({
+        upgradeRequestedType: null,
+        upgradeRequestedBy: null,
+      })
+      .where(eq(connections.id, connectionId))
+      .returning();
+
+    return NextResponse.json({ data: updated ?? null }, { status: 200 });
+  } catch (error) {
+    return NextResponse.json(
+      { error: { message: (error as Error).message } },
+      { status: 500 },
+    );
   }
 }

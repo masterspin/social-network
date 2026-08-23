@@ -66,6 +66,64 @@ export async function POST(request: Request) {
   }
 
   try {
+    const [existing] = await db
+      .select()
+      .from(connections)
+      .where(
+        or(
+          and(
+            eq(connections.requesterId, requesterId),
+            eq(connections.recipientId, recipientId),
+          ),
+          and(
+            eq(connections.requesterId, recipientId),
+            eq(connections.recipientId, requesterId),
+          ),
+        ),
+      )
+      .orderBy(connections.createdAt)
+      .limit(1);
+
+    if (existing) {
+      if (existing.status === "rejected") {
+        const [row] = await db
+          .update(connections)
+          .set({
+            requesterId,
+            recipientId,
+            howMet,
+            connectionType,
+            status: "pending",
+          })
+          .where(eq(connections.id, existing.id))
+          .returning();
+
+        return NextResponse.json(
+          { data: row ? toClientConnectionRow(row) : null },
+          { status: 200 },
+        );
+      }
+
+      const reversePending =
+        existing.status === "pending" &&
+        existing.requesterId === recipientId &&
+        existing.recipientId === requesterId;
+
+      return NextResponse.json(
+        {
+          data: toClientConnectionRow(existing),
+          error: {
+            message: reversePending
+              ? "This person already sent you a request. Accept it instead."
+              : existing.status === "pending"
+                ? "Connection request already pending."
+                : "Connection already exists.",
+          },
+        },
+        { status: 409 },
+      );
+    }
+
     const [row] = await db
       .insert(connections)
       .values({
@@ -115,7 +173,7 @@ export async function PATCH(request: Request) {
           ? { connectionType: updates.connection_type }
           : {}),
       })
-      .where(and(eq(connections.id, connectionId), eq(connections.status, "pending")))
+      .where(eq(connections.id, connectionId))
       .returning();
 
     return NextResponse.json(

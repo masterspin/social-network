@@ -203,11 +203,15 @@ export async function getConnectionBetweenUsers(aId: string, bId: string) {
 
 export async function createConnectionRequest(connection: Record<string, unknown>) {
   if (typeof window !== "undefined") {
-    const payload = await fetchJson<{ data: unknown | null }>("/api/connection", {
-      method: "POST",
-      body: JSON.stringify(connection),
-    });
-    return { data: payload.data, error: null };
+    try {
+      const payload = await fetchJson<{ data: unknown | null }>("/api/connection", {
+        method: "POST",
+        body: JSON.stringify(connection),
+      });
+      return { data: payload.data, error: null };
+    } catch (error) {
+      return { data: null, error: error as Error };
+    }
   }
   const { db, connections } = await getServerDeps();
   const data = await db.insert(connections).values(connection as never).returning();
@@ -360,12 +364,66 @@ export async function getFirstConnectionCount(userId: string) {
   return { count: Number(data[0]?.count ?? 0), error: null };
 }
 
-export async function requestConnectionTypeUpgrade() { return { data: null, error: null }; }
-export async function cancelConnectionTypeUpgradeRequest() { return { data: null, error: null }; }
-export async function downgradeConnectionType() { return { data: null, error: null }; }
-export async function removeConnection() { return { error: null }; }
-export async function acceptConnectionTypeUpgrade() { return { data: null, error: null }; }
-export async function rejectConnectionTypeUpgrade() { return { data: null, error: null }; }
+export async function requestConnectionTypeUpgrade(
+  connectionId: string,
+  requesterId: string,
+) {
+  if (typeof window !== "undefined") {
+    const payload = await fetchJson<{ data: unknown | null }>(
+      "/api/connections/upgrade/request",
+      {
+        method: "POST",
+        body: JSON.stringify({ connectionId, requesterId }),
+      },
+    );
+    return { data: payload.data, error: null };
+  }
+  return { data: null, error: null };
+}
+export async function cancelConnectionTypeUpgradeRequest(_connectionId: string) {
+  if (typeof window !== "undefined") {
+    const payload = await fetchJson<{ data: unknown | null }>(
+      `/api/connections/upgrade/request?connectionId=${encodeURIComponent(_connectionId)}`,
+      { method: "DELETE" },
+    );
+    return { data: payload.data, error: null };
+  }
+  return { data: null, error: null };
+}
+export async function downgradeConnectionType(connectionId: string) {
+  return updateConnectionRequestDetails(connectionId, {
+    connection_type: "one_point_five",
+  });
+}
+export async function removeConnection(connectionId: string) {
+  return deleteConnection(connectionId);
+}
+export async function acceptConnectionTypeUpgrade(_connectionId: string) {
+  if (typeof window !== "undefined") {
+    const payload = await fetchJson<{ data: unknown | null }>(
+      "/api/connections/upgrade/request",
+      {
+        method: "PATCH",
+        body: JSON.stringify({ connectionId: _connectionId, action: "accept" }),
+      },
+    );
+    return { data: payload.data, error: null };
+  }
+  return { data: null, error: null };
+}
+export async function rejectConnectionTypeUpgrade(_connectionId: string) {
+  if (typeof window !== "undefined") {
+    const payload = await fetchJson<{ data: unknown | null }>(
+      "/api/connections/upgrade/request",
+      {
+        method: "PATCH",
+        body: JSON.stringify({ connectionId: _connectionId, action: "reject" }),
+      },
+    );
+    return { data: payload.data, error: null };
+  }
+  return { data: null, error: null };
+}
 export async function getConnectionTypeUpgradeRequests() { return { data: [], error: null }; }
 
 export async function getAllUsers() {

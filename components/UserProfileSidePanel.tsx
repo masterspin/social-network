@@ -25,7 +25,7 @@ import {
   FaSnapchat,
 } from "react-icons/fa";
 import { FiExternalLink } from "react-icons/fi";
-import { X } from "lucide-react";
+import { Check, MoreHorizontal, Pencil, X } from "lucide-react";
 import { Avatar } from "@/components/ui/Avatar";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
@@ -41,6 +41,16 @@ type Props = {
   userId: string;
   onClose: () => void;
   onChanged?: () => void;
+  onShortestPath?: (path: {
+    nodes: Array<{
+      id: string;
+      name: string;
+      preferred_name: string | null;
+      profile_image_url: string | null;
+    }>;
+    links: ShortestPathLink[];
+  }) => void;
+  refreshNonce?: number;
 };
 
 type UserRow = Database["public"]["Tables"]["users"]["Row"];
@@ -57,6 +67,17 @@ type PrivateConnectionNote = {
   user_id: string;
   description: string | null;
   year: string | null;
+};
+type ShortestPathUser = {
+  id: string;
+  name?: string | null;
+  preferred_name?: string | null;
+  profile_image_url?: string | null;
+};
+type ShortestPathLink = {
+  source: string;
+  target: string;
+  connection_type?: string | null;
 };
 type ConnectionRow = Database["public"]["Tables"]["connections"]["Row"] & {
   requester: {
@@ -165,6 +186,8 @@ export default function UserProfileSidePanel({
   userId,
   onClose,
   onChanged,
+  onShortestPath,
+  refreshNonce = 0,
 }: Props) {
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState<UserRow | null>(null);
@@ -178,16 +201,23 @@ export default function UserProfileSidePanel({
   const [blockBusy, setBlockBusy] = useState(false);
   const [changingType, setChangingType] = useState(false);
   const [noteBusy, setNoteBusy] = useState(false);
+  const [pathLoading, setPathLoading] = useState(false);
+  const [shortestPath, setShortestPath] = useState<ShortestPathUser[] | null>(
+    null,
+  );
+  const [pathChecked, setPathChecked] = useState(false);
 
   const [description, setDescription] = useState("");
   const [year, setYear] = useState("");
   const [privateNote, setPrivateNote] = useState<PrivateConnectionNote | null>(
     null,
   );
+  const [noteEditMode, setNoteEditMode] = useState(false);
   const [connectionType, setConnectionType] = useState<
     "first" | "one_point_five"
   >("first");
   const [amendMode, setAmendMode] = useState(false);
+  const [actionsOpen, setActionsOpen] = useState(false);
   const [sidebarSection, setSidebarSection] = useState<
     "connection" | "socials"
   >("connection");
@@ -197,6 +227,8 @@ export default function UserProfileSidePanel({
     (async () => {
       setLoading(true);
       setError(null);
+      setShortestPath(null);
+      setPathChecked(false);
       try {
         const [profileRes, connectionRes] = await Promise.all([
           fetch(`/api/profile/${userId}`),
@@ -232,6 +264,7 @@ export default function UserProfileSidePanel({
           setPrivateNote(null);
           setDescription("");
           setYear("");
+          setNoteEditMode(false);
         }
         if (currentUserId !== userId) {
           const { isBlocked } = await isUserBlocked(currentUserId, userId);
@@ -246,6 +279,9 @@ export default function UserProfileSidePanel({
         setSocialVerifications([]);
         setConnection(null);
         setPrivateNote(null);
+        setNoteEditMode(false);
+        setShortestPath(null);
+        setPathChecked(false);
       } finally {
         setLoading(false);
       }
@@ -263,6 +299,47 @@ export default function UserProfileSidePanel({
     }
   }
 
+  async function viewShortestPath() {
+    setPathLoading(true);
+    setPathChecked(false);
+    setShortestPath(null);
+    setError(null);
+
+    try {
+      const res = await fetch(
+        `/api/network/shortest-path?source=${encodeURIComponent(currentUserId)}&target=${encodeURIComponent(userId)}`,
+      );
+      const payload = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(payload?.error?.message || "Failed to find path");
+      }
+      const path = (payload?.data?.path || null) as ShortestPathUser[] | null;
+      setShortestPath(path);
+      setPathChecked(true);
+      if (path) {
+        onShortestPath?.({
+          nodes: path.map((pathUser) => ({
+            id: pathUser.id,
+            name: pathUser.name || "",
+            preferred_name: pathUser.preferred_name ?? null,
+            profile_image_url: pathUser.profile_image_url ?? null,
+          })),
+          links: (payload?.data?.links || []) as ShortestPathLink[],
+        });
+      }
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setPathLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    if (!open || refreshNonce === 0) return;
+    void refresh();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, refreshNonce]);
+
   async function loadPrivateNote(connectionId: string) {
     const res = await fetch(
       `/api/connection-notes?connectionId=${encodeURIComponent(connectionId)}&userId=${encodeURIComponent(currentUserId)}`,
@@ -274,6 +351,7 @@ export default function UserProfileSidePanel({
     setPrivateNote(payload.data);
     setDescription(payload.data?.description || "");
     setYear(payload.data?.year || "");
+    setNoteEditMode(false);
   }
 
   async function saveConnectionNote(connectionId = connection?.id) {
@@ -301,11 +379,217 @@ export default function UserProfileSidePanel({
       };
       if (!res.ok) throw new Error(payload.error?.message || "Failed to save");
       setPrivateNote(payload.data || null);
+      setNoteEditMode(false);
     } catch (e) {
       setError((e as Error).message);
     } finally {
       setNoteBusy(false);
     }
+  }
+
+  function cancelNoteEdit() {
+    setDescription(privateNote?.description || "");
+    setYear(privateNote?.year || "");
+    setError(null);
+    setNoteEditMode(false);
+  }
+
+  function closeActions() {
+    setActionsOpen(false);
+  }
+
+  function renderActionsMenu() {
+    if (isMe) return null;
+
+    return (
+      <div className="relative">
+        <button
+          type="button"
+          aria-label="Connection actions"
+          title="Connection actions"
+          onClick={() => setActionsOpen((value) => !value)}
+          className="inline-flex h-8 w-8 items-center justify-center rounded-md text-gray-500 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white"
+        >
+          <MoreHorizontal className="h-4 w-4" />
+        </button>
+        {actionsOpen && (
+          <div className="absolute right-0 top-9 z-50 min-w-44 overflow-hidden rounded-lg border border-gray-200 bg-white py-1 text-sm shadow-lg dark:border-gray-700 dark:bg-gray-900">
+            {connection?.status === "accepted" &&
+              !connection.upgrade_requested_type &&
+              (connection.connection_type === "first" ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    closeActions();
+                    void handleDowngradeType();
+                  }}
+                  disabled={changingType}
+                  className="block w-full px-3 py-2 text-left text-gray-700 hover:bg-gray-50 disabled:opacity-50 dark:text-gray-200 dark:hover:bg-gray-800"
+                >
+                  Downgrade to Weak
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => {
+                    closeActions();
+                    void handleRequestUpgrade();
+                  }}
+                  disabled={changingType}
+                  className="block w-full px-3 py-2 text-left text-gray-700 hover:bg-gray-50 disabled:opacity-50 dark:text-gray-200 dark:hover:bg-gray-800"
+                >
+                  Request Strong
+                </button>
+              ))}
+            {connection?.status === "accepted" && (
+              <button
+                type="button"
+                onClick={() => {
+                  closeActions();
+                  void handleRemoveConnection();
+                }}
+                disabled={changingType}
+                className="block w-full px-3 py-2 text-left text-red-600 hover:bg-red-50 disabled:opacity-50 dark:text-red-300 dark:hover:bg-red-950/30"
+              >
+                Remove
+              </button>
+            )}
+            {isBlocked ? (
+              <button
+                type="button"
+                onClick={() => {
+                  closeActions();
+                  void handleUnblock();
+                }}
+                disabled={blockBusy}
+                className="block w-full px-3 py-2 text-left text-gray-700 hover:bg-gray-50 disabled:opacity-50 dark:text-gray-200 dark:hover:bg-gray-800"
+              >
+                Unblock User
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => {
+                  closeActions();
+                  void handleBlock();
+                }}
+                disabled={blockBusy}
+                className="block w-full px-3 py-2 text-left text-red-600 hover:bg-red-50 disabled:opacity-50 dark:text-red-300 dark:hover:bg-red-950/30"
+              >
+                Block User
+              </button>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  function renderPrivateNote(connectionId = connection?.id) {
+    const noteDescription = privateNote?.description?.trim();
+    const noteYear = privateNote?.year?.trim();
+
+    return (
+      <div className="rounded-lg border border-gray-200 bg-white px-3 py-2 dark:border-gray-700 dark:bg-gray-800/50">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0 flex-1">
+            <div className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+              Private note
+            </div>
+            {!noteEditMode && (
+              <div className="mt-1 space-y-0.5 text-sm">
+                {noteDescription && (
+                  <p className="truncate text-gray-900 dark:text-gray-100">
+                    {noteDescription}
+                  </p>
+                )}
+                {noteYear && (
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                    {noteYear}
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
+          {!noteEditMode && (
+            <button
+              type="button"
+              aria-label="Edit private note"
+              title="Edit private note"
+              onClick={() => setNoteEditMode(true)}
+              className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-gray-500 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white"
+            >
+              <Pencil className="h-4 w-4" />
+            </button>
+          )}
+        </div>
+
+        {noteEditMode && (
+          <div className="mt-3 space-y-2">
+            <Input
+              label="Description"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="How you know them"
+            />
+            <Input
+              label="Year (optional)"
+              value={year}
+              onChange={(e) => setYear(e.target.value)}
+              placeholder="e.g., 2023"
+            />
+            <div className="flex justify-end gap-2">
+              <button
+                type="button"
+                aria-label="Cancel note edit"
+                title="Cancel"
+                onClick={cancelNoteEdit}
+                className="inline-flex h-8 w-8 items-center justify-center rounded-md text-gray-500 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white"
+              >
+                <X className="h-4 w-4" />
+              </button>
+              <button
+                type="button"
+                aria-label="Save private note"
+                title="Save private note"
+                onClick={() => saveConnectionNote(connectionId)}
+                disabled={noteBusy}
+                className="inline-flex h-8 w-8 items-center justify-center rounded-md bg-gray-900 text-white hover:bg-gray-800 disabled:opacity-50 dark:bg-gray-100 dark:text-gray-900 dark:hover:bg-white"
+              >
+                <Check className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  function renderShortestPathCard() {
+    if (isMe) return null;
+
+    return (
+      <div className="rounded-lg border border-gray-200 bg-white p-3 dark:border-gray-700 dark:bg-gray-800/50">
+        <div className="flex items-center justify-between gap-3">
+          <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
+            Shortest path
+          </div>
+          <Button
+            size="sm"
+            variant="secondary"
+            onClick={viewShortestPath}
+            disabled={pathLoading}
+          >
+            {pathLoading ? "Finding..." : "View shortest path"}
+          </Button>
+        </div>
+        {pathChecked && !shortestPath && (
+          <p className="mt-3 text-xs text-gray-500 dark:text-gray-400">
+            No path exists.
+          </p>
+        )}
+      </div>
+    );
   }
 
   async function sendRequest() {
@@ -322,6 +606,8 @@ export default function UserProfileSidePanel({
       status: "pending",
     });
     if (e) {
+      await refresh();
+      onChanged?.();
       setError(e.message);
       return;
     }
@@ -338,7 +624,7 @@ export default function UserProfileSidePanel({
     setError(null);
     const { error: e } = await updateConnectionStatus(id, "accepted");
     if (e) {
-      setError(e.message);
+      setError((e as Error).message);
       return;
     }
     await refresh();
@@ -349,7 +635,7 @@ export default function UserProfileSidePanel({
     setError(null);
     const { error: e } = await updateConnectionStatus(id, "rejected");
     if (e) {
-      setError(e.message);
+      setError((e as Error).message);
       return;
     }
     await refresh();
@@ -359,10 +645,10 @@ export default function UserProfileSidePanel({
   async function cancel(id: string) {
     setError(null);
     const { error: e } = await deleteConnection(id);
-    console.log("deleteConnection result (cancel):", { id, error });
+    console.log("deleteConnection result (cancel):", { id, error: e });
     if (e) {
       console.error("deleteConnection error", e);
-      setError(e.message);
+      setError((e as Error).message);
       return;
     }
     await refresh();
@@ -375,12 +661,44 @@ export default function UserProfileSidePanel({
       connection_type: connectionType,
     });
     if (e) {
-      setError(e.message);
+      setError((e as Error).message);
       return;
     }
     setAmendMode(false);
     await refresh();
     onChanged?.();
+  }
+
+  async function counterPending(id: string) {
+    setError(null);
+    try {
+      const res = await fetch("/api/connections/counter", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          connectionId: id,
+          currentUserId,
+          how_met: "Private note",
+          connection_type: connectionType,
+        }),
+      });
+      const payload = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(payload?.error?.message || "Failed to amend request");
+      }
+      setAmendMode(false);
+      await refresh();
+      onChanged?.();
+    } catch (e) {
+      setError((e as Error).message);
+    }
+  }
+
+  function beginAmendPending() {
+    setConnectionType(
+      (connection?.connection_type || "first") as "first" | "one_point_five",
+    );
+    setAmendMode(true);
   }
 
   async function handleBlock() {
@@ -439,6 +757,7 @@ export default function UserProfileSidePanel({
 
   async function handleDowngradeType() {
     if (!connection) return;
+    if (!confirm("Downgrade this connection to Weak?")) return;
     setChangingType(true);
     setError(null);
     try {
@@ -455,6 +774,7 @@ export default function UserProfileSidePanel({
 
   async function handleRequestUpgrade() {
     if (!connection) return;
+    if (!confirm("Request to upgrade this connection to Strong?")) return;
     setChangingType(true);
     setError(null);
     try {
@@ -463,7 +783,7 @@ export default function UserProfileSidePanel({
         currentUserId,
       );
       if (e) {
-        setError(e.message);
+        setError((e as Error).message);
         return;
       }
       await refresh();
@@ -544,6 +864,10 @@ export default function UserProfileSidePanel({
 
   const isMe = currentUserId === userId;
   const requesterIsMe = connection && connection.requester_id === currentUserId;
+  const pendingConnectionLabel =
+    connection?.connection_type === "one_point_five"
+      ? "Pending weak connection"
+      : "Pending strong connection";
   const socialRows = useMemo(
     () =>
       getVerifiedSocialRows({
@@ -618,9 +942,12 @@ export default function UserProfileSidePanel({
                   imageUrl={profile.profile_image_url}
                   className="flex-shrink-0"
                 />
-                <div className="min-w-0">
-                  <div className="text-lg font-semibold">
-                    {profile.preferred_name || profile.name}
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2">
+                    <div className="min-w-0 truncate text-lg font-semibold">
+                      {profile.preferred_name || profile.name}
+                    </div>
+                    <div className="ml-auto">{renderActionsMenu()}</div>
                   </div>
                   {profile.bio && (
                     <p className="text-sm text-gray-700 dark:text-gray-300 mt-2 leading-snug">
@@ -727,7 +1054,7 @@ export default function UserProfileSidePanel({
                 <>
                   {/* Block banner */}
                   {isBlocked && (
-                    <div className="p-3 rounded-lg border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 text-sm text-red-700 dark:text-red-300">
+                    <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700 dark:border-red-800 dark:bg-red-900/20 dark:text-red-300">
                       You have blocked this user. They won&apos;t be able to
                       send you connection requests.
                     </div>
@@ -743,7 +1070,7 @@ export default function UserProfileSidePanel({
                   {/* Connection status */}
                   {!isMe && !isBlocked && (
                     <Card>
-                      {!connection ? (
+                      {!connection || connection.status === "rejected" ? (
                         <div className="space-y-3">
                           <Select
                             label="Connection Type"
@@ -784,20 +1111,18 @@ export default function UserProfileSidePanel({
                         </div>
                       ) : connection.status === "accepted" ? (
                         <div className="space-y-3">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300 text-xs font-medium">
-                              <span className="w-1.5 h-1.5 rounded-full bg-green-600" />
-                              Connected
-                            </span>
-                            {connection.connection_type && (
-                              <Badge
-                                variant={
-                                  connection.connection_type === "first"
-                                    ? "first"
-                                    : "onePointFive"
-                                }
-                              />
-                            )}
+                          <div className="flex items-center gap-2">
+                            <Badge
+                              variant={
+                                connection.connection_type === "one_point_five"
+                                  ? "onePointFive"
+                                  : "first"
+                              }
+                            >
+                              {connection.connection_type === "one_point_five"
+                                ? "Weak connection"
+                                : "Strong connection"}
+                            </Badge>
                           </div>
 
                           {/* Upgrade request status */}
@@ -806,12 +1131,9 @@ export default function UserProfileSidePanel({
                               {connection.upgrade_requested_by ===
                               currentUserId ? (
                                 <div className="space-y-2">
-                                  <p className="text-xs font-medium text-amber-800 dark:text-amber-200">
-                                    Upgrade to Strong requested
-                                  </p>
-                                  <p className="text-xs text-amber-700 dark:text-amber-300">
-                                    Waiting for approval...
-                                  </p>
+                                  <Badge variant="pending">
+                                    Pending upgrade to strong connection
+                                  </Badge>
                                   <Button
                                     size="sm"
                                     variant="secondary"
@@ -824,6 +1146,9 @@ export default function UserProfileSidePanel({
                                 </div>
                               ) : (
                                 <div className="space-y-2">
+                                  <Badge variant="pending">
+                                    Pending upgrade to strong connection
+                                  </Badge>
                                   <p className="text-xs font-medium text-amber-800 dark:text-amber-200">
                                     Upgrade request received
                                   </p>
@@ -855,124 +1180,19 @@ export default function UserProfileSidePanel({
                             </div>
                           )}
 
-                          <div className="space-y-3 rounded-lg border border-gray-200 bg-white p-3 dark:border-gray-700 dark:bg-gray-800/50">
-                            <div className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
-                              Private note
-                            </div>
-                            <Input
-                              label="Description"
-                              value={description}
-                              onChange={(e) => setDescription(e.target.value)}
-                              placeholder="How you know them"
-                            />
-                            <Input
-                              label="Year (optional)"
-                              value={year}
-                              onChange={(e) => setYear(e.target.value)}
-                              placeholder="e.g., 2023"
-                            />
-                            <Button
-                              size="sm"
-                              variant="secondary"
-                              onClick={() => saveConnectionNote()}
-                              disabled={noteBusy}
-                            >
-                              Save note
-                            </Button>
-                          </div>
-
-                          {/* Manage connection type */}
-                          {!connection.upgrade_requested_type && (
-                            <div className="pt-3 border-t border-gray-200 dark:border-gray-700 space-y-1.5">
-                              <p className="text-xs font-medium text-gray-500 dark:text-gray-400">
-                                Manage Connection Type
-                              </p>
-                              {connection.connection_type === "first" ? (
-                                <Button
-                                  size="sm"
-                                  variant="secondary"
-                                  className="w-full"
-                                  onClick={handleDowngradeType}
-                                  disabled={changingType}
-                                >
-                                  Downgrade to Weak
-                                </Button>
-                              ) : (
-                                <Button
-                                  size="sm"
-                                  variant="primary"
-                                  className="w-full"
-                                  onClick={handleRequestUpgrade}
-                                  disabled={changingType}
-                                >
-                                  Request Upgrade to Strong
-                                </Button>
-                              )}
-                              <p className="text-xs text-gray-500 dark:text-gray-400">
-                                {connection.connection_type === "first"
-                                  ? "Downgrade does not require approval"
-                                  : "Upgrade requires approval from the other person"}
-                              </p>
-                            </div>
-                          )}
-
-                          {/* Remove connection */}
-                          <div className="pt-3 border-t border-gray-200 dark:border-gray-700">
-                            <Button
-                              size="sm"
-                              variant="destructive"
-                              className="w-full"
-                              onClick={handleRemoveConnection}
-                              disabled={changingType}
-                            >
-                              Remove Connection
-                            </Button>
-                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                              Remove this connection completely
-                            </p>
-                          </div>
+                          {renderPrivateNote()}
                         </div>
                       ) : connection.status === "pending" ? (
                         <div className="space-y-3">
                           {requesterIsMe ? (
                             <>
                               <div className="flex items-center gap-2 text-sm">
-                                <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300 text-xs font-medium">
-                                  <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
-                                  Pending
-                                </span>
+                                <Badge variant="pending">
+                                  {pendingConnectionLabel}
+                                </Badge>
                                 <span className="text-gray-500 text-xs">
                                   — awaiting response
                                 </span>
-                              </div>
-                              <div className="space-y-3 rounded-lg border border-gray-200 bg-white p-3 dark:border-gray-700 dark:bg-gray-800/50">
-                                <div className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
-                                  Private note
-                                </div>
-                                <Input
-                                  label="Description"
-                                  value={description}
-                                  onChange={(e) =>
-                                    setDescription(e.target.value)
-                                  }
-                                  placeholder="How you know them"
-                                />
-                                <Input
-                                  label="Year (optional)"
-                                  value={year}
-                                  onChange={(e) => setYear(e.target.value)}
-                                  placeholder="e.g., 2023"
-                                />
-                                <Button
-                                  size="sm"
-                                  variant="secondary"
-                                  onClick={() =>
-                                    saveConnectionNote(connection.id)
-                                  }
-                                  disabled={noteBusy}
-                                >
-                                  Save note
-                                </Button>
                               </div>
 
                               {amendMode ? (
@@ -1032,15 +1252,7 @@ export default function UserProfileSidePanel({
                                     size="sm"
                                     variant="ghost"
                                     className="flex-1"
-                                    onClick={() => {
-                                      setConnectionType(
-                                        (connection.connection_type ||
-                                          "first") as
-                                          | "first"
-                                          | "one_point_five",
-                                      );
-                                      setAmendMode(true);
-                                    }}
+                                    onClick={beginAmendPending}
                                   >
                                     Change type
                                   </Button>
@@ -1049,29 +1261,87 @@ export default function UserProfileSidePanel({
                             </>
                           ) : (
                             <>
+                              <div className="flex items-center gap-2">
+                                <Badge variant="pending">
+                                  {pendingConnectionLabel}
+                                </Badge>
+                              </div>
                               <p className="text-sm text-gray-700 dark:text-gray-300">
                                 {connection.requester?.preferred_name ||
                                   connection.requester?.name}{" "}
                                 sent you a request
                               </p>
-                              <div className="flex gap-2">
-                                <Button
-                                  size="sm"
-                                  variant="primary"
-                                  className="flex-1"
-                                  onClick={() => accept(connection.id)}
-                                >
-                                  Accept
-                                </Button>
-                                <Button
-                                  size="sm"
-                                  variant="destructive"
-                                  className="flex-1"
-                                  onClick={() => reject(connection.id)}
-                                >
-                                  Reject
-                                </Button>
-                              </div>
+                              {amendMode ? (
+                                <div className="space-y-3">
+                                  <Select
+                                    label="Connection Type"
+                                    value={connectionType}
+                                    onChange={(e) =>
+                                      setConnectionType(
+                                        e.target.value as
+                                          | "first"
+                                          | "one_point_five",
+                                      )
+                                    }
+                                  >
+                                    <option value="first">
+                                      Strong (family, friends)
+                                    </option>
+                                    <option value="one_point_five">
+                                      Weak (acquaintance, coworker, schoolmate)
+                                    </option>
+                                  </Select>
+                                  <div className="flex gap-2">
+                                    <Button
+                                      size="sm"
+                                      variant="primary"
+                                      className="flex-1"
+                                      onClick={() =>
+                                        counterPending(connection.id)
+                                      }
+                                    >
+                                      Send amendment
+                                    </Button>
+                                    <Button
+                                      size="sm"
+                                      variant="secondary"
+                                      onClick={() => {
+                                        setAmendMode(false);
+                                        setError(null);
+                                      }}
+                                    >
+                                      Cancel
+                                    </Button>
+                                  </div>
+                                </div>
+                              ) : (
+                                <div className="flex gap-2">
+                                  <Button
+                                    size="sm"
+                                    variant="primary"
+                                    className="flex-1"
+                                    onClick={() => accept(connection.id)}
+                                  >
+                                    Accept
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="destructive"
+                                    className="flex-1"
+                                    onClick={() => reject(connection.id)}
+                                  >
+                                    Reject
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    className="flex-1"
+                                    onClick={beginAmendPending}
+                                  >
+                                    Amend
+                                  </Button>
+                                </div>
+                              )}
                             </>
                           )}
                         </div>
@@ -1082,33 +1352,7 @@ export default function UserProfileSidePanel({
                       )}
                     </Card>
                   )}
-
-                  {/* Block / Unblock */}
-                  {!isMe && (
-                    <div>
-                      {isBlocked ? (
-                        <Button
-                          variant="primary"
-                          size="sm"
-                          className="w-full"
-                          onClick={handleUnblock}
-                          disabled={blockBusy}
-                        >
-                          Unblock User
-                        </Button>
-                      ) : (
-                        <Button
-                          variant="destructive"
-                          size="sm"
-                          className="w-full"
-                          onClick={handleBlock}
-                          disabled={blockBusy}
-                        >
-                          Block User
-                        </Button>
-                      )}
-                    </div>
-                  )}
+                  {renderShortestPathCard()}
                 </>
               )}
             </>
