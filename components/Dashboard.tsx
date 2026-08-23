@@ -36,6 +36,7 @@ import {
   Search,
   LogOut,
   Pencil,
+  Unlink,
   X,
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
@@ -158,6 +159,29 @@ const SOCIAL_PLATFORMS: Record<string, PlatformConfig> = {
   },
 };
 
+function socialInputValue(platform: string, url: string) {
+  const config = SOCIAL_PLATFORMS[platform];
+  if (!config) return url;
+
+  try {
+    const parsed = new URL(url.startsWith("http") ? url : `https://${url}`);
+    const path = parsed.pathname.replace(/^\/+|\/+$/g, "");
+
+    if (platform === "LinkedIn") return path.replace(/^in\//, "");
+    if (path) return path.split("/")[0].replace(/^@/, "");
+  } catch {
+    // Fall through to string cleanup for handles or partial URLs.
+  }
+
+  return url
+    .replace(/^https?:\/\//, "")
+    .replace(/^www\./, "")
+    .replace(config.baseUrl?.replace(/^https?:\/\//, "") || "", "")
+    .replace(config.prefix, "")
+    .replace(/^@/, "")
+    .replace(/^\/+|\/+$/g, "");
+}
+
 function selectedUserFromId(id: string): SelectedConnectionUser {
   return {
     id,
@@ -226,27 +250,16 @@ export default function Dashboard() {
     [socialLinks, socialVerifications],
   );
 
-  // Pre-fill social inputs when entering edit mode
+  // Pre-fill social inputs when entering profile or socials edit mode.
   useEffect(() => {
-    if (isEditingProfile) {
+    if (isEditingProfile || isEditingSocials) {
       const inputs: Record<string, string> = {};
       socialLinks.forEach((link) => {
-        const platformConfig = SOCIAL_PLATFORMS[link.platform];
-        if (platformConfig) {
-          // Extract the username/handle from the URL
-          const username = link.url
-            .replace(/^https?:\/\//, "")
-            .replace(
-              platformConfig.baseUrl?.replace(/^https?:\/\//, "") || "",
-              "",
-            )
-            .replace(platformConfig.prefix, "");
-          inputs[link.platform] = username;
-        }
+        inputs[link.platform] = socialInputValue(link.platform, link.url);
       });
       setSocialInputs(inputs);
     }
-  }, [isEditingProfile, socialLinks]);
+  }, [isEditingProfile, isEditingSocials, socialLinks]);
   const router = useRouter();
 
   useEffect(() => {
@@ -517,6 +530,30 @@ export default function Dashboard() {
     signIn(provider, { callbackUrl: "/?tab=profile" });
   };
 
+  const handleUnlinkVerifiedSocial = async (platform: string) => {
+    const provider = VERIFIABLE_SOCIAL_PROVIDERS[platform];
+    if (!provider) return;
+    if (!confirm(`Sign out of ${platform}?`)) return;
+
+    try {
+      const response = await fetch("/api/social-verifications", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ provider }),
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(payload?.error?.message || "Failed to sign out");
+      }
+      await loadData();
+    } catch (error) {
+      setMessage({
+        type: "error",
+        text: (error as Error).message || "Failed to sign out",
+      });
+    }
+  };
+
   const handleAddSocialLink = async (platform: string, value: string) => {
     if (!userProfile || !value.trim()) return;
 
@@ -549,11 +586,6 @@ export default function Dashboard() {
       url: fullUrl,
     });
 
-    // Clear the input for this platform
-    setSocialInputs((prev) => ({
-      ...prev,
-      [platform]: "",
-    }));
     loadData();
   };
 
@@ -1092,9 +1124,15 @@ export default function Dashboard() {
                                 </p>
                               </div>
                               {verification ? (
-                                <span className="rounded-md bg-emerald-50 px-2 py-1 text-xs font-medium text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300">
-                                  Verified
-                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() => handleUnlinkVerifiedSocial(key)}
+                                  title={`Sign out of ${config.name}`}
+                                  aria-label={`Sign out of ${config.name}`}
+                                  className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-gray-500 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white"
+                                >
+                                  <Unlink className="h-4 w-4" />
+                                </button>
                               ) : (
                                 <Button
                                   type="button"
