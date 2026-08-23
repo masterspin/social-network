@@ -5,13 +5,6 @@ import { connections, profiles, users } from "@/lib/db/schema";
 import { toClientConnectionRow } from "@/lib/connection-shape";
 
 export async function GET(request: Request) {
-  if (process.env.NEXT_PUBLIC_DEV_MODE === "true") {
-    return NextResponse.json(
-      { data: { received: [], sent: [], upgradeRequests: [] } },
-      { status: 200 }
-    );
-  }
-
   const { searchParams } = new URL(request.url);
   const userId = searchParams.get("userId");
   if (!userId) {

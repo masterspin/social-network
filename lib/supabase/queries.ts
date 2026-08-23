@@ -1,5 +1,3 @@
-const IS_DEV = process.env.NEXT_PUBLIC_DEV_MODE === "true";
-
 export type CurrentUser = {
   id: string;
   email?: string | null;
@@ -53,7 +51,6 @@ export async function signOut() {
 }
 
 export async function getCurrentUser(): Promise<{ user: CurrentUser | null; error: null }> {
-  if (IS_DEV) return { user: { id: "dev", email: "dev@example.com" }, error: null };
   if (typeof window !== "undefined") {
     const payload = await fetchJson<{ user: CurrentUser | null }>("/api/me");
     return { user: payload.user, error: null };

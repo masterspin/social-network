@@ -19,12 +19,6 @@ export default function HomePage() {
 
   const checkAuth = async () => {
     try {
-      if (process.env.NEXT_PUBLIC_DEV_MODE === "true") {
-        setIsAuthenticated(true);
-        setHasProfile(true);
-        return;
-      }
-
       const { user } = await getCurrentUser();
 
       if (!user) {
