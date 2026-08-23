@@ -6,7 +6,6 @@ import {
   updateConnectionStatus,
   deleteConnection,
   updateConnectionRequestDetails,
-  getFirstConnectionCount,
   acceptConnectionTypeUpgrade,
   rejectConnectionTypeUpgrade,
   cancelConnectionTypeUpgradeRequest,
@@ -73,41 +72,66 @@ export default function Inbox({ onOpenProfile }: InboxProps = {}) {
   const [editingSent, setEditingSent] = useState<string | null>(null);
   const [editingReceived, setEditingReceived] = useState<string | null>(null);
   const [formValues, setFormValues] = useState<
-    Record<string, { description: string; year: string; connectionType: "first" | "one_point_five" }>
+    Record<
+      string,
+      {
+        description: string;
+        year: string;
+        connectionType: "first" | "one_point_five";
+      }
+    >
   >({});
 
-  const refresh = useCallback(async (userId: string) => {
-    try {
-      const res = await fetch(`/api/inbox?userId=${encodeURIComponent(userId)}`);
-      const json = await res.json();
-      if (!res.ok) {
-        toast(json?.error?.message || "Failed to load inbox", "error");
+  const refresh = useCallback(
+    async (userId: string) => {
+      try {
+        const res = await fetch(
+          `/api/inbox?userId=${encodeURIComponent(userId)}`,
+        );
+        const json = await res.json();
+        if (!res.ok) {
+          toast(json?.error?.message || "Failed to load inbox", "error");
+          setReceived([]);
+          setSent([]);
+          return;
+        }
+        const data = json?.data || {
+          received: [],
+          sent: [],
+          upgradeRequests: [],
+        };
+
+        const upgradeRequestsReceived = (
+          (data.upgradeRequests as ConnectionRow[]) || []
+        ).filter((conn: ConnectionRow) => conn.upgrade_requested_by !== userId);
+        const upgradeRequestsSent = (
+          (data.upgradeRequests as ConnectionRow[]) || []
+        ).filter((conn: ConnectionRow) => conn.upgrade_requested_by === userId);
+
+        setReceived([
+          ...((data.received as ConnectionRow[]) || []),
+          ...upgradeRequestsReceived,
+        ]);
+        setSent([
+          ...((data.sent as ConnectionRow[]) || []),
+          ...upgradeRequestsSent,
+        ]);
+      } catch (e) {
+        toast((e as Error).message, "error");
         setReceived([]);
         setSent([]);
-        return;
       }
-      const data = json?.data || { received: [], sent: [], upgradeRequests: [] };
-
-      const upgradeRequestsReceived = (data.upgradeRequests as ConnectionRow[] || []).filter(
-        (conn: ConnectionRow) => conn.upgrade_requested_by !== userId
-      );
-      const upgradeRequestsSent = (data.upgradeRequests as ConnectionRow[] || []).filter(
-        (conn: ConnectionRow) => conn.upgrade_requested_by === userId
-      );
-
-      setReceived([...(data.received as ConnectionRow[] || []), ...upgradeRequestsReceived]);
-      setSent([...(data.sent as ConnectionRow[] || []), ...upgradeRequestsSent]);
-    } catch (e) {
-      toast((e as Error).message, "error");
-      setReceived([]);
-      setSent([]);
-    }
-  }, [toast]);
+    },
+    [toast],
+  );
 
   useEffect(() => {
     (async () => {
       const { user } = await getCurrentUser();
-      if (!user) { setLoading(false); return; }
+      if (!user) {
+        setLoading(false);
+        return;
+      }
       setCurrentUserId(user.id);
       await refresh(user.id);
       setLoading(false);
@@ -121,7 +145,9 @@ export default function Inbox({ onOpenProfile }: InboxProps = {}) {
       [conn.id]: {
         description: stripYearFromHowMet(conn.how_met),
         year: parseYearFromHowMet(conn.how_met),
-        connectionType: (conn.connection_type || "first") as "first" | "one_point_five",
+        connectionType: (conn.connection_type || "first") as
+          | "first"
+          | "one_point_five",
       },
     }));
   }
@@ -133,7 +159,9 @@ export default function Inbox({ onOpenProfile }: InboxProps = {}) {
       [conn.id]: {
         description: stripYearFromHowMet(conn.how_met),
         year: parseYearFromHowMet(conn.how_met),
-        connectionType: (conn.connection_type || "first") as "first" | "one_point_five",
+        connectionType: (conn.connection_type || "first") as
+          | "first"
+          | "one_point_five",
       },
     }));
   }
@@ -141,9 +169,12 @@ export default function Inbox({ onOpenProfile }: InboxProps = {}) {
   function changeField(
     id: string,
     field: "description" | "year" | "connectionType",
-    value: string
+    value: string,
   ) {
-    setFormValues((prev) => ({ ...prev, [id]: { ...prev[id], [field]: value } }));
+    setFormValues((prev) => ({
+      ...prev,
+      [id]: { ...prev[id], [field]: value },
+    }));
   }
 
   async function saveAmendSent(conn: ConnectionRow) {
@@ -153,16 +184,14 @@ export default function Inbox({ onOpenProfile }: InboxProps = {}) {
       toast("Year must be a 4-digit number.", "error");
       return;
     }
-    if (conn.connection_type === "one_point_five" && vals.connectionType === "first" && currentUserId) {
-      const { count, error: countError } = await getFirstConnectionCount(currentUserId);
-      if (countError) { toast("Failed to check connection limit. Please try again.", "error"); return; }
-      if (count >= 100) { toast("You have reached the limit of 100 first connections.", "error"); return; }
-    }
     const { error } = await updateConnectionRequestDetails(conn.id, {
       how_met: formatHowMet(vals.description, vals.year),
       connection_type: vals.connectionType,
     });
-    if (error) { toast(error.message, "error"); return; }
+    if (error) {
+      toast(error.message, "error");
+      return;
+    }
     setEditingSent(null);
     if (currentUserId) await refresh(currentUserId);
     toast("Request updated.");
@@ -170,26 +199,30 @@ export default function Inbox({ onOpenProfile }: InboxProps = {}) {
 
   async function cancelSent(conn: ConnectionRow) {
     const { error } = await deleteConnection(conn.id);
-    if (error) { toast(error.message, "error"); return; }
+    if (error) {
+      toast(error.message, "error");
+      return;
+    }
     if (currentUserId) await refresh(currentUserId);
     toast("Request deleted.");
   }
 
   async function acceptReceived(conn: ConnectionRow) {
-    if (conn.connection_type === "first" && currentUserId) {
-      const { count, error: countError } = await getFirstConnectionCount(currentUserId);
-      if (countError) { toast("Failed to check connection limit. Please try again.", "error"); return; }
-      if (count >= 100) { toast("You have reached the limit of 100 first connections.", "error"); return; }
-    }
     const { error } = await updateConnectionStatus(conn.id, "accepted");
-    if (error) { toast(error.message, "error"); return; }
+    if (error) {
+      toast(error.message, "error");
+      return;
+    }
     if (currentUserId) await refresh(currentUserId);
     toast("Connection accepted.");
   }
 
   async function rejectReceived(conn: ConnectionRow) {
     const { error } = await updateConnectionStatus(conn.id, "rejected");
-    if (error) { toast(error.message, "error"); return; }
+    if (error) {
+      toast(error.message, "error");
+      return;
+    }
     if (currentUserId) await refresh(currentUserId);
     toast("Connection rejected.");
   }
@@ -200,11 +233,6 @@ export default function Inbox({ onOpenProfile }: InboxProps = {}) {
     if (vals.year && !/^\d{4}$/.test(vals.year)) {
       toast("Year must be a 4-digit number.", "error");
       return;
-    }
-    if (conn.connection_type === "one_point_five" && vals.connectionType === "first") {
-      const { count, error: countError } = await getFirstConnectionCount(currentUserId);
-      if (countError) { toast("Failed to check connection limit. Please try again.", "error"); return; }
-      if (count >= 100) { toast("You have reached the limit of 100 first connections.", "error"); return; }
     }
     try {
       const res = await fetch("/api/connections/counter", {
@@ -218,7 +246,10 @@ export default function Inbox({ onOpenProfile }: InboxProps = {}) {
         }),
       });
       const j = await res.json();
-      if (!res.ok) { toast(j?.error?.message || "Failed to amend", "error"); return; }
+      if (!res.ok) {
+        toast(j?.error?.message || "Failed to amend", "error");
+        return;
+      }
     } catch (e) {
       toast((e as Error).message, "error");
       return;
@@ -245,8 +276,11 @@ export default function Inbox({ onOpenProfile }: InboxProps = {}) {
         {/* Received Requests */}
         <Card>
           <h3 className="text-sm font-semibold mb-4">
-            Received Requests{received.length > 0 && (
-              <span className="ml-1.5 text-gray-500 font-normal">({received.length})</span>
+            Received Requests
+            {received.length > 0 && (
+              <span className="ml-1.5 text-gray-500 font-normal">
+                ({received.length})
+              </span>
             )}
           </h3>
           {received.length === 0 ? (
@@ -258,8 +292,12 @@ export default function Inbox({ onOpenProfile }: InboxProps = {}) {
           ) : (
             <div className="space-y-3">
               {received.map((conn) => {
-                const isUpgradeRequest = conn.status === "accepted" && conn.upgrade_requested_type;
-                const otherUser = conn.requester_id === currentUserId ? conn.recipient : conn.requester;
+                const isUpgradeRequest =
+                  conn.status === "accepted" && conn.upgrade_requested_type;
+                const otherUser =
+                  conn.requester_id === currentUserId
+                    ? conn.recipient
+                    : conn.requester;
 
                 return (
                   <div
@@ -272,7 +310,12 @@ export default function Inbox({ onOpenProfile }: InboxProps = {}) {
                   >
                     {isUpgradeRequest ? (
                       <div className="flex items-start gap-3">
-                        <Avatar size="sm" name={otherUser.name} imageUrl={otherUser.profile_image_url} className="flex-shrink-0 mt-0.5" />
+                        <Avatar
+                          size="sm"
+                          name={otherUser.name}
+                          imageUrl={otherUser.profile_image_url}
+                          className="flex-shrink-0 mt-0.5"
+                        />
                         <div className="flex-1 min-w-0">
                           <button
                             className="font-medium text-sm hover:underline text-left"
@@ -281,10 +324,13 @@ export default function Inbox({ onOpenProfile }: InboxProps = {}) {
                             {otherUser.preferred_name || otherUser.name}
                           </button>
                           <p className="text-xs text-gray-600 dark:text-gray-400 mt-0.5">
-                            Wants to upgrade to 1st connection
+                            Wants to upgrade to Strong
                           </p>
                           <p className="text-xs text-gray-500 mt-0.5">
-                            Current: {conn.connection_type === "first" ? "1st" : "1.5"} connection
+                            Current:{" "}
+                            {conn.connection_type === "first"
+                              ? "Strong"
+                              : "Weak"}
                           </p>
                         </div>
                         <div className="flex gap-2 flex-shrink-0">
@@ -292,9 +338,13 @@ export default function Inbox({ onOpenProfile }: InboxProps = {}) {
                             size="sm"
                             variant="primary"
                             onClick={async () => {
-                              const { error } = await acceptConnectionTypeUpgrade(conn.id);
+                              const { error } =
+                                await acceptConnectionTypeUpgrade(conn.id);
                               if (error) toast(error.message, "error");
-                              else { toast("Upgrade accepted!"); if (currentUserId) await refresh(currentUserId); }
+                              else {
+                                toast("Upgrade accepted!");
+                                if (currentUserId) await refresh(currentUserId);
+                              }
                             }}
                           >
                             Accept
@@ -303,9 +353,13 @@ export default function Inbox({ onOpenProfile }: InboxProps = {}) {
                             size="sm"
                             variant="destructive"
                             onClick={async () => {
-                              const { error } = await rejectConnectionTypeUpgrade(conn.id);
+                              const { error } =
+                                await rejectConnectionTypeUpgrade(conn.id);
                               if (error) toast(error.message, "error");
-                              else { toast("Upgrade declined"); if (currentUserId) await refresh(currentUserId); }
+                              else {
+                                toast("Upgrade declined");
+                                if (currentUserId) await refresh(currentUserId);
+                              }
                             }}
                           >
                             Decline
@@ -315,30 +369,58 @@ export default function Inbox({ onOpenProfile }: InboxProps = {}) {
                     ) : (
                       <>
                         <div className="flex items-start gap-3">
-                          <Avatar size="sm" name={conn.requester.name} imageUrl={conn.requester.profile_image_url} className="flex-shrink-0 mt-0.5" />
+                          <Avatar
+                            size="sm"
+                            name={conn.requester.name}
+                            imageUrl={conn.requester.profile_image_url}
+                            className="flex-shrink-0 mt-0.5"
+                          />
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 flex-wrap">
                               <button
                                 className="font-medium text-sm hover:underline text-left"
-                                onClick={() => onOpenProfile?.(conn.requester.id)}
+                                onClick={() =>
+                                  onOpenProfile?.(conn.requester.id)
+                                }
                               >
-                                {conn.requester.preferred_name || conn.requester.name}
+                                {conn.requester.preferred_name ||
+                                  conn.requester.name}
                               </button>
-                              <Badge variant={conn.connection_type === "first" ? "first" : "onePointFive"} />
+                              <Badge
+                                variant={
+                                  conn.connection_type === "first"
+                                    ? "first"
+                                    : "onePointFive"
+                                }
+                              />
                             </div>
                             <p className="text-xs text-gray-500 mt-0.5">
                               {stripYearFromHowMet(conn.how_met)}
-                              {parseYearFromHowMet(conn.how_met) ? ` · ${parseYearFromHowMet(conn.how_met)}` : ""}
+                              {parseYearFromHowMet(conn.how_met)
+                                ? ` · ${parseYearFromHowMet(conn.how_met)}`
+                                : ""}
                             </p>
                           </div>
                           <div className="flex gap-2 flex-shrink-0">
-                            <Button size="sm" variant="primary" onClick={() => acceptReceived(conn)}>
+                            <Button
+                              size="sm"
+                              variant="primary"
+                              onClick={() => acceptReceived(conn)}
+                            >
                               Accept
                             </Button>
-                            <Button size="sm" variant="destructive" onClick={() => rejectReceived(conn)}>
+                            <Button
+                              size="sm"
+                              variant="destructive"
+                              onClick={() => rejectReceived(conn)}
+                            >
                               Reject
                             </Button>
-                            <Button size="sm" variant="ghost" onClick={() => startEditReceived(conn)}>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => startEditReceived(conn)}
+                            >
                               Amend
                             </Button>
                           </div>
@@ -348,29 +430,57 @@ export default function Inbox({ onOpenProfile }: InboxProps = {}) {
                           <div className="mt-4 space-y-3 pl-11">
                             <Select
                               label="Connection Type"
-                              value={formValues[conn.id]?.connectionType || "first"}
-                              onChange={(e) => changeField(conn.id, "connectionType", e.target.value)}
+                              value={
+                                formValues[conn.id]?.connectionType || "first"
+                              }
+                              onChange={(e) =>
+                                changeField(
+                                  conn.id,
+                                  "connectionType",
+                                  e.target.value,
+                                )
+                              }
                             >
-                              <option value="first">1st Connection</option>
-                              <option value="one_point_five">1.5 Connection</option>
+                              <option value="first">
+                                Strong (family, friends)
+                              </option>
+                              <option value="one_point_five">
+                                Weak (acquaintance, coworker, schoolmate)
+                              </option>
                             </Select>
                             <Input
-                              label="Connection Description"
+                              label="Description"
                               value={formValues[conn.id]?.description || ""}
-                              onChange={(e) => changeField(conn.id, "description", e.target.value)}
+                              onChange={(e) =>
+                                changeField(
+                                  conn.id,
+                                  "description",
+                                  e.target.value,
+                                )
+                              }
                               placeholder="How you met and relationship"
                             />
                             <Input
                               label="Year (optional)"
                               value={formValues[conn.id]?.year || ""}
-                              onChange={(e) => changeField(conn.id, "year", e.target.value)}
+                              onChange={(e) =>
+                                changeField(conn.id, "year", e.target.value)
+                              }
                               placeholder="e.g., 2023"
                             />
                             <div className="flex gap-2">
-                              <Button size="sm" variant="primary" onClick={() => amendReceived(conn)}>
+                              <Button
+                                size="sm"
+                                variant="primary"
+                                onClick={() => amendReceived(conn)}
+                              >
                                 Send Amended
                               </Button>
-                              <Button size="sm" variant="secondary" onClick={() => setEditingReceived(null)}>
+                              <Button
+                                size="sm"
+                                variant="secondary"
+                                onClick={() => setEditingReceived(null)}
+                              >
                                 Cancel
                               </Button>
                             </div>
@@ -388,8 +498,11 @@ export default function Inbox({ onOpenProfile }: InboxProps = {}) {
         {/* Sent Requests */}
         <Card>
           <h3 className="text-sm font-semibold mb-4">
-            Sent Requests{sent.length > 0 && (
-              <span className="ml-1.5 text-gray-500 font-normal">({sent.length})</span>
+            Sent Requests
+            {sent.length > 0 && (
+              <span className="ml-1.5 text-gray-500 font-normal">
+                ({sent.length})
+              </span>
             )}
           </h3>
           {sent.length === 0 ? (
@@ -401,8 +514,12 @@ export default function Inbox({ onOpenProfile }: InboxProps = {}) {
           ) : (
             <div className="space-y-3">
               {sent.map((conn) => {
-                const isUpgradeRequest = conn.status === "accepted" && conn.upgrade_requested_type;
-                const otherUser = conn.requester_id === currentUserId ? conn.recipient : conn.requester;
+                const isUpgradeRequest =
+                  conn.status === "accepted" && conn.upgrade_requested_type;
+                const otherUser =
+                  conn.requester_id === currentUserId
+                    ? conn.recipient
+                    : conn.requester;
 
                 return (
                   <div
@@ -415,7 +532,12 @@ export default function Inbox({ onOpenProfile }: InboxProps = {}) {
                   >
                     {isUpgradeRequest ? (
                       <div className="flex items-start gap-3">
-                        <Avatar size="sm" name={otherUser.name} imageUrl={otherUser.profile_image_url} className="flex-shrink-0 mt-0.5" />
+                        <Avatar
+                          size="sm"
+                          name={otherUser.name}
+                          imageUrl={otherUser.profile_image_url}
+                          className="flex-shrink-0 mt-0.5"
+                        />
                         <div className="flex-1 min-w-0">
                           <button
                             className="font-medium text-sm hover:underline text-left"
@@ -424,17 +546,23 @@ export default function Inbox({ onOpenProfile }: InboxProps = {}) {
                             {otherUser.preferred_name || otherUser.name}
                           </button>
                           <p className="text-xs text-gray-600 dark:text-gray-400 mt-0.5">
-                            Upgrade to 1st connection requested
+                            Upgrade to Strong requested
                           </p>
-                          <p className="text-xs text-gray-500 mt-0.5">Waiting for approval...</p>
+                          <p className="text-xs text-gray-500 mt-0.5">
+                            Waiting for approval...
+                          </p>
                         </div>
                         <Button
                           size="sm"
                           variant="secondary"
                           onClick={async () => {
-                            const { error } = await cancelConnectionTypeUpgradeRequest(conn.id);
+                            const { error } =
+                              await cancelConnectionTypeUpgradeRequest(conn.id);
                             if (error) toast(error.message, "error");
-                            else { toast("Upgrade request cancelled"); if (currentUserId) await refresh(currentUserId); }
+                            else {
+                              toast("Upgrade request cancelled");
+                              if (currentUserId) await refresh(currentUserId);
+                            }
                           }}
                         >
                           Cancel Request
@@ -443,27 +571,51 @@ export default function Inbox({ onOpenProfile }: InboxProps = {}) {
                     ) : (
                       <>
                         <div className="flex items-start gap-3">
-                          <Avatar size="sm" name={conn.recipient.name} imageUrl={conn.recipient.profile_image_url} className="flex-shrink-0 mt-0.5" />
+                          <Avatar
+                            size="sm"
+                            name={conn.recipient.name}
+                            imageUrl={conn.recipient.profile_image_url}
+                            className="flex-shrink-0 mt-0.5"
+                          />
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 flex-wrap">
                               <button
                                 className="font-medium text-sm hover:underline text-left"
-                                onClick={() => onOpenProfile?.(conn.recipient.id)}
+                                onClick={() =>
+                                  onOpenProfile?.(conn.recipient.id)
+                                }
                               >
-                                {conn.recipient.preferred_name || conn.recipient.name}
+                                {conn.recipient.preferred_name ||
+                                  conn.recipient.name}
                               </button>
-                              <Badge variant={conn.connection_type === "first" ? "first" : "onePointFive"} />
+                              <Badge
+                                variant={
+                                  conn.connection_type === "first"
+                                    ? "first"
+                                    : "onePointFive"
+                                }
+                              />
                             </div>
                             <p className="text-xs text-gray-500 mt-0.5">
                               {stripYearFromHowMet(conn.how_met)}
-                              {parseYearFromHowMet(conn.how_met) ? ` · ${parseYearFromHowMet(conn.how_met)}` : ""}
+                              {parseYearFromHowMet(conn.how_met)
+                                ? ` · ${parseYearFromHowMet(conn.how_met)}`
+                                : ""}
                             </p>
                           </div>
                           <div className="flex gap-2 flex-shrink-0">
-                            <Button size="sm" variant="ghost" onClick={() => startEditSent(conn)}>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => startEditSent(conn)}
+                            >
                               Amend
                             </Button>
-                            <Button size="sm" variant="destructive" onClick={() => cancelSent(conn)}>
+                            <Button
+                              size="sm"
+                              variant="destructive"
+                              onClick={() => cancelSent(conn)}
+                            >
                               Delete
                             </Button>
                           </div>
@@ -473,29 +625,57 @@ export default function Inbox({ onOpenProfile }: InboxProps = {}) {
                           <div className="mt-4 space-y-3 pl-11">
                             <Select
                               label="Connection Type"
-                              value={formValues[conn.id]?.connectionType || "first"}
-                              onChange={(e) => changeField(conn.id, "connectionType", e.target.value)}
+                              value={
+                                formValues[conn.id]?.connectionType || "first"
+                              }
+                              onChange={(e) =>
+                                changeField(
+                                  conn.id,
+                                  "connectionType",
+                                  e.target.value,
+                                )
+                              }
                             >
-                              <option value="first">1st Connection</option>
-                              <option value="one_point_five">1.5 Connection</option>
+                              <option value="first">
+                                Strong (family, friends)
+                              </option>
+                              <option value="one_point_five">
+                                Weak (acquaintance, coworker, schoolmate)
+                              </option>
                             </Select>
                             <Input
-                              label="Connection Description"
+                              label="Description"
                               value={formValues[conn.id]?.description || ""}
-                              onChange={(e) => changeField(conn.id, "description", e.target.value)}
+                              onChange={(e) =>
+                                changeField(
+                                  conn.id,
+                                  "description",
+                                  e.target.value,
+                                )
+                              }
                               placeholder="How you met and relationship"
                             />
                             <Input
                               label="Year (optional)"
                               value={formValues[conn.id]?.year || ""}
-                              onChange={(e) => changeField(conn.id, "year", e.target.value)}
+                              onChange={(e) =>
+                                changeField(conn.id, "year", e.target.value)
+                              }
                               placeholder="e.g., 2023"
                             />
                             <div className="flex gap-2">
-                              <Button size="sm" variant="primary" onClick={() => saveAmendSent(conn)}>
+                              <Button
+                                size="sm"
+                                variant="primary"
+                                onClick={() => saveAmendSent(conn)}
+                              >
                                 Save
                               </Button>
-                              <Button size="sm" variant="secondary" onClick={() => setEditingSent(null)}>
+                              <Button
+                                size="sm"
+                                variant="secondary"
+                                onClick={() => setEditingSent(null)}
+                              >
                                 Cancel
                               </Button>
                             </div>

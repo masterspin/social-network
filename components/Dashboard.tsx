@@ -1204,11 +1204,11 @@ export default function Dashboard() {
                 },
                 {
                   key: "first" as const,
-                  label: `1st (${connectionUsers.filter((u) => u.connection_type === "first").length})`,
+                  label: `Strong (${connectionUsers.filter((u) => u.connection_type === "first").length})`,
                 },
                 {
                   key: "one_point_five" as const,
-                  label: `1.5 (${connectionUsers.filter((u) => u.connection_type === "one_point_five").length})`,
+                  label: `Weak (${connectionUsers.filter((u) => u.connection_type === "one_point_five").length})`,
                 },
               ] as const
             ).map(({ key, label }) => (

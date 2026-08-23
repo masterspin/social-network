@@ -20,8 +20,8 @@ const variantClasses: Record<Variant, string> = {
 };
 
 const defaultLabels: Record<Variant, string> = {
-  first: "1st",
-  onePointFive: "1.5",
+  first: "Strong",
+  onePointFive: "Weak",
   pending: "Pending",
   success: "Success",
   error: "Error",

@@ -1,4 +1,4 @@
-import { and, eq, or, sql } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { connections } from "@/lib/db/schema";
@@ -31,16 +31,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: { message: "Only accepted connections can be upgraded" } }, { status: 400 });
     }
     if (connection.connectionType !== "one_point_five") {
-      return NextResponse.json({ error: { message: "Upgrade requests are only allowed for 1.5 connections" } }, { status: 409 });
-    }
-
-    const [{ count }] = await db
-      .select({ count: sql<number>`count(*)` })
-      .from(connections)
-      .where(and(eq(connections.status, "accepted"), eq(connections.connectionType, "first"), or(eq(connections.requesterId, requesterId), eq(connections.recipientId, requesterId))));
-
-    if ((count ?? 0) >= 100) {
-      return NextResponse.json({ error: { message: "You have reached the limit of 100 first connections. Downgrade one before requesting an upgrade." } }, { status: 403 });
+      return NextResponse.json({ error: { message: "Upgrade requests are only allowed for Weak connections" } }, { status: 409 });
     }
 
     const [updated] = await db

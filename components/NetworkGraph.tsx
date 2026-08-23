@@ -488,10 +488,10 @@ export default function NetworkGraph({
           You
         </span>
         <span className="rounded-full bg-slate-900/90 px-3 py-1 text-emerald-300">
-          First
+          Strong
         </span>
         <span className="rounded-full bg-slate-900/90 px-3 py-1 text-violet-300">
-          1.5
+          Weak
         </span>
         <span className="rounded-full bg-slate-900/90 px-3 py-1 text-amber-300">
           Pending

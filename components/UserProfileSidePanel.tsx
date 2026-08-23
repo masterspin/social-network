@@ -7,7 +7,6 @@ import {
   deleteConnection,
   updateConnectionRequestDetails,
   isUserBlocked,
-  getFirstConnectionCount,
   requestConnectionTypeUpgrade,
   cancelConnectionTypeUpgradeRequest,
   downgradeConnectionType,
@@ -270,18 +269,6 @@ export default function UserProfileSidePanel({
       setError("Year must be a 4-digit number.");
       return;
     }
-    if (connectionType === "first") {
-      const { count, error: countError } =
-        await getFirstConnectionCount(currentUserId);
-      if (countError) {
-        setError("Failed to check connection limit. Please try again.");
-        return;
-      }
-      if (count >= 100) {
-        setError("You have reached the limit of 100 first connections.");
-        return;
-      }
-    }
     const { error: e } = await createConnectionRequest({
       requester_id: currentUserId,
       recipient_id: userId,
@@ -302,18 +289,6 @@ export default function UserProfileSidePanel({
 
   async function accept(id: string) {
     setError(null);
-    if (connection?.connection_type === "first") {
-      const { count, error: countError } =
-        await getFirstConnectionCount(currentUserId);
-      if (countError) {
-        setError("Failed to check connection limit. Please try again.");
-        return;
-      }
-      if (count >= 100) {
-        setError("You have reached the limit of 100 first connections.");
-        return;
-      }
-    }
     const { error: e } = await updateConnectionStatus(id, "accepted");
     if (e) {
       setError(e.message);
@@ -352,21 +327,6 @@ export default function UserProfileSidePanel({
     if (year && !/^\d{4}$/.test(year)) {
       setError("Year must be a 4-digit number.");
       return;
-    }
-    if (
-      connection?.connection_type === "one_point_five" &&
-      connectionType === "first"
-    ) {
-      const { count, error: countError } =
-        await getFirstConnectionCount(currentUserId);
-      if (countError) {
-        setError("Failed to check connection limit. Please try again.");
-        return;
-      }
-      if (count >= 100) {
-        setError("You have reached the limit of 100 first connections.");
-        return;
-      }
     }
     const { error: e } = await updateConnectionRequestDetails(id, {
       how_met: formatHowMet(description || "", year),
@@ -743,9 +703,6 @@ export default function UserProfileSidePanel({
                     <Card>
                       {!connection ? (
                         <div className="space-y-3">
-                          <p className="text-sm text-gray-600 dark:text-gray-400">
-                            Not connected
-                          </p>
                           <Select
                             label="Connection Type"
                             value={connectionType}
@@ -755,18 +712,15 @@ export default function UserProfileSidePanel({
                               )
                             }
                           >
-                            <option value="first">1st Connection</option>
+                            <option value="first">
+                              Strong (family, friends)
+                            </option>
                             <option value="one_point_five">
-                              1.5 Connection
+                              Weak (acquaintance, coworker, schoolmate)
                             </option>
                           </Select>
-                          <p className="text-xs text-gray-500 -mt-1">
-                            {connectionType === "first"
-                              ? "Limited to 100. For your closest connections."
-                              : "For connections not in your inner circle."}
-                          </p>
                           <Input
-                            label="Connection Description"
+                            label="Description"
                             value={description}
                             onChange={(e) => setDescription(e.target.value)}
                             placeholder="How you met and relationship"
@@ -811,7 +765,7 @@ export default function UserProfileSidePanel({
                               currentUserId ? (
                                 <div className="space-y-2">
                                   <p className="text-xs font-medium text-amber-800 dark:text-amber-200">
-                                    Upgrade to 1st connection requested
+                                    Upgrade to Strong requested
                                   </p>
                                   <p className="text-xs text-amber-700 dark:text-amber-300">
                                     Waiting for approval...
@@ -832,7 +786,7 @@ export default function UserProfileSidePanel({
                                     Upgrade request received
                                   </p>
                                   <p className="text-xs text-amber-700 dark:text-amber-300">
-                                    Wants to upgrade to 1st connection
+                                    Wants to upgrade to Strong
                                   </p>
                                   <div className="flex gap-2">
                                     <Button
@@ -883,7 +837,7 @@ export default function UserProfileSidePanel({
                                   onClick={handleDowngradeType}
                                   disabled={changingType}
                                 >
-                                  Downgrade to 1.5 Connection
+                                  Downgrade to Weak
                                 </Button>
                               ) : (
                                 <Button
@@ -893,7 +847,7 @@ export default function UserProfileSidePanel({
                                   onClick={handleRequestUpgrade}
                                   disabled={changingType}
                                 >
-                                  Request Upgrade to 1st
+                                  Request Upgrade to Strong
                                 </Button>
                               )}
                               <p className="text-xs text-gray-500 dark:text-gray-400">
@@ -954,14 +908,14 @@ export default function UserProfileSidePanel({
                                     }
                                   >
                                     <option value="first">
-                                      1st Connection
+                                      Strong (family, friends)
                                     </option>
                                     <option value="one_point_five">
-                                      1.5 Connection
+                                      Weak (acquaintance, coworker, schoolmate)
                                     </option>
                                   </Select>
                                   <Input
-                                    label="Connection Description"
+                                    label="Description"
                                     value={description}
                                     onChange={(e) =>
                                       setDescription(e.target.value)
