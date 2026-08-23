@@ -112,7 +112,7 @@ export default function ProfileSetup({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [currentStep, setCurrentStep] = useState(1);
-  const totalSteps = 3; // Changed from 3 to 4
+  const totalSteps = 3;
 
   const [name, setName] = useState(existingProfile?.name || "");
   const [preferredName, setPreferredName] = useState(
@@ -406,39 +406,6 @@ export default function ProfileSetup({
                   </div>
                 </div>
               )}
-
-              {/* Privacy Settings Summary */}
-              {/* <div className="md:col-span-2 bg-white dark:bg-gray-800 p-3 rounded-lg">
-                <div className="text-xs text-gray-500 dark:text-gray-400 mb-2">
-                  Privacy Settings
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  <span className="px-2 py-1 bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 text-xs rounded-full">
-                    Visible to {visibilityLevel} connection
-                    {visibilityLevel !== 1 ? "s" : ""} away
-                  </span>
-                  {showProfileImage && (
-                    <span className="px-2 py-1 bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 text-xs rounded-full">
-                      ✓ Profile Image Public
-                    </span>
-                  )}
-                  {showFullName && (
-                    <span className="px-2 py-1 bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 text-xs rounded-full">
-                      ✓ Full Name Public
-                    </span>
-                  )}
-                  {showGender && (
-                    <span className="px-2 py-1 bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 text-xs rounded-full">
-                      ✓ Gender Public
-                    </span>
-                  )}
-                  {showSocialLinks && (
-                    <span className="px-2 py-1 bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 text-xs rounded-full">
-                      ✓ Social Links Public
-                    </span>
-                  )}
-                </div>
-              </div> */}
 
               {/* Social Links Summary */}
               {socialLinks.length > 0 && (
@@ -882,90 +849,6 @@ export default function ProfileSetup({
                 )}
               </div>
             )}
-
-            {/* Step 4: Privacy Settings */}
-            {/* {currentStep === 4 && (
-              <div className="bg-white dark:bg-gray-900 p-8 rounded-2xl shadow-2xl border-0">
-                <h3 className="text-2xl font-bold mb-2">
-                  Choose your privacy settings
-                </h3>
-                <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
-                  Control who can see your profile and information
-                </p>
-
-                <div className="space-y-6">
-                  <div>
-                    <label
-                      htmlFor="visibility"
-                      className="block text-sm font-medium mb-3"
-                    >
-                      Visibility Level: {visibilityLevel}{" "}
-                      {visibilityLevel === 1 ? "connection" : "connections"}{" "}
-                      away
-                    </label>
-                    <input
-                      id="visibility"
-                      type="range"
-                      min="1"
-                      max="6"
-                      value={visibilityLevel}
-                      onChange={(e) =>
-                        setVisibilityLevel(Number(e.target.value))
-                      }
-                      className="w-full h-2"
-                    />
-                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
-                      Users beyond this distance will see limited information
-                    </p>
-                  </div>
-
-                  <div className="space-y-3">
-                    <p className="text-sm font-medium mb-2">
-                      Show to distant connections:
-                    </p>
-                    <label className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={showProfileImage}
-                        onChange={(e) => setShowProfileImage(e.target.checked)}
-                        className="w-5 h-5"
-                      />
-                      <span className="text-sm">Profile image</span>
-                    </label>
-
-                    <label className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={showFullName}
-                        onChange={(e) => setShowFullName(e.target.checked)}
-                        className="w-5 h-5"
-                      />
-                      <span className="text-sm">Full name</span>
-                    </label>
-
-                    <label className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={showGender}
-                        onChange={(e) => setShowGender(e.target.checked)}
-                        className="w-5 h-5"
-                      />
-                      <span className="text-sm">Gender</span>
-                    </label>
-
-                    <label className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={showSocialLinks}
-                        onChange={(e) => setShowSocialLinks(e.target.checked)}
-                        className="w-5 h-5"
-                      />
-                      <span className="text-sm">Social links</span>
-                    </label>
-                  </div>
-                </div>
-              </div>
-            )} */}
 
             {/* Navigation buttons */}
             <div className="flex gap-3">
