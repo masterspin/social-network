@@ -369,16 +369,37 @@ export default function NetworkGraph({
   const [expandingUserId, setExpandingUserId] = useState<string | null>(null);
   const filteredGraphData = useMemo<GraphData | null>(() => {
     if (!pathFilter) return null;
+    const existingNodes = new Map(graphData.nodes.map((node) => [node.id, node]));
 
     return {
-      nodes: pathFilter.nodes.map((node, index) => ({
-        id: node.id,
-        name: node.name,
-        preferred_name: node.preferred_name,
-        profile_image_url: node.profile_image_url,
-        distance: node.id === currentUserId ? 0 : index + 1,
-        path_type: "first",
-      })),
+      nodes: pathFilter.nodes.map((node, index) => {
+        const existingNode = existingNodes.get(node.id);
+        const previousNodeId = pathFilter.nodes[index - 1]?.id;
+        const incomingLink = pathFilter.links.find(
+          (link) =>
+            (link.source === previousNodeId && link.target === node.id) ||
+            (link.target === previousNodeId && link.source === node.id),
+        );
+        const pathType =
+          incomingLink?.connection_type === "one_point_five"
+            ? "one_point_five"
+            : "first";
+
+        return {
+          id: node.id,
+          name: node.name,
+          preferred_name: node.preferred_name,
+          profile_image_url: node.profile_image_url,
+          distance:
+            existingNode?.distance ?? (node.id === currentUserId ? 0 : 1),
+          connection_type:
+            existingNode?.connection_type ??
+            (node.id === currentUserId ? undefined : pathType),
+          path_type:
+            existingNode?.path_type ??
+            (node.id === currentUserId ? "first" : pathType),
+        };
+      }),
       links: pathFilter.links.map((link) => ({
         source: link.source,
         target: link.target,
@@ -386,7 +407,7 @@ export default function NetworkGraph({
         connection_type: link.connection_type || "first",
       })),
     };
-  }, [currentUserId, pathFilter]);
+  }, [currentUserId, graphData.nodes, pathFilter]);
   const displayedGraphData = filteredGraphData ?? graphData;
   const displayedSelectedPath = filteredGraphData ? [] : selectedPath;
 
