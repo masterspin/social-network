@@ -3,7 +3,7 @@ import { and, asc, eq, inArray, or } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { connectionNotes, connections, profiles, users } from "@/lib/db/schema";
 
-// Returns the list of a user's accepted, direct connections with mutual counts.
+// Returns the list of a user's accepted and pending direct connections with mutual counts.
 // Response shape:
 // {
 //   data: Array<{
@@ -35,9 +35,11 @@ export async function GET(request: Request) {
       .where(or(eq(connections.requesterId, userId), eq(connections.recipientId, userId)))
       .orderBy(asc(connections.createdAt));
     const accepted = myConns.filter((row) => row.status === "accepted");
+    const pending = myConns.filter((row) => row.status === "pending");
+    const visibleDirect = [...accepted, ...pending];
     const neighborIds = Array.from(
       new Set(
-        accepted.map((row) => (row.requesterId === userId ? row.recipientId : row.requesterId)),
+        visibleDirect.map((row) => (row.requesterId === userId ? row.recipientId : row.requesterId)),
       ),
     );
     const allAccepted = neighborIds.length
@@ -69,7 +71,7 @@ export async function GET(request: Request) {
     const noteByConnectionId = new Map(
       noteRows.map((note) => [note.connectionId, note]),
     );
-    const result = accepted.map((c) => {
+    const result = visibleDirect.map((c) => {
       const otherId = c.requesterId === userId ? c.recipientId : c.requesterId;
       const other = userById.get(otherId) || null;
       const note = noteByConnectionId.get(c.id);
