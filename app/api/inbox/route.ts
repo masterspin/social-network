@@ -2,6 +2,7 @@ import { eq, or } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { connections, profiles, users } from "@/lib/db/schema";
+import { toClientConnectionRow } from "@/lib/connection-shape";
 
 export async function GET(request: Request) {
   if (process.env.NEXT_PUBLIC_DEV_MODE === "true") {
@@ -32,7 +33,7 @@ export async function GET(request: Request) {
     .leftJoin(profiles, eq(users.id, profiles.id));
   const byId = new Map(usersRows.map((u) => [u.id, u]));
   const enrich = (row: typeof rows[number]) => ({
-    ...row,
+    ...toClientConnectionRow(row),
     requester: byId.get(row.requesterId) ?? null,
     recipient: byId.get(row.recipientId) ?? null,
   });

@@ -2,6 +2,7 @@ import { and, eq, or } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { connections, profiles, users } from "@/lib/db/schema";
+import { toClientConnectionRow } from "@/lib/connection-shape";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -34,7 +35,10 @@ export async function GET(request: Request) {
     const [requester] = await db.select(userSelection).from(users).leftJoin(profiles, eq(users.id, profiles.id)).where(eq(users.id, row.requesterId)).limit(1);
     const [recipient] = await db.select(userSelection).from(users).leftJoin(profiles, eq(users.id, profiles.id)).where(eq(users.id, row.recipientId)).limit(1);
 
-    return NextResponse.json({ data: { ...row, requester, recipient } }, { status: 200 });
+    return NextResponse.json(
+      { data: { ...toClientConnectionRow(row), requester, recipient } },
+      { status: 200 },
+    );
   } catch (e) {
     return NextResponse.json(
       { error: { message: (e as Error).message } },
@@ -73,7 +77,10 @@ export async function POST(request: Request) {
       })
       .returning();
 
-    return NextResponse.json({ data: row ?? null }, { status: 200 });
+    return NextResponse.json(
+      { data: row ? toClientConnectionRow(row) : null },
+      { status: 200 },
+    );
   } catch (e) {
     return NextResponse.json(
       { error: { message: (e as Error).message } },
@@ -111,7 +118,10 @@ export async function PATCH(request: Request) {
       .where(and(eq(connections.id, connectionId), eq(connections.status, "pending")))
       .returning();
 
-    return NextResponse.json({ data: row ?? null }, { status: 200 });
+    return NextResponse.json(
+      { data: row ? toClientConnectionRow(row) : null },
+      { status: 200 },
+    );
   } catch (e) {
     return NextResponse.json(
       { error: { message: (e as Error).message } },
