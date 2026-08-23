@@ -266,8 +266,8 @@ function GraphEvents({
       const muted = selectedPath.length > 0 && !isSelected;
       return {
         ...data,
-        color: isSelected ? COLOR.path : muted ? "#334155" : data.color,
-        size: isSelected ? Math.max(data.size ?? 8, 13) : data.size,
+        color: muted ? "#334155" : data.color,
+        size: data.size,
         label: muted ? "" : data.label,
         zIndex: isSelected ? 10 : 0,
       };
