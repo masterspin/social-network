@@ -2,7 +2,7 @@ import { eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
-import { profiles, socialLinks, users } from "@/lib/db/schema";
+import { profiles, socialLinks, socialVerifications, users } from "@/lib/db/schema";
 import { getProfilePatchUpdates } from "@/lib/profile";
 
 export async function GET(
@@ -45,7 +45,20 @@ export async function GET(
       .from(socialLinks)
       .where(eq(socialLinks.userId, id));
 
-    return NextResponse.json({ data: { user, links } }, { status: 200 });
+    const verifications = await db
+      .select({
+        provider: socialVerifications.provider,
+        provider_account_id: socialVerifications.providerAccountId,
+        display_name: socialVerifications.displayName,
+        profile_url: socialVerifications.profileUrl,
+      })
+      .from(socialVerifications)
+      .where(eq(socialVerifications.userId, id));
+
+    return NextResponse.json(
+      { data: { user, links, verifications } },
+      { status: 200 },
+    );
   } catch (e) {
     return NextResponse.json(
       { error: { message: (e as Error).message } },

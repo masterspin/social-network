@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   createConnectionRequest,
   updateConnectionStatus,
@@ -34,6 +34,7 @@ import { Card } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { SkeletonAvatar, SkeletonText } from "@/components/ui/Skeleton";
+import { getVerifiedSocialRows } from "@/lib/social-links";
 
 type Props = {
   open: boolean;
@@ -45,6 +46,12 @@ type Props = {
 
 type UserRow = Database["public"]["Tables"]["users"]["Row"];
 type SocialLink = Database["public"]["Tables"]["social_links"]["Row"];
+type SocialVerification = {
+  provider: string;
+  provider_account_id: string;
+  display_name: string | null;
+  profile_url: string | null;
+};
 type ConnectionRow = Database["public"]["Tables"]["connections"]["Row"] & {
   requester: {
     id: string;
@@ -66,13 +73,42 @@ const PLATFORM_META: Record<
   string,
   { icon: IconType; color: string; baseUrl?: string; prefix?: string }
 > = {
-  Instagram: { icon: FaInstagram, color: "text-pink-600", baseUrl: "https://instagram.com/", prefix: "@" },
-  Twitter: { icon: FaTwitter, color: "text-blue-400", baseUrl: "https://twitter.com/", prefix: "@" },
-  LinkedIn: { icon: FaLinkedin, color: "text-blue-700", prefix: "linkedin.com/in/" },
-  Facebook: { icon: FaFacebook, color: "text-blue-600", baseUrl: "https://facebook.com/", prefix: "@" },
-  TikTok: { icon: FaTiktok, color: "text-black dark:text-white", baseUrl: "https://tiktok.com/", prefix: "@" },
+  Instagram: {
+    icon: FaInstagram,
+    color: "text-pink-600",
+    baseUrl: "https://instagram.com/",
+    prefix: "@",
+  },
+  Twitter: {
+    icon: FaTwitter,
+    color: "text-blue-400",
+    baseUrl: "https://twitter.com/",
+    prefix: "@",
+  },
+  LinkedIn: {
+    icon: FaLinkedin,
+    color: "text-blue-700",
+    prefix: "linkedin.com/in/",
+  },
+  Facebook: {
+    icon: FaFacebook,
+    color: "text-blue-600",
+    baseUrl: "https://facebook.com/",
+    prefix: "@",
+  },
+  TikTok: {
+    icon: FaTiktok,
+    color: "text-black dark:text-white",
+    baseUrl: "https://tiktok.com/",
+    prefix: "@",
+  },
   Discord: { icon: FaDiscord, color: "text-indigo-600" },
-  Snapchat: { icon: FaSnapchat, color: "text-yellow-400", baseUrl: "https://snapchat.com/add/", prefix: "@" },
+  Snapchat: {
+    icon: FaSnapchat,
+    color: "text-yellow-400",
+    baseUrl: "https://snapchat.com/add/",
+    prefix: "@",
+  },
 };
 
 function stripProtocol(u: string) {
@@ -98,6 +134,25 @@ function displayHandle(link: SocialLink) {
   };
 }
 
+function displaySocialRow(row: {
+  platform: string;
+  url: string | null;
+  label?: string;
+}) {
+  const meta = PLATFORM_META[row.platform] || null;
+  const rawValue = row.url || row.label || "";
+  let value = row.url ? stripProtocol(row.url) : rawValue;
+  if (meta?.baseUrl) value = value.replace(stripProtocol(meta.baseUrl), "");
+  if (meta?.prefix) value = value.replace(meta.prefix, "");
+  value = value.replace(/^\//, "");
+  if (value.length > 48) value = value.slice(0, 45) + "…";
+  return { value, Icon: meta?.icon, color: meta?.color } as {
+    value: string;
+    Icon?: IconType;
+    color?: string;
+  };
+}
+
 export default function UserProfileSidePanel({
   open,
   currentUserId,
@@ -108,6 +163,9 @@ export default function UserProfileSidePanel({
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState<UserRow | null>(null);
   const [links, setLinks] = useState<SocialLink[]>([]);
+  const [socialVerifications, setSocialVerifications] = useState<
+    SocialVerification[]
+  >([]);
   const [connection, setConnection] = useState<ConnectionRow | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isBlocked, setIsBlocked] = useState(false);
@@ -116,8 +174,13 @@ export default function UserProfileSidePanel({
 
   const [description, setDescription] = useState("");
   const [year, setYear] = useState("");
-  const [connectionType, setConnectionType] = useState<"first" | "one_point_five">("first");
+  const [connectionType, setConnectionType] = useState<
+    "first" | "one_point_five"
+  >("first");
   const [amendMode, setAmendMode] = useState(false);
+  const [sidebarSection, setSidebarSection] = useState<
+    "connection" | "socials"
+  >("connection");
 
   function formatHowMet(desc: string, y?: string) {
     const base = (desc || "").trim();
@@ -143,16 +206,31 @@ export default function UserProfileSidePanel({
       try {
         const [profileRes, connectionRes] = await Promise.all([
           fetch(`/api/profile/${userId}`),
-          fetch(`/api/connection?a=${encodeURIComponent(currentUserId)}&b=${encodeURIComponent(userId)}`),
+          fetch(
+            `/api/connection?a=${encodeURIComponent(currentUserId)}&b=${encodeURIComponent(userId)}`,
+          ),
         ]);
         if (!profileRes.ok) {
           const j = await profileRes.json().catch(() => ({}));
-          throw new Error(j?.error?.message || `Failed to load profile (${profileRes.status})`);
+          throw new Error(
+            j?.error?.message ||
+              `Failed to load profile (${profileRes.status})`,
+          );
         }
-        const pj = (await profileRes.json()) as { data: { user: UserRow; links: SocialLink[] } | null };
-        const cj = (await connectionRes.json()) as { data: ConnectionRow | null; error?: unknown };
+        const pj = (await profileRes.json()) as {
+          data: {
+            user: UserRow;
+            links: SocialLink[];
+            verifications?: SocialVerification[];
+          } | null;
+        };
+        const cj = (await connectionRes.json()) as {
+          data: ConnectionRow | null;
+          error?: unknown;
+        };
         setProfile(pj?.data?.user || null);
         setLinks(pj?.data?.links || []);
+        setSocialVerifications(pj?.data?.verifications || []);
         setConnection(cj?.data || null);
         if (currentUserId !== userId) {
           const { isBlocked } = await isUserBlocked(currentUserId, userId);
@@ -164,6 +242,7 @@ export default function UserProfileSidePanel({
         setError((e as Error).message);
         setProfile(null);
         setLinks([]);
+        setSocialVerifications([]);
         setConnection(null);
       } finally {
         setLoading(false);
@@ -173,7 +252,7 @@ export default function UserProfileSidePanel({
 
   async function refresh() {
     const res = await fetch(
-      `/api/connection?a=${encodeURIComponent(currentUserId)}&b=${encodeURIComponent(userId)}`
+      `/api/connection?a=${encodeURIComponent(currentUserId)}&b=${encodeURIComponent(userId)}`,
     );
     if (res.ok) {
       const j = (await res.json()) as { data: ConnectionRow | null };
@@ -183,12 +262,25 @@ export default function UserProfileSidePanel({
 
   async function sendRequest() {
     setError(null);
-    if (!description.trim()) { setError("Connection description is required."); return; }
-    if (year && !/^\d{4}$/.test(year)) { setError("Year must be a 4-digit number."); return; }
+    if (!description.trim()) {
+      setError("Connection description is required.");
+      return;
+    }
+    if (year && !/^\d{4}$/.test(year)) {
+      setError("Year must be a 4-digit number.");
+      return;
+    }
     if (connectionType === "first") {
-      const { count, error: countError } = await getFirstConnectionCount(currentUserId);
-      if (countError) { setError("Failed to check connection limit. Please try again."); return; }
-      if (count >= 100) { setError("You have reached the limit of 100 first connections."); return; }
+      const { count, error: countError } =
+        await getFirstConnectionCount(currentUserId);
+      if (countError) {
+        setError("Failed to check connection limit. Please try again.");
+        return;
+      }
+      if (count >= 100) {
+        setError("You have reached the limit of 100 first connections.");
+        return;
+      }
     }
     const { error: e } = await createConnectionRequest({
       requester_id: currentUserId,
@@ -197,7 +289,10 @@ export default function UserProfileSidePanel({
       connection_type: connectionType,
       status: "pending",
     });
-    if (e) { setError(e.message); return; }
+    if (e) {
+      setError(e.message);
+      return;
+    }
     setDescription("");
     setYear("");
     setConnectionType("first");
@@ -208,12 +303,22 @@ export default function UserProfileSidePanel({
   async function accept(id: string) {
     setError(null);
     if (connection?.connection_type === "first") {
-      const { count, error: countError } = await getFirstConnectionCount(currentUserId);
-      if (countError) { setError("Failed to check connection limit. Please try again."); return; }
-      if (count >= 100) { setError("You have reached the limit of 100 first connections."); return; }
+      const { count, error: countError } =
+        await getFirstConnectionCount(currentUserId);
+      if (countError) {
+        setError("Failed to check connection limit. Please try again.");
+        return;
+      }
+      if (count >= 100) {
+        setError("You have reached the limit of 100 first connections.");
+        return;
+      }
     }
     const { error: e } = await updateConnectionStatus(id, "accepted");
-    if (e) { setError(e.message); return; }
+    if (e) {
+      setError(e.message);
+      return;
+    }
     await refresh();
     onChanged?.();
   }
@@ -221,7 +326,10 @@ export default function UserProfileSidePanel({
   async function reject(id: string) {
     setError(null);
     const { error: e } = await updateConnectionStatus(id, "rejected");
-    if (e) { setError(e.message); return; }
+    if (e) {
+      setError(e.message);
+      return;
+    }
     await refresh();
     onChanged?.();
   }
@@ -230,24 +338,44 @@ export default function UserProfileSidePanel({
     setError(null);
     const { error: e } = await deleteConnection(id);
     console.log("deleteConnection result (cancel):", { id, error });
-    if (e) { console.error("deleteConnection error", e); setError(e.message); return; }
+    if (e) {
+      console.error("deleteConnection error", e);
+      setError(e.message);
+      return;
+    }
     await refresh();
     onChanged?.();
   }
 
   async function amendPending(id: string) {
     setError(null);
-    if (year && !/^\d{4}$/.test(year)) { setError("Year must be a 4-digit number."); return; }
-    if (connection?.connection_type === "one_point_five" && connectionType === "first") {
-      const { count, error: countError } = await getFirstConnectionCount(currentUserId);
-      if (countError) { setError("Failed to check connection limit. Please try again."); return; }
-      if (count >= 100) { setError("You have reached the limit of 100 first connections."); return; }
+    if (year && !/^\d{4}$/.test(year)) {
+      setError("Year must be a 4-digit number.");
+      return;
+    }
+    if (
+      connection?.connection_type === "one_point_five" &&
+      connectionType === "first"
+    ) {
+      const { count, error: countError } =
+        await getFirstConnectionCount(currentUserId);
+      if (countError) {
+        setError("Failed to check connection limit. Please try again.");
+        return;
+      }
+      if (count >= 100) {
+        setError("You have reached the limit of 100 first connections.");
+        return;
+      }
     }
     const { error: e } = await updateConnectionRequestDetails(id, {
       how_met: formatHowMet(description || "", year),
       connection_type: connectionType,
     });
-    if (e) { setError(e.message); return; }
+    if (e) {
+      setError(e.message);
+      return;
+    }
     setAmendMode(false);
     await refresh();
     onChanged?.();
@@ -255,7 +383,12 @@ export default function UserProfileSidePanel({
 
   async function handleBlock() {
     if (isMe || blockBusy) return;
-    if (!confirm("Block this user? They won't be able to send you connection requests.")) return;
+    if (
+      !confirm(
+        "Block this user? They won't be able to send you connection requests.",
+      )
+    )
+      return;
     setBlockBusy(true);
     setError(null);
     try {
@@ -284,7 +417,11 @@ export default function UserProfileSidePanel({
       const res = await fetch("/api/block", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ blockerId: currentUserId, blockedId: userId, action: "unblock" }),
+        body: JSON.stringify({
+          blockerId: currentUserId,
+          blockedId: userId,
+          action: "unblock",
+        }),
       });
       const j = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(j?.error?.message || res.statusText);
@@ -319,8 +456,14 @@ export default function UserProfileSidePanel({
     setChangingType(true);
     setError(null);
     try {
-      const { error: e } = await requestConnectionTypeUpgrade(connection.id, currentUserId);
-      if (e) { setError(e.message); return; }
+      const { error: e } = await requestConnectionTypeUpgrade(
+        connection.id,
+        currentUserId,
+      );
+      if (e) {
+        setError(e.message);
+        return;
+      }
       await refresh();
       onChanged?.();
     } catch (e) {
@@ -367,7 +510,9 @@ export default function UserProfileSidePanel({
     setChangingType(true);
     setError(null);
     try {
-      const { error: e } = await cancelConnectionTypeUpgradeRequest(connection.id);
+      const { error: e } = await cancelConnectionTypeUpgradeRequest(
+        connection.id,
+      );
       if (e) throw e;
       await refresh();
       onChanged?.();
@@ -397,6 +542,30 @@ export default function UserProfileSidePanel({
 
   const isMe = currentUserId === userId;
   const requesterIsMe = connection && connection.requester_id === currentUserId;
+  const socialRows = useMemo(
+    () =>
+      getVerifiedSocialRows({
+        links,
+        verifications: socialVerifications,
+      }),
+    [links, socialVerifications],
+  );
+  const allLinkedSocialRows = useMemo(
+    () => [
+      ...links.map((link) => ({
+        id: link.id,
+        platform: link.platform,
+        label: displayHandle(link).value,
+        url: link.url,
+        verified: false,
+      })),
+      ...socialRows.map((row) => ({
+        id: `verified-${row.platform}`,
+        ...row,
+      })),
+    ],
+    [links, socialRows],
+  );
 
   return (
     <div
@@ -459,290 +628,473 @@ export default function UserProfileSidePanel({
                 </div>
               </div>
 
-              {/* Block banner */}
-              {isBlocked && (
-                <div className="p-3 rounded-lg border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 text-sm text-red-700 dark:text-red-300">
-                  You have blocked this user. They won&apos;t be able to send you connection requests.
+              <div className="border-b border-gray-200 dark:border-gray-800">
+                <div className="flex items-center gap-6">
+                  <button
+                    type="button"
+                    onClick={() => setSidebarSection("connection")}
+                    className={[
+                      "border-b-2 px-1 pb-2 text-xs font-semibold uppercase tracking-[0.14em] transition-colors",
+                      sidebarSection === "connection"
+                        ? "border-gray-900 text-gray-900 dark:border-gray-100 dark:text-gray-100"
+                        : "border-transparent text-gray-400 hover:text-gray-700 dark:text-gray-500 dark:hover:text-gray-300",
+                    ].join(" ")}
+                  >
+                    Connection
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSidebarSection("socials")}
+                    className={[
+                      "border-b-2 px-1 pb-2 text-xs font-semibold uppercase tracking-[0.14em] transition-colors",
+                      sidebarSection === "socials"
+                        ? "border-gray-900 text-gray-900 dark:border-gray-100 dark:text-gray-100"
+                        : "border-transparent text-gray-400 hover:text-gray-700 dark:text-gray-500 dark:hover:text-gray-300",
+                    ].join(" ")}
+                  >
+                    Socials
+                  </button>
                 </div>
-              )}
+              </div>
 
-              {/* Inline error */}
-              {error && (
-                <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
-              )}
-
-              {/* Connection status */}
-              {!isMe && !isBlocked && (
+              {sidebarSection === "socials" && (
                 <Card>
                   <div className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-3">
-                    Connection
+                    Socials
                   </div>
-                  {!connection ? (
-                    <div className="space-y-3">
-                      <p className="text-sm text-gray-600 dark:text-gray-400">Not connected</p>
-                      <Select
-                        label="Connection Type"
-                        value={connectionType}
-                        onChange={(e) => setConnectionType(e.target.value as "first" | "one_point_five")}
-                      >
-                        <option value="first">1st Connection</option>
-                        <option value="one_point_five">1.5 Connection</option>
-                      </Select>
-                      <p className="text-xs text-gray-500 -mt-1">
-                        {connectionType === "first"
-                          ? "Limited to 100. For your closest connections."
-                          : "For connections not in your inner circle."}
-                      </p>
-                      <Input
-                        label="Connection Description"
-                        value={description}
-                        onChange={(e) => setDescription(e.target.value)}
-                        placeholder="How you met and relationship"
-                      />
-                      <Input
-                        label="Year (optional)"
-                        value={year}
-                        onChange={(e) => setYear(e.target.value)}
-                        placeholder="e.g., 2023"
-                      />
-                      <Button variant="primary" size="md" className="w-full" onClick={sendRequest}>
-                        Send Request
-                      </Button>
-                    </div>
-                  ) : connection.status === "accepted" ? (
-                    <div className="space-y-3">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300 text-xs font-medium">
-                          <span className="w-1.5 h-1.5 rounded-full bg-green-600" />
-                          Connected
-                        </span>
-                        {connection.connection_type && (
-                          <Badge variant={connection.connection_type === "first" ? "first" : "onePointFive"} />
-                        )}
-                      </div>
-
-                      {/* Upgrade request status */}
-                      {connection.upgrade_requested_type && (
-                        <div className="p-3 rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/10">
-                          {connection.upgrade_requested_by === currentUserId ? (
-                            <div className="space-y-2">
-                              <p className="text-xs font-medium text-amber-800 dark:text-amber-200">
-                                Upgrade to 1st connection requested
-                              </p>
-                              <p className="text-xs text-amber-700 dark:text-amber-300">Waiting for approval...</p>
-                              <Button
-                                size="sm"
-                                variant="secondary"
-                                className="w-full"
-                                onClick={handleCancelUpgradeRequest}
-                                disabled={changingType}
-                              >
-                                Cancel Request
-                              </Button>
+                  {allLinkedSocialRows.length === 0 ? (
+                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                      No socials linked yet.
+                    </p>
+                  ) : (
+                    <div className="space-y-2">
+                      {allLinkedSocialRows.map((row) => {
+                        const { value, Icon, color } = displaySocialRow(row);
+                        const content = (
+                          <>
+                            <div className="flex items-center gap-3 min-w-0">
+                              {Icon ? (
+                                <Icon
+                                  className={`text-lg flex-shrink-0 ${
+                                    color || "text-gray-500"
+                                  }`}
+                                />
+                              ) : (
+                                <div className="w-4 h-4 rounded bg-gray-300 flex-shrink-0" />
+                              )}
+                              <div className="min-w-0">
+                                <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                                  {row.platform}
+                                </div>
+                                <div className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                                  {value || row.label}
+                                </div>
+                              </div>
                             </div>
-                          ) : (
-                            <div className="space-y-2">
-                              <p className="text-xs font-medium text-amber-800 dark:text-amber-200">
-                                Upgrade request received
+                            {row.url ? (
+                              <FiExternalLink className="flex-shrink-0 text-gray-400 group-hover:text-gray-600 dark:group-hover:text-gray-300" />
+                            ) : null}
+                          </>
+                        );
+
+                        return row.url ? (
+                          <a
+                            key={row.id}
+                            href={safeHref(row.url)}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="group flex items-center justify-between px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800/50 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                          >
+                            {content}
+                          </a>
+                        ) : (
+                          <div
+                            key={row.id}
+                            className="flex items-center justify-between px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800/50"
+                          >
+                            {content}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </Card>
+              )}
+
+              {sidebarSection === "connection" && (
+                <>
+                  {/* Block banner */}
+                  {isBlocked && (
+                    <div className="p-3 rounded-lg border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 text-sm text-red-700 dark:text-red-300">
+                      You have blocked this user. They won&apos;t be able to
+                      send you connection requests.
+                    </div>
+                  )}
+
+                  {/* Inline error */}
+                  {error && (
+                    <p className="text-sm text-red-600 dark:text-red-400">
+                      {error}
+                    </p>
+                  )}
+
+                  {/* Connection status */}
+                  {!isMe && !isBlocked && (
+                    <Card>
+                      {!connection ? (
+                        <div className="space-y-3">
+                          <p className="text-sm text-gray-600 dark:text-gray-400">
+                            Not connected
+                          </p>
+                          <Select
+                            label="Connection Type"
+                            value={connectionType}
+                            onChange={(e) =>
+                              setConnectionType(
+                                e.target.value as "first" | "one_point_five",
+                              )
+                            }
+                          >
+                            <option value="first">1st Connection</option>
+                            <option value="one_point_five">
+                              1.5 Connection
+                            </option>
+                          </Select>
+                          <p className="text-xs text-gray-500 -mt-1">
+                            {connectionType === "first"
+                              ? "Limited to 100. For your closest connections."
+                              : "For connections not in your inner circle."}
+                          </p>
+                          <Input
+                            label="Connection Description"
+                            value={description}
+                            onChange={(e) => setDescription(e.target.value)}
+                            placeholder="How you met and relationship"
+                          />
+                          <Input
+                            label="Year (optional)"
+                            value={year}
+                            onChange={(e) => setYear(e.target.value)}
+                            placeholder="e.g., 2023"
+                          />
+                          <Button
+                            variant="primary"
+                            size="md"
+                            className="w-full"
+                            onClick={sendRequest}
+                          >
+                            Send Request
+                          </Button>
+                        </div>
+                      ) : connection.status === "accepted" ? (
+                        <div className="space-y-3">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300 text-xs font-medium">
+                              <span className="w-1.5 h-1.5 rounded-full bg-green-600" />
+                              Connected
+                            </span>
+                            {connection.connection_type && (
+                              <Badge
+                                variant={
+                                  connection.connection_type === "first"
+                                    ? "first"
+                                    : "onePointFive"
+                                }
+                              />
+                            )}
+                          </div>
+
+                          {/* Upgrade request status */}
+                          {connection.upgrade_requested_type && (
+                            <div className="p-3 rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/10">
+                              {connection.upgrade_requested_by ===
+                              currentUserId ? (
+                                <div className="space-y-2">
+                                  <p className="text-xs font-medium text-amber-800 dark:text-amber-200">
+                                    Upgrade to 1st connection requested
+                                  </p>
+                                  <p className="text-xs text-amber-700 dark:text-amber-300">
+                                    Waiting for approval...
+                                  </p>
+                                  <Button
+                                    size="sm"
+                                    variant="secondary"
+                                    className="w-full"
+                                    onClick={handleCancelUpgradeRequest}
+                                    disabled={changingType}
+                                  >
+                                    Cancel Request
+                                  </Button>
+                                </div>
+                              ) : (
+                                <div className="space-y-2">
+                                  <p className="text-xs font-medium text-amber-800 dark:text-amber-200">
+                                    Upgrade request received
+                                  </p>
+                                  <p className="text-xs text-amber-700 dark:text-amber-300">
+                                    Wants to upgrade to 1st connection
+                                  </p>
+                                  <div className="flex gap-2">
+                                    <Button
+                                      size="sm"
+                                      variant="primary"
+                                      className="flex-1"
+                                      onClick={handleAcceptUpgrade}
+                                      disabled={changingType}
+                                    >
+                                      Accept
+                                    </Button>
+                                    <Button
+                                      size="sm"
+                                      variant="destructive"
+                                      className="flex-1"
+                                      onClick={handleRejectUpgrade}
+                                      disabled={changingType}
+                                    >
+                                      Decline
+                                    </Button>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          )}
+
+                          <p className="text-sm text-gray-700 dark:text-gray-300">
+                            {stripYearFromHowMet(connection.how_met)}
+                            {parseYearFromHowMet(connection.how_met) && (
+                              <span className="text-gray-500">
+                                {" "}
+                                · {parseYearFromHowMet(connection.how_met)}
+                              </span>
+                            )}
+                          </p>
+
+                          {/* Manage connection type */}
+                          {!connection.upgrade_requested_type && (
+                            <div className="pt-3 border-t border-gray-200 dark:border-gray-700 space-y-1.5">
+                              <p className="text-xs font-medium text-gray-500 dark:text-gray-400">
+                                Manage Connection Type
                               </p>
-                              <p className="text-xs text-amber-700 dark:text-amber-300">
-                                Wants to upgrade to 1st connection
+                              {connection.connection_type === "first" ? (
+                                <Button
+                                  size="sm"
+                                  variant="secondary"
+                                  className="w-full"
+                                  onClick={handleDowngradeType}
+                                  disabled={changingType}
+                                >
+                                  Downgrade to 1.5 Connection
+                                </Button>
+                              ) : (
+                                <Button
+                                  size="sm"
+                                  variant="primary"
+                                  className="w-full"
+                                  onClick={handleRequestUpgrade}
+                                  disabled={changingType}
+                                >
+                                  Request Upgrade to 1st
+                                </Button>
+                              )}
+                              <p className="text-xs text-gray-500 dark:text-gray-400">
+                                {connection.connection_type === "first"
+                                  ? "Downgrade does not require approval"
+                                  : "Upgrade requires approval from the other person"}
+                              </p>
+                            </div>
+                          )}
+
+                          {/* Remove connection */}
+                          <div className="pt-3 border-t border-gray-200 dark:border-gray-700">
+                            <Button
+                              size="sm"
+                              variant="destructive"
+                              className="w-full"
+                              onClick={handleRemoveConnection}
+                              disabled={changingType}
+                            >
+                              Remove Connection
+                            </Button>
+                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                              Remove this connection completely
+                            </p>
+                          </div>
+                        </div>
+                      ) : connection.status === "pending" ? (
+                        <div className="space-y-3">
+                          {requesterIsMe ? (
+                            <>
+                              <div className="flex items-center gap-2 text-sm">
+                                <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300 text-xs font-medium">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                                  Pending
+                                </span>
+                                <span className="text-gray-500 text-xs">
+                                  — awaiting response
+                                </span>
+                              </div>
+                              <div className="text-sm text-gray-700 dark:text-gray-300">
+                                <span className="text-gray-500">
+                                  Description:{" "}
+                                </span>
+                                {stripYearFromHowMet(connection.how_met) || "—"}
+                              </div>
+
+                              {amendMode ? (
+                                <div className="space-y-3">
+                                  <Select
+                                    label="Connection Type"
+                                    value={connectionType}
+                                    onChange={(e) =>
+                                      setConnectionType(
+                                        e.target.value as
+                                          | "first"
+                                          | "one_point_five",
+                                      )
+                                    }
+                                  >
+                                    <option value="first">
+                                      1st Connection
+                                    </option>
+                                    <option value="one_point_five">
+                                      1.5 Connection
+                                    </option>
+                                  </Select>
+                                  <Input
+                                    label="Connection Description"
+                                    value={description}
+                                    onChange={(e) =>
+                                      setDescription(e.target.value)
+                                    }
+                                    placeholder="How you met and relationship"
+                                  />
+                                  <Input
+                                    label="Year (optional)"
+                                    value={year}
+                                    onChange={(e) => setYear(e.target.value)}
+                                    placeholder="e.g., 2023"
+                                  />
+                                  <div className="flex gap-2">
+                                    <Button
+                                      size="sm"
+                                      variant="primary"
+                                      className="flex-1"
+                                      onClick={() =>
+                                        amendPending(connection.id)
+                                      }
+                                    >
+                                      Save changes
+                                    </Button>
+                                    <Button
+                                      size="sm"
+                                      variant="secondary"
+                                      onClick={() => {
+                                        setAmendMode(false);
+                                        setError(null);
+                                      }}
+                                    >
+                                      Cancel
+                                    </Button>
+                                  </div>
+                                </div>
+                              ) : (
+                                <div className="flex gap-2">
+                                  <Button
+                                    size="sm"
+                                    variant="secondary"
+                                    className="flex-1"
+                                    onClick={() => cancel(connection.id)}
+                                  >
+                                    Cancel request
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    className="flex-1"
+                                    onClick={() => {
+                                      setDescription(
+                                        stripYearFromHowMet(connection.how_met),
+                                      );
+                                      setYear(
+                                        parseYearFromHowMet(connection.how_met),
+                                      );
+                                      setConnectionType(
+                                        (connection.connection_type ||
+                                          "first") as
+                                          | "first"
+                                          | "one_point_five",
+                                      );
+                                      setAmendMode(true);
+                                    }}
+                                  >
+                                    Amend
+                                  </Button>
+                                </div>
+                              )}
+                            </>
+                          ) : (
+                            <>
+                              <p className="text-sm text-gray-700 dark:text-gray-300">
+                                {connection.requester?.preferred_name ||
+                                  connection.requester?.name}{" "}
+                                sent you a request
                               </p>
                               <div className="flex gap-2">
-                                <Button size="sm" variant="primary" className="flex-1" onClick={handleAcceptUpgrade} disabled={changingType}>
+                                <Button
+                                  size="sm"
+                                  variant="primary"
+                                  className="flex-1"
+                                  onClick={() => accept(connection.id)}
+                                >
                                   Accept
                                 </Button>
-                                <Button size="sm" variant="destructive" className="flex-1" onClick={handleRejectUpgrade} disabled={changingType}>
-                                  Decline
+                                <Button
+                                  size="sm"
+                                  variant="destructive"
+                                  className="flex-1"
+                                  onClick={() => reject(connection.id)}
+                                >
+                                  Reject
                                 </Button>
                               </div>
-                            </div>
+                            </>
                           )}
                         </div>
-                      )}
-
-                      <p className="text-sm text-gray-700 dark:text-gray-300">
-                        {stripYearFromHowMet(connection.how_met)}
-                        {parseYearFromHowMet(connection.how_met) && (
-                          <span className="text-gray-500"> · {parseYearFromHowMet(connection.how_met)}</span>
-                        )}
-                      </p>
-
-                      {/* Manage connection type */}
-                      {!connection.upgrade_requested_type && (
-                        <div className="pt-3 border-t border-gray-200 dark:border-gray-700 space-y-1.5">
-                          <p className="text-xs font-medium text-gray-500 dark:text-gray-400">Manage Connection Type</p>
-                          {connection.connection_type === "first" ? (
-                            <Button size="sm" variant="secondary" className="w-full" onClick={handleDowngradeType} disabled={changingType}>
-                              Downgrade to 1.5 Connection
-                            </Button>
-                          ) : (
-                            <Button size="sm" variant="primary" className="w-full" onClick={handleRequestUpgrade} disabled={changingType}>
-                              Request Upgrade to 1st
-                            </Button>
-                          )}
-                          <p className="text-xs text-gray-500 dark:text-gray-400">
-                            {connection.connection_type === "first"
-                              ? "Downgrade does not require approval"
-                              : "Upgrade requires approval from the other person"}
-                          </p>
-                        </div>
-                      )}
-
-                      {/* Remove connection */}
-                      <div className="pt-3 border-t border-gray-200 dark:border-gray-700">
-                        <Button size="sm" variant="destructive" className="w-full" onClick={handleRemoveConnection} disabled={changingType}>
-                          Remove Connection
-                        </Button>
-                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                          Remove this connection completely
-                        </p>
-                      </div>
-                    </div>
-                  ) : connection.status === "pending" ? (
-                    <div className="space-y-3">
-                      {requesterIsMe ? (
-                        <>
-                          <div className="flex items-center gap-2 text-sm">
-                            <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300 text-xs font-medium">
-                              <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
-                              Pending
-                            </span>
-                            <span className="text-gray-500 text-xs">— awaiting response</span>
-                          </div>
-                          <div className="text-sm text-gray-700 dark:text-gray-300">
-                            <span className="text-gray-500">Description: </span>
-                            {stripYearFromHowMet(connection.how_met) || "—"}
-                          </div>
-
-                          {amendMode ? (
-                            <div className="space-y-3">
-                              <Select
-                                label="Connection Type"
-                                value={connectionType}
-                                onChange={(e) => setConnectionType(e.target.value as "first" | "one_point_five")}
-                              >
-                                <option value="first">1st Connection</option>
-                                <option value="one_point_five">1.5 Connection</option>
-                              </Select>
-                              <Input
-                                label="Connection Description"
-                                value={description}
-                                onChange={(e) => setDescription(e.target.value)}
-                                placeholder="How you met and relationship"
-                              />
-                              <Input
-                                label="Year (optional)"
-                                value={year}
-                                onChange={(e) => setYear(e.target.value)}
-                                placeholder="e.g., 2023"
-                              />
-                              <div className="flex gap-2">
-                                <Button size="sm" variant="primary" className="flex-1" onClick={() => amendPending(connection.id)}>
-                                  Save changes
-                                </Button>
-                                <Button size="sm" variant="secondary" onClick={() => { setAmendMode(false); setError(null); }}>
-                                  Cancel
-                                </Button>
-                              </div>
-                            </div>
-                          ) : (
-                            <div className="flex gap-2">
-                              <Button size="sm" variant="secondary" className="flex-1" onClick={() => cancel(connection.id)}>
-                                Cancel request
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                className="flex-1"
-                                onClick={() => {
-                                  setDescription(stripYearFromHowMet(connection.how_met));
-                                  setYear(parseYearFromHowMet(connection.how_met));
-                                  setConnectionType((connection.connection_type || "first") as "first" | "one_point_five");
-                                  setAmendMode(true);
-                                }}
-                              >
-                                Amend
-                              </Button>
-                            </div>
-                          )}
-                        </>
                       ) : (
-                        <>
-                          <p className="text-sm text-gray-700 dark:text-gray-300">
-                            {connection.requester?.preferred_name || connection.requester?.name} sent you a request
-                          </p>
-                          <div className="flex gap-2">
-                            <Button size="sm" variant="primary" className="flex-1" onClick={() => accept(connection.id)}>
-                              Accept
-                            </Button>
-                            <Button size="sm" variant="destructive" className="flex-1" onClick={() => reject(connection.id)}>
-                              Reject
-                            </Button>
-                          </div>
-                        </>
+                        <p className="text-sm text-gray-500">
+                          Last status: {connection.status}
+                        </p>
+                      )}
+                    </Card>
+                  )}
+
+                  {/* Block / Unblock */}
+                  {!isMe && (
+                    <div>
+                      {isBlocked ? (
+                        <Button
+                          variant="primary"
+                          size="sm"
+                          className="w-full"
+                          onClick={handleUnblock}
+                          disabled={blockBusy}
+                        >
+                          Unblock User
+                        </Button>
+                      ) : (
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          className="w-full"
+                          onClick={handleBlock}
+                          disabled={blockBusy}
+                        >
+                          Block User
+                        </Button>
                       )}
                     </div>
-                  ) : (
-                    <p className="text-sm text-gray-500">Last status: {connection.status}</p>
                   )}
-                </Card>
-              )}
-
-              {/* Block / Unblock */}
-              {!isMe && (
-                <div>
-                  {isBlocked ? (
-                    <Button variant="primary" size="sm" className="w-full" onClick={handleUnblock} disabled={blockBusy}>
-                      Unblock User
-                    </Button>
-                  ) : (
-                    <Button variant="destructive" size="sm" className="w-full" onClick={handleBlock} disabled={blockBusy}>
-                      Block User
-                    </Button>
-                  )}
-                </div>
-              )}
-
-              {/* Social links */}
-              {links.length > 0 && (
-                <Card>
-                  <div className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-3">
-                    Social Links
-                  </div>
-                  <div className="space-y-2">
-                    {links.map((l) => {
-                      const { value, Icon, color } = displayHandle(l);
-                      const href = safeHref(l.url);
-                      return (
-                        <a
-                          key={l.id}
-                          href={href}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="group flex items-center justify-between px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800/50 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
-                        >
-                          <div className="flex items-center gap-3 min-w-0">
-                            {Icon ? (
-                              <Icon className={`text-lg flex-shrink-0 ${color || "text-gray-500"}`} />
-                            ) : (
-                              <div className="w-4 h-4 rounded bg-gray-300 flex-shrink-0" />
-                            )}
-                            <div className="min-w-0">
-                              <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                                {l.platform}
-                              </div>
-                              <div className="text-xs text-gray-500 dark:text-gray-400 truncate">
-                                {value || stripProtocol(l.url)}
-                              </div>
-                            </div>
-                          </div>
-                          <FiExternalLink className="flex-shrink-0 text-gray-400 group-hover:text-gray-600 dark:group-hover:text-gray-300" />
-                        </a>
-                      );
-                    })}
-                  </div>
-                </Card>
+                </>
               )}
             </>
           )}
