@@ -1,41 +1,24 @@
+import { asc, eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
-import type { Database } from "@/types/supabase";
+import { db } from "@/lib/db";
+import { profiles, users } from "@/lib/db/schema";
 
 export async function GET() {
   if (process.env.NEXT_PUBLIC_DEV_MODE === "true") {
     const { MOCK_USERS_ALL } = await import("@/lib/dev/mock-data");
     return NextResponse.json({ data: MOCK_USERS_ALL }, { status: 200 });
   }
-
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE;
-
-  if (!url || !serviceKey) {
-    return NextResponse.json(
-      {
-        error: {
-          message:
-            "Missing NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE in server environment",
-        },
-      },
-      { status: 500 }
-    );
-  }
-
-  const admin = createClient<Database>(url, serviceKey, {
-    auth: { persistSession: false },
-  });
-
-  const { data, error } = await admin
-    .from("users")
-    .select("id, username, name, preferred_name, profile_image_url")
-    .order("username", { ascending: true })
+  const data = await db
+    .select({
+      id: users.id,
+      username: profiles.username,
+      name: users.name,
+      preferred_name: profiles.preferredName,
+      profile_image_url: profiles.profileImageUrl,
+    })
+    .from(users)
+    .leftJoin(profiles, eq(users.id, profiles.id))
+    .orderBy(asc(profiles.username))
     .limit(200);
-
-  if (error) {
-    return NextResponse.json({ error }, { status: 500 });
-  }
-
   return NextResponse.json({ data }, { status: 200 });
 }

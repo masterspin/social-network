@@ -4,9 +4,15 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { getCurrentUser, getUserProfile } from "@/lib/supabase/queries";
 import ProfileSetup from "@/components/ProfileSetup";
-import { Database } from "@/types/supabase";
-
-type UserProfile = Database["public"]["Tables"]["users"]["Row"];
+type UserProfile = {
+  id: string;
+  name: string;
+  username: string;
+  preferred_name: string | null;
+  gender: string | null;
+  bio: string | null;
+  profile_image_url: string | null;
+};
 
 export default function ProfileSetupPage() {
   const [loading, setLoading] = useState(true);

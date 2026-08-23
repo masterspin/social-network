@@ -1,6 +1,7 @@
+import { and, eq, or } from "drizzle-orm";
 import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
-import type { Database } from "@/types/supabase";
+import { db } from "@/lib/db";
+import { connections, profiles, users } from "@/lib/db/schema";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -14,43 +15,27 @@ export async function GET(request: Request) {
     );
   }
 
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE;
-  if (!url || !serviceKey) {
-    return NextResponse.json(
-      {
-        error: {
-          message:
-            "Missing NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE in server environment",
-        },
-      },
-      { status: 500 }
-    );
-  }
-
-  const admin = createClient<Database>(url, serviceKey, {
-    auth: { persistSession: false },
-  });
-
   try {
-    const select = `
-      *,
-      requester:users!connections_requester_id_fkey(id, username, name, preferred_name, profile_image_url),
-      recipient:users!connections_recipient_id_fkey(id, username, name, preferred_name, profile_image_url)
-    `;
+    const [row] = await db
+      .select()
+      .from(connections)
+      .where(or(and(eq(connections.requesterId, a), eq(connections.recipientId, b)), and(eq(connections.requesterId, b), eq(connections.recipientId, a))))
+      .orderBy(connections.createdAt)
+      .limit(1);
 
-    const { data, error } = await admin
-      .from("connections")
-      .select(select)
-      .or(
-        `and(requester_id.eq.${a},recipient_id.eq.${b}),and(requester_id.eq.${b},recipient_id.eq.${a})`
-      )
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
+    if (!row) return NextResponse.json({ data: null }, { status: 200 });
 
-    if (error) return NextResponse.json({ error }, { status: 400 });
-    return NextResponse.json({ data: data || null }, { status: 200 });
+    const userSelection = {
+      id: users.id,
+      username: profiles.username,
+      name: users.name,
+      preferred_name: profiles.preferredName,
+      profile_image_url: profiles.profileImageUrl,
+    };
+    const [requester] = await db.select(userSelection).from(users).leftJoin(profiles, eq(users.id, profiles.id)).where(eq(users.id, row.requesterId)).limit(1);
+    const [recipient] = await db.select(userSelection).from(users).leftJoin(profiles, eq(users.id, profiles.id)).where(eq(users.id, row.recipientId)).limit(1);
+
+    return NextResponse.json({ data: { ...row, requester, recipient } }, { status: 200 });
   } catch (e) {
     return NextResponse.json(
       { error: { message: (e as Error).message } },

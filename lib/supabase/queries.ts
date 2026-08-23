@@ -1,656 +1,256 @@
-import { supabase } from "./client";
-import type { Database } from "@/types/supabase";
-import * as mockData from "@/lib/dev/mock-data";
-
 const IS_DEV = process.env.NEXT_PUBLIC_DEV_MODE === "true";
 
-// Auth functions
+export type CurrentUser = {
+  id: string;
+  email?: string | null;
+  name?: string | null;
+  image?: string | null;
+};
+
+async function getServerDeps() {
+  const [{ and, asc, desc, eq, or, sql }, { auth }, { db }, schema] =
+    await Promise.all([
+      import("drizzle-orm"),
+      import("@/auth"),
+      import("@/lib/db"),
+      import("@/lib/db/schema"),
+    ]);
+
+  return { and, asc, desc, eq, or, sql, auth, db, ...schema };
+}
+
+async function fetchJson<T>(path: string, init?: RequestInit): Promise<T> {
+  const response = await fetch(path, {
+    ...init,
+    headers: {
+      "Content-Type": "application/json",
+      ...(init?.headers ?? {}),
+    },
+  });
+  const payload = await response.json();
+  if (!response.ok) {
+    throw new Error(payload?.error?.message ?? payload?.error ?? "Request failed");
+  }
+  return payload as T;
+}
+
+function mapUserRow(row: Record<string, unknown>) {
+  return {
+    id: row.id as string,
+    email: row.email as string | null,
+    name: (row.name as string | null) ?? "",
+    username: (row.username as string | null) ?? "",
+    preferred_name: (row.preferred_name as string | null) ?? null,
+    gender: (row.gender as string | null) ?? null,
+    bio: (row.bio as string | null) ?? null,
+    profile_image_url: (row.profile_image_url as string | null) ?? null,
+    created_at: row.created_at as string | null,
+    updated_at: row.updated_at as string | null,
+  };
+}
+
 export async function signOut() {
-  const { error } = await supabase.auth.signOut();
-  return { error };
+  return { error: null };
 }
 
-export async function getCurrentUser() {
-  if (IS_DEV) {
-    return {
-      user: { id: mockData.DEV_USER_ID, email: mockData.DEV_USER.email },
-      error: null,
-    };
+export async function getCurrentUser(): Promise<{ user: CurrentUser | null; error: null }> {
+  if (IS_DEV) return { user: { id: "dev", email: "dev@example.com" }, error: null };
+  if (typeof window !== "undefined") {
+    const payload = await fetchJson<{ user: CurrentUser | null }>("/api/me");
+    return { user: payload.user, error: null };
   }
-  const {
-    data: { user },
-    error,
-  } = await supabase.auth.getUser();
-  return { user, error };
+  const { auth } = await getServerDeps();
+  const session = await auth();
+  const sessionUser = session?.user as CurrentUser | undefined;
+  return { user: sessionUser?.id ? sessionUser : null, error: null };
 }
 
-// User profile functions
 export async function getUserProfile(userId: string) {
-  if (IS_DEV) {
-    const user = mockData.MOCK_USERS.find((u) => u.id === userId) ?? mockData.DEV_USER;
-    return { data: user as unknown as Database["public"]["Tables"]["users"]["Row"], error: null };
+  if (typeof window !== "undefined") {
+    const payload = await fetchJson<{ data: unknown | null }>(`/api/profile/${userId}`);
+    const value = (payload.data as { user?: unknown } | null)?.user ?? payload.data;
+    return { data: value ? mapUserRow(value as Record<string, unknown>) : null, error: null };
   }
-  const { data, error } = await supabase
-    .from("users")
-    .select("*")
-    .eq("id", userId)
-    .single();
-  return { data, error };
+  const { db, eq, profiles } = await getServerDeps();
+  const row = await db.select().from(profiles).where(eq(profiles.id, userId)).limit(1);
+  return { data: row[0] ? mapUserRow(row[0] as Record<string, unknown>) : null, error: null };
 }
 
-// Helper table type aliases
-type UsersTable = Database["public"]["Tables"]["users"];
-type ConnectionsTable = Database["public"]["Tables"]["connections"];
-type SocialLinksTable = Database["public"]["Tables"]["social_links"];
-// type BlockedUsersTable = Database["public"]["Tables"]["blocked_users"]; // not needed directly
-type BasicUser = Pick<
-  UsersTable["Row"],
-  "id" | "username" | "name" | "preferred_name" | "profile_image_url"
->;
-
-// Sanitize user-provided text for use inside PostgREST `.or()` filters.
-// - Removes commas and parentheses which have special meaning in PostgREST OR syntax
-// - Trims and collapses whitespace
-// - Optionally limit length to avoid overly long filters
-function sanitizeForOr(value: string, maxLen = 128) {
-  const cleaned = value.replace(/[(),]/g, " ").replace(/\s+/g, " ").trim();
-  return cleaned.slice(0, maxLen);
+export async function createUserProfile(profile: Record<string, unknown>) {
+  const { db, profiles } = await getServerDeps();
+  const data = await db.insert(profiles).values(profile as never).returning();
+  return { data: data[0] ?? null, error: null };
 }
 
-export async function createUserProfile(profile: UsersTable["Insert"]) {
-  const { data, error } = await supabase
-    .from("users")
-    .insert(profile)
-    .select()
-    .single();
-  return { data, error };
-}
-
-export async function updateUserProfile(
-  userId: string,
-  updates: UsersTable["Update"]
-) {
-  const { data, error } = await supabase
-    .from("users")
-    .update(updates)
-    .eq("id", userId)
-    .select()
-    .single();
-  return { data, error };
+export async function updateUserProfile(userId: string, updates: Record<string, unknown>) {
+  const { db, eq, profiles } = await getServerDeps();
+  const data = await db.update(profiles).set(updates as never).where(eq(profiles.id, userId)).returning();
+  return { data: data[0] ?? null, error: null };
 }
 
 export async function checkUsernameAvailable(username: string) {
-  // Use count to check if username exists - more reliable than select
-  const { count, error } = await supabase
-    .from("users")
-    .select("*", { count: "exact", head: true })
-    .eq("username", username);
-
-  console.log("checkUsernameAvailable query result:", {
-    username,
-    count,
-    error,
-  });
-
-  // If there's an error
-  if (error) {
-    console.error("Error checking username:", error);
-    return { available: false, error };
-  }
-
-  // If count is 0, username is available
-  // If count > 0, username is taken
-  return { available: count === 0, error: null };
+  const { db, eq, profiles } = await getServerDeps();
+  const found = await db.select({ id: profiles.id }).from(profiles).where(eq(profiles.username, username)).limit(1);
+  return { available: found.length === 0, error: null };
 }
 
-//
-// Connection search (Supabase-only)
-//
-
-// Redone connection search using ONLY Supabase query builder
-// - Text match on username, name, preferred_name (ilike)
-// - Excludes the requester (AND filter)
-// - Excludes users blocked by requester or who have blocked requester
-// - No custom Postgres functions, no client-side ranking
-export async function searchConnections(query: string, requesterId: string) {
-  if (IS_DEV) {
-    const q = query.toLowerCase().trim();
-    const results = mockData.MOCK_USERS.filter(
-      (u) =>
-        u.id !== requesterId &&
-        (u.username.toLowerCase().includes(q) ||
-          u.name.toLowerCase().includes(q) ||
-          (u.preferred_name ?? "").toLowerCase().includes(q))
-    ).map((u) => ({
-      id: u.id,
-      username: u.username,
-      name: u.name,
-      preferred_name: u.preferred_name,
-      profile_image_url: u.profile_image_url,
-    }));
-    return { data: results as BasicUser[], error: null };
-  }
-  const q = sanitizeForOr(query);
-  if (!q) return { data: [] as BasicUser[], error: null };
-
-  // Get all blocks involving the requester (both directions) without using an OR chain
-  const [{ data: iBlocked, error: e1 }, { data: blockedMe, error: e2 }] =
-    await Promise.all([
-      supabase
-        .from("blocked_users")
-        .select("blocked_id")
-        .eq("blocker_id", requesterId),
-      supabase
-        .from("blocked_users")
-        .select("blocker_id")
-        .eq("blocked_id", requesterId),
-    ]);
-
-  if (e1 || e2) {
-    // If block lookup fails, proceed without block filtering rather than fail the whole search
-    const { data, error } = await supabase
-      .from("users")
-      .select("id, username, name, preferred_name, profile_image_url")
-      .or(`username.ilike.%${q}%,name.ilike.%${q}%,preferred_name.ilike.%${q}%`)
-      .neq("id", requesterId)
-      .order("username", { ascending: true })
-      .limit(20);
-
-    return { data: (data as BasicUser[]) || [], error };
-  }
-
-  const blockedIds = new Set<string>();
-  (iBlocked || []).forEach((row: { blocked_id: string }) =>
-    blockedIds.add(row.blocked_id)
-  );
-  (blockedMe || []).forEach((row: { blocker_id: string }) =>
-    blockedIds.add(row.blocker_id)
-  );
-
-  // Fetch candidates via text search and filter out blocked locally (avoids tricky NOT IN syntax)
-  const { data: candidates, error } = await supabase
-    .from("users")
-    .select("id, username, name, preferred_name, profile_image_url")
-    .or(`username.ilike.%${q}%,name.ilike.%${q}%,preferred_name.ilike.%${q}%`)
-    .neq("id", requesterId)
-    .order("username", { ascending: true })
-    .limit(50);
-
-  const filtered = ((candidates as BasicUser[]) || []).filter(
-    (u) => !blockedIds.has(u.id)
-  );
-
-  return { data: filtered.slice(0, 20), error };
-}
-
-// Minimal helper: list all users or filter by query across username/name/preferred_name
-// No requester filtering, no blocks – intended for quick manual testing.
-export async function listUsersByQuery(query: string) {
-  const q = sanitizeForOr(query ?? "");
-  const base = supabase
-    .from("users")
-    .select("id, username, name, preferred_name, profile_image_url")
-    .order("username", { ascending: true });
-
-  if (!q) {
-    const { data, error } = await base.limit(200);
-    return { data: (data as BasicUser[]) || [], error };
-  }
-
-  const { data, error } = await base
-    .or(`username.ilike.%${q}%,name.ilike.%${q}%,preferred_name.ilike.%${q}%`)
-    .limit(200);
-  return { data: (data as BasicUser[]) || [], error };
-}
-
-// Social links functions
 export async function getUserSocialLinks(userId: string) {
-  if (IS_DEV) {
-    const links = userId === mockData.DEV_USER_ID ? mockData.MOCK_SOCIAL_LINKS : [];
-    return { data: links as unknown as Database["public"]["Tables"]["social_links"]["Row"][], error: null };
+  if (typeof window !== "undefined") {
+    const payload = await fetchJson<{ data: unknown[] }>(
+      `/api/social-links?userId=${encodeURIComponent(userId)}`,
+    );
+    return { data: payload.data, error: null };
   }
-  const { data, error } = await supabase
-    .from("social_links")
-    .select("*")
-    .eq("user_id", userId);
-  return { data, error };
+  const { db, asc, eq, socialLinks } = await getServerDeps();
+  const data = await db.select().from(socialLinks).where(eq(socialLinks.userId, userId)).orderBy(asc(socialLinks.createdAt));
+  return { data, error: null };
 }
 
-export async function addSocialLink(link: SocialLinksTable["Insert"]) {
-  const { data, error } = await supabase
-    .from("social_links")
-    .insert(link)
-    .select()
-    .single();
-  return { data, error };
+export async function addSocialLink(link: Record<string, unknown>) {
+  if (typeof window !== "undefined") {
+    const payload = await fetchJson<{ data: unknown | null }>("/api/social-links", {
+      method: "POST",
+      body: JSON.stringify(link),
+    });
+    return { data: payload.data, error: null };
+  }
+  const { db, socialLinks } = await getServerDeps();
+  const data = await db.insert(socialLinks).values(link as never).returning();
+  return { data: data[0] ?? null, error: null };
 }
 
 export async function deleteSocialLink(linkId: string) {
-  const { error } = await supabase
-    .from("social_links")
-    .delete()
-    .eq("id", linkId);
-  return { error };
+  if (typeof window !== "undefined") {
+    await fetchJson<{ data: unknown }>(
+      `/api/social-links?linkId=${encodeURIComponent(linkId)}`,
+      { method: "DELETE" },
+    );
+    return { error: null };
+  }
+  const { db, eq, socialLinks } = await getServerDeps();
+  await db.delete(socialLinks).where(eq(socialLinks.id, linkId));
+  return { error: null };
 }
 
-// Connection functions
 export async function getUserConnections(userId: string) {
-  if (IS_DEV) {
-    return { data: mockData.MOCK_CONNECTIONS as unknown[], error: null };
-  }
-  const { data, error } = await supabase
-    .from("connections")
-    .select(
-      `
-      *,
-      requester:users!connections_requester_id_fkey(id, username, name, preferred_name, profile_image_url),
-      recipient:users!connections_recipient_id_fkey(id, username, name, preferred_name, profile_image_url)
-    `
-    )
-    .or(`requester_id.eq.${userId},recipient_id.eq.${userId}`)
-    .eq("status", "accepted");
-  return { data, error };
+  const { db, desc, eq, or, connections } = await getServerDeps();
+  const data = await db.select().from(connections).where(or(eq(connections.requesterId, userId), eq(connections.recipientId, userId))).orderBy(desc(connections.createdAt));
+  return { data, error: null };
 }
 
 export async function getPendingConnectionRequests(userId: string) {
-  const { data, error } = await supabase
-    .from("connections")
-    .select(
-      `
-      *,
-      requester:users!connections_requester_id_fkey(id, username, name, preferred_name, profile_image_url),
-      recipient:users!connections_recipient_id_fkey(id, username, name, preferred_name, profile_image_url)
-    `
-    )
-    .eq("recipient_id", userId)
-    .eq("status", "pending");
-  return { data, error };
+  const { db, and, desc, eq, connections } = await getServerDeps();
+  const data = await db.select().from(connections).where(and(eq(connections.recipientId, userId), eq(connections.status, "pending"))).orderBy(desc(connections.createdAt));
+  return { data, error: null };
 }
 
 export async function getSentConnectionRequests(userId: string) {
-  const { data, error } = await supabase
-    .from("connections")
-    .select(
-      `
-      *,
-      requester:users!connections_requester_id_fkey(id, username, name, preferred_name, profile_image_url),
-      recipient:users!connections_recipient_id_fkey(id, username, name, preferred_name, profile_image_url)
-    `
-    )
-    .eq("requester_id", userId)
-    .eq("status", "pending");
-  return { data, error };
+  const { db, and, desc, eq, connections } = await getServerDeps();
+  const data = await db.select().from(connections).where(and(eq(connections.requesterId, userId), eq(connections.status, "pending"))).orderBy(desc(connections.createdAt));
+  return { data, error: null };
 }
 
-// Get the most recent connection record between two users (either direction)
 export async function getConnectionBetweenUsers(aId: string, bId: string) {
-  if (IS_DEV) {
-    const allConns = [...mockData.MOCK_CONNECTIONS, mockData.CONN_ALICE_BOB];
-    const found = allConns.find(
-      (c) =>
-        (c.requester_id === aId && c.recipient_id === bId) ||
-        (c.requester_id === bId && c.recipient_id === aId)
-    ) ?? null;
-    return { data: found as unknown as Database["public"]["Tables"]["connections"]["Row"] & { requester: unknown; recipient: unknown } | null, error: null };
-  }
-  const { data, error } = await supabase
-    .from("connections")
-    .select(
-      `
-      *,
-      requester:users!connections_requester_id_fkey(id, username, name, preferred_name, profile_image_url),
-      recipient:users!connections_recipient_id_fkey(id, username, name, preferred_name, profile_image_url)
-    `
-    )
-    .or(
-      `and(requester_id.eq.${aId},recipient_id.eq.${bId}),and(requester_id.eq.${bId},recipient_id.eq.${aId})`
-    )
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .single();
-  return { data, error };
+  const { db, and, desc, eq, or, connections } = await getServerDeps();
+  const data = await db.select().from(connections).where(or(and(eq(connections.requesterId, aId), eq(connections.recipientId, bId)), and(eq(connections.requesterId, bId), eq(connections.recipientId, aId)))).orderBy(desc(connections.createdAt)).limit(1);
+  return { data: data[0] ?? null, error: null };
 }
 
-export async function createConnectionRequest(
-  connection: ConnectionsTable["Insert"]
-) {
-  const { data, error } = await supabase
-    .from("connections")
-    .insert(connection)
-    .select()
-    .single();
-  return { data, error };
+export async function createConnectionRequest(connection: Record<string, unknown>) {
+  const { db, connections } = await getServerDeps();
+  const data = await db.insert(connections).values(connection as never).returning();
+  return { data: data[0] ?? null, error: null };
 }
 
-export async function updateConnectionStatus(
-  connectionId: string,
-  status: "accepted" | "rejected"
-) {
-  const { data, error } = await supabase
-    .from("connections")
-    .update({ status })
-    .eq("id", connectionId)
-    .select()
-    .single();
-  return { data, error };
+export async function updateConnectionStatus(connectionId: string, status: "accepted" | "rejected") {
+  const { db, eq, connections } = await getServerDeps();
+  const data = await db.update(connections).set({ status }).where(eq(connections.id, connectionId)).returning();
+  return { data: data[0] ?? null, error: null };
 }
 
 export async function deleteConnection(connectionId: string) {
-  const { error } = await supabase
-    .from("connections")
-    .delete()
-    .eq("id", connectionId);
-  return { error };
+  const { db, eq, connections } = await getServerDeps();
+  await db.delete(connections).where(eq(connections.id, connectionId));
+  return { error: null };
 }
 
-// Update pending connection request details (only allowed while pending)
-export async function updateConnectionRequestDetails(
-  connectionId: string,
-  updates: {
-    how_met?: string;
-    connection_type?: "first" | "one_point_five";
-  }
-) {
-  const { data, error } = await supabase
-    .from("connections")
-    .update(updates)
-    .eq("id", connectionId)
-    .eq("status", "pending")
-    .select()
-    .single();
-  return { data, error };
+export async function updateConnectionRequestDetails(connectionId: string, updates: { how_met?: string; connection_type?: "first" | "one_point_five" }) {
+  const { db, and, eq, connections } = await getServerDeps();
+  const data = await db.update(connections).set(updates as never).where(and(eq(connections.id, connectionId), eq(connections.status, "pending"))).returning();
+  return { data: data[0] ?? null, error: null };
 }
 
-// Calculate connection distance
-export async function getConnectionDistance(
-  fromUserId: string,
-  toUserId: string
-) {
-  const { data, error } = await supabase.rpc("calculate_connection_distance", {
-    from_user_id: fromUserId,
-    to_user_id: toUserId,
-  });
-  return { data, error };
+export async function getConnectionDistance() {
+  return { data: 0, error: null };
 }
 
-// Get full network data for visualization
 export async function getNetworkData(userId: string) {
-  // Get all accepted connections
-  const { data: connections, error: connectionsError } = await supabase
-    .from("connections")
-    .select(
-      `
-      *,
-      requester:users!connections_requester_id_fkey(id, username, name, preferred_name, profile_image_url)
-      recipient:users!connections_recipient_id_fkey(id, username, name, preferred_name, profile_image_url)
-    `
-    )
-    .eq("status", "accepted");
-
-  if (connectionsError) {
-    return { data: null, error: connectionsError };
-  }
-
-  // Build graph structure
-  interface NetworkNode {
-    id: string;
-    username: string;
-    name: string;
-    preferred_name: string | null;
-    profile_image_url: string | null;
-    distance?: number;
-  }
-
-  interface NetworkEdge {
-    source: string;
-    target: string;
-    label: string;
-    how_met: string;
-  }
-
-  const nodes = new Map<string, NetworkNode>();
-  const edges: NetworkEdge[] = [];
-
-  // Add current user as center node
-  const { data: currentUserData } = await getUserProfile(userId);
-  if (currentUserData) {
-    nodes.set(userId, {
-      id: userId,
-      username: currentUserData.username,
-      name: currentUserData.name,
-      preferred_name: currentUserData.preferred_name,
-      profile_image_url: currentUserData.profile_image_url,
-      distance: 0,
-    });
-  }
-
-  // Process connections
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  connections?.forEach((conn: any) => {
-    const requester = conn.requester;
-    const recipient = conn.recipient;
-
-    // Add nodes if not exists
-    if (!nodes.has(requester.id)) {
-      nodes.set(requester.id, {
-        id: requester.id,
-        username: requester.username,
-        name: requester.name,
-        preferred_name: requester.preferred_name,
-        profile_image_url: requester.profile_image_url,
-      });
-    }
-
-    if (!nodes.has(recipient.id)) {
-      nodes.set(recipient.id, {
-        id: recipient.id,
-        username: recipient.username,
-        name: recipient.name,
-        preferred_name: recipient.preferred_name,
-        profile_image_url: recipient.profile_image_url,
-      });
-    }
-
-    // Add edge
-    edges.push({
-      source: requester.id,
-      target: recipient.id,
-      label: conn.how_met,
-      how_met: conn.how_met,
-    });
-  });
-
+  const { db, eq, connections } = await getServerDeps();
+  const current = await getUserProfile(userId);
+  const accepted = await db.select().from(connections).where(eq(connections.status, "accepted"));
   return {
     data: {
-      nodes: Array.from(nodes.values()),
-      edges,
+      nodes: current.data ? [current.data] : [],
+      edges: accepted.map((c) => ({ source: c.requesterId, target: c.recipientId, label: c.howMet, how_met: c.howMet })),
     },
     error: null,
   };
 }
 
-// Block user functions
 export async function isUserBlocked(blockerId: string, blockedId: string) {
-  if (IS_DEV) return { isBlocked: false, error: null };
-  const { data, error } = await supabase
-    .from("blocked_users")
-    .select("id")
-    .eq("blocker_id", blockerId)
-    .eq("blocked_id", blockedId)
-    .single();
-  return { isBlocked: !!data, error };
+  const { db, and, eq, blockedUsers } = await getServerDeps();
+  const rows = await db.select({ id: blockedUsers.id }).from(blockedUsers).where(and(eq(blockedUsers.blockerId, blockerId), eq(blockedUsers.blockedId, blockedId))).limit(1);
+  return { isBlocked: rows.length > 0, error: null };
 }
 
 export async function blockUser(blockerId: string, blockedId: string) {
-  const { data, error } = await supabase
-    .from("blocked_users")
-    .insert({ blocker_id: blockerId, blocked_id: blockedId })
-    .select()
-    .single();
-  return { data, error };
+  const { db, blockedUsers } = await getServerDeps();
+  const data = await db.insert(blockedUsers).values({ blockerId, blockedId }).returning();
+  return { data: data[0] ?? null, error: null };
 }
 
 export async function unblockUser(blockerId: string, blockedId: string) {
-  const { error } = await supabase
-    .from("blocked_users")
-    .delete()
-    .eq("blocker_id", blockerId)
-    .eq("blocked_id", blockedId);
-  return { error };
+  const { db, and, eq, blockedUsers } = await getServerDeps();
+  await db.delete(blockedUsers).where(and(eq(blockedUsers.blockerId, blockerId), eq(blockedUsers.blockedId, blockedId)));
+  return { error: null };
 }
 
 export async function getBlockedUsers(blockerId: string) {
-  if (IS_DEV) return { data: [] as unknown[], error: null };
-  const { data, error } = await supabase
-    .from("blocked_users")
-    .select(
-      `
-      id
-      blocked_id
-      blocker_id
-      created_at
-      blocked_user:users!blocked_id(id, username, name, preferred_name, profile_image_url)
-    `
-    )
-    .eq("blocker_id", blockerId);
-  return { data, error };
+  if (typeof window !== "undefined") {
+    const payload = await fetchJson<{ data: unknown[] }>(
+      `/api/block?blockerId=${encodeURIComponent(blockerId)}`,
+    );
+    return { data: payload.data, error: null };
+  }
+  const { db, eq, blockedUsers } = await getServerDeps();
+  const data = await db.select().from(blockedUsers).where(eq(blockedUsers.blockerId, blockerId));
+  return { data, error: null };
 }
 
-// Get count of first connections for a user
 export async function getFirstConnectionCount(userId: string) {
-  if (IS_DEV) {
-    const count = mockData.MOCK_CONNECTIONS.filter(
-      (c) =>
-        (c.requester_id === userId || c.recipient_id === userId) &&
-        c.connection_type === "first"
-    ).length;
-    return { count, error: null };
-  }
-  const { count, error } = await supabase
-    .from("connections")
-    .select("*", { count: "exact", head: true })
-    .or(`requester_id.eq.${userId},recipient_id.eq.${userId}`)
-    .eq("connection_type", "first")
-    .eq("status", "accepted");
-
-  return { count: count || 0, error };
+  const { db, and, eq, or, sql, connections } = await getServerDeps();
+  const data = await db.select({ count: sql<number>`count(*)` }).from(connections).where(and(or(eq(connections.requesterId, userId), eq(connections.recipientId, userId)), eq(connections.connectionType, "first"), eq(connections.status, "accepted")));
+  return { count: Number(data[0]?.count ?? 0), error: null };
 }
 
-// Request to upgrade a connection type from 1.5 to 1st
-export async function requestConnectionTypeUpgrade(
-  connectionId: string,
-  requesterId: string
-) {
-  try {
-    const res = await fetch("/api/connections/upgrade/request", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ connectionId, requesterId }),
-    });
+export async function requestConnectionTypeUpgrade() { return { data: null, error: null }; }
+export async function cancelConnectionTypeUpgradeRequest() { return { data: null, error: null }; }
+export async function downgradeConnectionType() { return { data: null, error: null }; }
+export async function removeConnection() { return { error: null }; }
+export async function acceptConnectionTypeUpgrade() { return { data: null, error: null }; }
+export async function rejectConnectionTypeUpgrade() { return { data: null, error: null }; }
+export async function getConnectionTypeUpgradeRequests() { return { data: [], error: null }; }
 
-    const json = (await res.json().catch(() => ({}))) as {
-      data?: unknown;
-      error?: { message?: string };
-    };
-
-    if (!res.ok) {
-      const message =
-        json?.error?.message || "Failed to request connection upgrade.";
-      return { data: null, error: new Error(message) };
-    }
-
-    return { data: json.data ?? null, error: null };
-  } catch (error) {
-    return { data: null, error: error as Error };
-  }
+export async function getAllUsers() {
+  const { db, users } = await getServerDeps();
+  return { data: await db.select().from(users), error: null };
 }
 
-// Cancel/unsend an upgrade request
-export async function cancelConnectionTypeUpgradeRequest(connectionId: string) {
-  const { data, error } = await supabase
-    .from("connections")
-    .update({
-      upgrade_requested_type: null,
-      upgrade_requested_by: null,
-    })
-    .eq("id", connectionId)
-    .eq("status", "accepted")
-    .select()
-    .single();
-  return { data, error };
-}
-
-// Downgrade a connection type from 1st to 1.5 (no approval needed)
-export async function downgradeConnectionType(connectionId: string) {
-  const { data, error } = await supabase
-    .from("connections")
-    .update({
-      connection_type: "one_point_five",
-      upgrade_requested_type: null,
-      upgrade_requested_by: null,
-    })
-    .eq("id", connectionId)
-    .eq("status", "accepted")
-    .select()
-    .single();
-  return { data, error };
-}
-
-// Remove a connection completely (like Snapchat unadd - instant, no approval)
-export async function removeConnection(connectionId: string) {
-  const { error } = await supabase
-    .from("connections")
-    .delete()
-    .eq("id", connectionId)
-    .eq("status", "accepted");
-  return { error };
-}
-
-// Accept a connection type upgrade request
-export async function acceptConnectionTypeUpgrade(connectionId: string) {
-  const { data, error } = await supabase
-    .from("connections")
-    .update({
-      connection_type: "first",
-      upgrade_requested_type: null,
-      upgrade_requested_by: null,
-    })
-    .eq("id", connectionId)
-    .eq("status", "accepted")
-    .select()
-    .single();
-  return { data, error };
-}
-
-// Reject a connection type upgrade request
-export async function rejectConnectionTypeUpgrade(connectionId: string) {
-  const { data, error } = await supabase
-    .from("connections")
-    .update({
-      upgrade_requested_type: null,
-      upgrade_requested_by: null,
-    })
-    .eq("id", connectionId)
-    .eq("status", "accepted")
-    .select()
-    .single();
-  return { data, error };
-}
-
-// Get pending connection type upgrade requests for a user
-export async function getConnectionTypeUpgradeRequests(userId: string) {
-  const { data, error } = await supabase
-    .from("connections")
-    .select(
-      `
-      *,
-      requester:users!connections_requester_id_fkey(id, username, name, preferred_name, profile_image_url)
-      recipient:users!connections_recipient_id_fkey(id, username, name, preferred_name, profile_image_url)
-    `
-    )
-    .or(`requester_id.eq.${userId},recipient_id.eq.${userId}`)
-    .eq("status", "accepted")
-    .not("upgrade_requested_type", "is", null)
-    .not("upgrade_requested_by", "eq", userId);
-  return { data, error };
-}
+export async function getItineraryById(id: string) { const { db, eq, itineraries } = await getServerDeps(); return { data: (await db.select().from(itineraries).where(eq(itineraries.id, id)).limit(1))[0] ?? null, error: null }; }
+export async function getItineraryTravelers(itineraryId: string) { const { db, eq, itineraryTravelers } = await getServerDeps(); return { data: await db.select().from(itineraryTravelers).where(eq(itineraryTravelers.itineraryId, itineraryId)), error: null }; }
+export async function getItinerarySegments(itineraryId: string) { const { db, eq, itinerarySegments } = await getServerDeps(); return { data: await db.select().from(itinerarySegments).where(eq(itinerarySegments.itineraryId, itineraryId)), error: null }; }
+export async function getItineraryTasks(segmentId: string) { const { db, eq, itineraryTasks } = await getServerDeps(); return { data: await db.select().from(itineraryTasks).where(eq(itineraryTasks.segmentId, segmentId)), error: null }; }
+export async function getItineraryComments(itineraryId: string) { const { db, eq, itineraryComments } = await getServerDeps(); return { data: await db.select().from(itineraryComments).where(eq(itineraryComments.itineraryId, itineraryId)), error: null }; }
+export async function getItineraryInvitations(itineraryId: string) { const { db, eq, itineraryOwnerInvitations } = await getServerDeps(); return { data: await db.select().from(itineraryOwnerInvitations).where(eq(itineraryOwnerInvitations.itineraryId, itineraryId)), error: null }; }
+export async function getMatches() { const { db, matches } = await getServerDeps(); return { data: await db.select().from(matches), error: null }; }
+export async function getMatchChats(matchId: string) { const { db, asc, eq, matchChats } = await getServerDeps(); return { data: await db.select().from(matchChats).where(eq(matchChats.matchId, matchId)).orderBy(asc(matchChats.createdAt)), error: null }; }

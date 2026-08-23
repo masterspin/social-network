@@ -1,70 +1,50 @@
+import { eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
-import type { Database } from "@/types/supabase";
+import { db } from "@/lib/db";
+import { profiles, socialLinks, users } from "@/lib/db/schema";
 
 export async function GET(
   _request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE;
-
-  if (!url || !serviceKey) {
-    return NextResponse.json(
-      {
-        error: {
-          message:
-            "Missing NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE in server environment",
-        },
-      },
-      { status: 500 }
-    );
-  }
-
-  const admin = createClient<Database>(url, serviceKey, {
-    auth: { persistSession: false },
-  });
-
   try {
-    const userId = id;
-    if (!userId) {
+    if (!id) {
       return NextResponse.json(
         { error: { message: "Missing user id" } },
         { status: 400 }
       );
     }
 
-    const [{ data: user, error: e1 }, { data: links, error: e2 }] =
-      await Promise.all([
-        admin
-          .from("users")
-          .select(
-            "id, username, name, preferred_name, profile_image_url, bio, gender"
-          )
-          .eq("id", userId)
-          .single(),
-        admin
-          .from("social_links")
-          .select("id, platform, url")
-          .eq("user_id", userId),
-      ]);
+    const [user] = await db
+      .select({
+        id: users.id,
+        email: users.email,
+        name: users.name,
+        username: profiles.username,
+        preferred_name: profiles.preferredName,
+        profile_image_url: profiles.profileImageUrl,
+        bio: profiles.bio,
+        gender: profiles.gender,
+        created_at: profiles.createdAt,
+        updated_at: profiles.updatedAt,
+      })
+      .from(users)
+      .leftJoin(profiles, eq(users.id, profiles.id))
+      .where(eq(users.id, id))
+      .limit(1);
+    if (!user) return NextResponse.json({ data: null }, { status: 404 });
 
-    if (e1) {
-      // Supabase returns an error if .single() results in zero rows.
-      // That's how we'll know the user doesn't exist.
-      return NextResponse.json({ error: e1 }, { status: 404 });
-    }
-    if (!user) {
-      // This case might not even be reachable if e1 handles the not-found case.
-      return NextResponse.json({ data: null }, { status: 404 });
-    }
-    if (e2) return NextResponse.json({ error: e2 }, { status: 400 });
+    const links = await db
+      .select({
+        id: socialLinks.id,
+        platform: socialLinks.platform,
+        url: socialLinks.url,
+      })
+      .from(socialLinks)
+      .where(eq(socialLinks.userId, id));
 
-    return NextResponse.json(
-      { data: { user, links: links || [] } },
-      { status: 200 }
-    );
+    return NextResponse.json({ data: { user, links } }, { status: 200 });
   } catch (e) {
     return NextResponse.json(
       { error: { message: (e as Error).message } },

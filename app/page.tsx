@@ -18,33 +18,36 @@ export default function HomePage() {
   }, []);
 
   const checkAuth = async () => {
-    if (process.env.NEXT_PUBLIC_DEV_MODE === "true") {
+    try {
+      if (process.env.NEXT_PUBLIC_DEV_MODE === "true") {
+        setIsAuthenticated(true);
+        setHasProfile(true);
+        return;
+      }
+
+      const { user } = await getCurrentUser();
+
+      if (!user) {
+        return;
+      }
+
       setIsAuthenticated(true);
-      setHasProfile(true);
+
+      // Check if user has a profile
+      const { data: profile, error } = await getUserProfile(user.id);
+
+      if (error || !profile) {
+        // Redirect to profile setup
+        router.push("/profile/setup");
+      } else {
+        setHasProfile(true);
+      }
+    } catch (error) {
+      console.error("[HomePage] Failed to check auth", error);
+      setIsAuthenticated(false);
+    } finally {
       setLoading(false);
-      return;
     }
-
-    const { user } = await getCurrentUser();
-
-    if (!user) {
-      setLoading(false);
-      return;
-    }
-
-    setIsAuthenticated(true);
-
-    // Check if user has a profile
-    const { data: profile, error } = await getUserProfile(user.id);
-
-    if (error || !profile) {
-      // Redirect to profile setup
-      router.push("/profile/setup");
-    } else {
-      setHasProfile(true);
-    }
-
-    setLoading(false);
   };
 
   if (loading) {

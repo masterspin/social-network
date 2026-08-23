@@ -2,37 +2,12 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { supabase } from "@/lib/supabase/client";
 
 export default function AuthCallbackPage() {
   const router = useRouter();
 
   useEffect(() => {
-    const handleAuthCallback = async () => {
-      try {
-        // Wait a moment for Supabase to process the hash
-        await new Promise((resolve) => setTimeout(resolve, 500));
-
-        // Check if there's a session
-        const {
-          data: { session },
-        } = await supabase.auth.getSession();
-
-        if (session) {
-          // Session exists, redirect to social-network
-          router.push("/");
-        } else {
-          // No session, redirect to home
-          console.log("No session found after OAuth callback");
-          router.push("/");
-        }
-      } catch (error) {
-        console.error("Error handling auth callback:", error);
-        router.push("/");
-      }
-    };
-
-    handleAuthCallback();
+    router.push("/");
   }, [router]);
 
   return (

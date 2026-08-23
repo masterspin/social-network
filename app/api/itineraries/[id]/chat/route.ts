@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
-import type { SupabaseClient } from "@supabase/supabase-js";
-import { Database } from "@/types/supabase";
+import { and, eq } from "drizzle-orm";
+import { db } from "@/lib/db";
+import { itineraryTravelers, itineraries } from "@/lib/db/schema";
 import { chatWithTools } from "@/lib/ai/openrouter";
 import {
   fetchFlightSuggestionFree,
@@ -10,21 +10,6 @@ import {
 } from "@/lib/autofill/providers";
 import { fetchFlightOffersAmadeus } from "@/lib/autofill/amadeus";
 import { SegmentAutofillPlan } from "@/lib/autofill/types";
-
-type TypedSupabaseClient = SupabaseClient<Database>;
-
-function getAdminClient(): TypedSupabaseClient {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE;
-
-  if (!url || !serviceKey) {
-    throw new Error("Missing Supabase configuration");
-  }
-
-  return createClient<Database>(url, serviceKey, {
-    auth: { persistSession: false },
-  });
-}
 
 async function resolveUserId(request: Request): Promise<string | null> {
   const { searchParams } = new URL(request.url);
@@ -43,21 +28,7 @@ async function resolveUserId(request: Request): Promise<string | null> {
 
   const authHeader = request.headers.get("authorization");
   if (authHeader?.startsWith("Bearer ")) {
-    const token = authHeader.slice("Bearer ".length);
-    const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-
-    if (url && anonKey) {
-      const tempClient = createClient<Database>(url, anonKey, {
-        auth: { persistSession: false },
-      });
-      const {
-        data: { user },
-      } = await tempClient.auth.getUser(token);
-      if (user) {
-        return user.id;
-      }
-    }
+    return authHeader.slice("Bearer ".length);
   }
 
   return null;
@@ -436,15 +407,9 @@ export async function POST(
       );
     }
 
-    // Check itinerary ownership/access
-    const supabase = getAdminClient();
-    const { data: itinerary } = await supabase
-      .from("itineraries")
-      .select("id, owner_id")
-      .eq("id", itineraryId)
-      .single();
-
-    if (!itinerary || itinerary.owner_id !== userId) {
+    const [itinerary] = await db.select({ id: itineraries.id, ownerId: itineraries.ownerId }).from(itineraries).where(eq(itineraries.id, itineraryId)).limit(1);
+    const [traveler] = await db.select({ id: itineraryTravelers.id }).from(itineraryTravelers).where(and(eq(itineraryTravelers.itineraryId, itineraryId), eq(itineraryTravelers.userId, userId))).limit(1);
+    if (!itinerary || (itinerary.ownerId !== userId && !traveler)) {
       return NextResponse.json(
         { message: "", error: "Itinerary not found or access denied" },
         { status: 404 }

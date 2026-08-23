@@ -1,151 +1,43 @@
+import { and, eq, or } from "drizzle-orm";
 import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { db } from "@/lib/db";
+import { connections, matches, profiles, users } from "@/lib/db/schema";
 
-// POST /api/match - Create a new match between two users
 export async function POST(request: Request) {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE;
-
-  if (!url || !serviceKey) {
-    return NextResponse.json(
-      { error: "Missing Supabase configuration" },
-      { status: 500 }
-    );
-  }
-
-  const admin = createClient(url, serviceKey, {
-    auth: { persistSession: false },
-  });
-
   try {
-    const body = await request.json();
-    const { matchmaker_id, user1_id, user2_id } = body;
-
+    const { matchmaker_id, user1_id, user2_id } = await request.json();
     if (!matchmaker_id || !user1_id || !user2_id) {
-      return NextResponse.json(
-        { error: "Missing required fields" },
-        { status: 400 }
+      return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
+    }
+
+    const conns = await db
+      .select()
+      .from(connections)
+      .where(
+        and(
+          eq(connections.status, "accepted"),
+          or(
+            and(eq(connections.requesterId, matchmaker_id), or(eq(connections.recipientId, user1_id), eq(connections.recipientId, user2_id))),
+            and(eq(connections.recipientId, matchmaker_id), or(eq(connections.requesterId, user1_id), eq(connections.requesterId, user2_id))),
+          ),
+        ),
       );
-    }
 
-    // Verify that both users are first connections of the matchmaker
-    const { data: connections, error: connError } = await admin
-      .from("connections")
-      .select("requester_id, recipient_id, status, connection_type")
-      .or(
-        `and(requester_id.eq.${matchmaker_id},recipient_id.in.(${user1_id},${user2_id})),and(recipient_id.eq.${matchmaker_id},requester_id.in.(${user1_id},${user2_id}))`
-      )
-      .eq("status", "accepted");
+    const valid1 = conns.some((c) => c.connectionType === "first" && ((c.requesterId === matchmaker_id && c.recipientId === user1_id) || (c.recipientId === matchmaker_id && c.requesterId === user1_id)));
+    const valid2 = conns.some((c) => c.connectionType === "first" && ((c.requesterId === matchmaker_id && c.recipientId === user2_id) || (c.recipientId === matchmaker_id && c.requesterId === user2_id)));
+    if (!valid1 || !valid2) return NextResponse.json({ error: "Both users must be first connections of the matchmaker" }, { status: 400 });
 
-    if (connError) throw connError;
+    const [lowerUserId, higherUserId] = user1_id < user2_id ? [user1_id, user2_id] : [user2_id, user1_id];
+    const [existing] = await db.select().from(matches).where(and(eq(matches.user1Id, lowerUserId), eq(matches.user2Id, higherUserId))).limit(1);
+    if (existing) return NextResponse.json({ match_id: existing.id, message: "Match created successfully!" }, { status: 200 });
 
-    // Check that we have 2 connections and both are "first" type
-    const user1Connected = connections?.some(
-      (c) =>
-        c.connection_type === "first" &&
-        ((c.requester_id === matchmaker_id && c.recipient_id === user1_id) ||
-          (c.recipient_id === matchmaker_id && c.requester_id === user1_id))
-    );
-
-    const user2Connected = connections?.some(
-      (c) =>
-        c.connection_type === "first" &&
-        ((c.requester_id === matchmaker_id && c.recipient_id === user2_id) ||
-          (c.recipient_id === matchmaker_id && c.requester_id === user2_id))
-    );
-
-    if (!user1Connected || !user2Connected) {
-      return NextResponse.json(
-        {
-          error: "Both users must be first connections of the matchmaker",
-        },
-        { status: 400 }
-      );
-    }
-
-    // Ensure these users can be re-matched if a previous chat was deleted
-    const [lowerUserId, higherUserId] =
-      user1_id < user2_id ? [user1_id, user2_id] : [user2_id, user1_id];
-
-    const { data: existingMatch, error: existingMatchError } = await admin
-      .from("matches")
-      .select("id")
-      .eq("user1_id", lowerUserId)
-      .eq("user2_id", higherUserId)
-      .maybeSingle();
-
-    if (existingMatchError) throw existingMatchError;
-
-    if (existingMatch) {
-      const { data: chatStatuses, error: chatStatusesError } = await admin
-        .from("match_chats")
-        .select("is_active")
-        .eq("match_id", existingMatch.id);
-
-      if (chatStatusesError) throw chatStatusesError;
-
-      const hasActiveChat = chatStatuses?.some((row) => row.is_active);
-
-      if (hasActiveChat) {
-        return NextResponse.json(
-          {
-            match_id: existingMatch.id,
-            message: "Match created successfully!",
-          },
-          { status: 200 }
-        );
-      }
-
-      const { error: deleteExistingError } = await admin
-        .from("matches")
-        .delete()
-        .eq("id", existingMatch.id);
-
-      if (deleteExistingError) throw deleteExistingError;
-    }
-
-    // Call the stored function to create the match
-    const { data, error } = await admin.rpc("create_match", {
-      p_matchmaker_id: matchmaker_id,
-      p_user1_id: user1_id,
-      p_user2_id: user2_id,
-    });
-
-    if (error) {
-      if (error.code === "23505") {
-        // Unique constraint violation
-        const { data: conflictMatch } = await admin
-          .from("matches")
-          .select("id")
-          .eq("user1_id", lowerUserId)
-          .eq("user2_id", higherUserId)
-          .maybeSingle();
-
-        return NextResponse.json(
-          {
-            match_id: conflictMatch?.id ?? null,
-            message: "Match created successfully!",
-          },
-          { status: 200 }
-        );
-      }
-      throw error;
-    }
-
-    return NextResponse.json(
-      { match_id: data, message: "Match created successfully!" },
-      { status: 201 }
-    );
+    const [row] = await db.insert(matches).values({ matchmakerId: matchmaker_id, user1Id: lowerUserId, user2Id: higherUserId }).returning();
+    return NextResponse.json({ match_id: row.id, message: "Match created successfully!" }, { status: 201 });
   } catch (error) {
-    console.error("[Match API] Error:", error);
-    return NextResponse.json(
-      { error: (error as Error).message },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: (error as Error).message }, { status: 500 });
   }
 }
 
-// GET /api/match?user_id=xxx - Get matches for a user
 export async function GET(request: Request) {
   if (process.env.NEXT_PUBLIC_DEV_MODE === "true") {
     const { MOCK_MATCHES } = await import("@/lib/dev/mock-data");
@@ -154,78 +46,26 @@ export async function GET(request: Request) {
 
   const { searchParams } = new URL(request.url);
   const userId = searchParams.get("user_id");
+  if (!userId) return NextResponse.json({ error: "Missing user_id parameter" }, { status: 400 });
 
-  if (!userId) {
-    return NextResponse.json(
-      { error: "Missing user_id parameter" },
-      { status: 400 }
-    );
-  }
+  const rows = await db
+    .select()
+    .from(matches)
+    .where(or(eq(matches.user1Id, userId), eq(matches.user2Id, userId)));
+  const people = await db.select({ id: users.id, username: profiles.username, name: users.name, preferred_name: profiles.preferredName, profile_image_url: profiles.profileImageUrl }).from(users).leftJoin(profiles, eq(users.id, profiles.id));
+  const byId = new Map(people.map((u) => [u.id, u]));
 
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE;
-
-  if (!url || !serviceKey) {
-    return NextResponse.json(
-      { error: "Missing Supabase configuration" },
-      { status: 500 }
-    );
-  }
-
-  const admin = createClient(url, serviceKey, {
-    auth: { persistSession: false },
-  });
-
-  try {
-    // Get all matches where user is involved
-    const { data: matches, error: matchError } = await admin
-      .from("matches")
-      .select(
-        `
-        *,
-        matchmaker:users!matches_matchmaker_id_fkey(id, username, name, preferred_name, profile_image_url),
-        user1:users!matches_user1_id_fkey(id, username, name, preferred_name, profile_image_url),
-        user2:users!matches_user2_id_fkey(id, username, name, preferred_name, profile_image_url)
-      `
-      )
-      .or(`user1_id.eq.${userId},user2_id.eq.${userId}`);
-
-    if (matchError) throw matchError;
-
-    // Get chat status for each match
-    const matchIds = matches?.map((m) => m.id) || [];
-    const { data: chatStatuses, error: chatError } = await admin
-      .from("match_chats")
-      .select("match_id, user_id, is_active, deleted_at")
-      .eq("user_id", userId)
-      .in("match_id", matchIds);
-
-    if (chatError) throw chatError;
-
-    // Combine data
-    const mappedMatches =
-      matches?.map((match) => {
-        const chatStatus = chatStatuses?.find((c) => c.match_id === match.id);
-        const otherUser = match.user1_id === userId ? match.user2 : match.user1;
-
-        return {
-          id: match.id,
-          matchmaker: match.matchmaker,
-          other_user: otherUser,
-          is_active: chatStatus?.is_active || false,
-          deleted_at: chatStatus?.deleted_at,
-          created_at: match.created_at,
-        };
-      }) ?? [];
-
-    const result = mappedMatches.filter((match) => match.is_active);
-
-    return NextResponse.json({ data: result }, { status: 200 });
-  } catch (error) {
-    console.error("[Match API GET] Error:", error);
-    return NextResponse.json(
-      { error: (error as Error).message },
-      { status: 500 }
-    );
-  }
+  return NextResponse.json(
+    {
+      data: rows.map((match) => ({
+        id: match.id,
+        matchmaker: byId.get(match.matchmakerId ?? "") ?? null,
+        other_user: match.user1Id === userId ? byId.get(match.user2Id ?? "") ?? null : byId.get(match.user1Id ?? "") ?? null,
+        is_active: true,
+        deleted_at: null,
+        created_at: match.createdAt,
+      })),
+    },
+    { status: 200 }
+  );
 }

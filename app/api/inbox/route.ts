@@ -1,6 +1,7 @@
+import { eq, or } from "drizzle-orm";
 import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
-import type { Database } from "@/types/supabase";
+import { db } from "@/lib/db";
+import { connections, profiles, users } from "@/lib/db/schema";
 
 export async function GET(request: Request) {
   if (process.env.NEXT_PUBLIC_DEV_MODE === "true") {
@@ -13,78 +14,37 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const userId = searchParams.get("userId");
   if (!userId) {
-    return NextResponse.json(
-      { error: { message: "Missing userId" } },
-      { status: 400 }
-    );
+    return NextResponse.json({ error: { message: "Missing userId" } }, { status: 400 });
   }
 
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE;
-  if (!url || !serviceKey) {
-    return NextResponse.json(
-      {
-        error: {
-          message:
-            "Missing NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE in server environment",
-        },
-      },
-      { status: 500 }
-    );
-  }
-
-  const admin = createClient<Database>(url, serviceKey, {
-    auth: { persistSession: false },
+  const rows = await db
+    .select()
+    .from(connections)
+    .where(or(eq(connections.recipientId, userId), eq(connections.requesterId, userId)));
+  const usersRows = await db
+    .select({
+      id: users.id,
+      username: profiles.username,
+      name: users.name,
+      preferred_name: profiles.preferredName,
+      profile_image_url: profiles.profileImageUrl,
+    })
+    .from(users)
+    .leftJoin(profiles, eq(users.id, profiles.id));
+  const byId = new Map(usersRows.map((u) => [u.id, u]));
+  const enrich = (row: typeof rows[number]) => ({
+    ...row,
+    requester: byId.get(row.requesterId) ?? null,
+    recipient: byId.get(row.recipientId) ?? null,
   });
-
-  try {
-    const baseSelect = `
-      *,
-      requester:users!connections_requester_id_fkey(id, username, name, preferred_name, profile_image_url),
-      recipient:users!connections_recipient_id_fkey(id, username, name, preferred_name, profile_image_url)
-    `;
-
-    const [rec, snt, upgrades] = await Promise.all([
-      admin
-        .from("connections")
-        .select(baseSelect)
-        .eq("recipient_id", userId)
-        .eq("status", "pending"),
-      admin
-        .from("connections")
-        .select(baseSelect)
-        .eq("requester_id", userId)
-        .eq("status", "pending"),
-      // Get all upgrade requests for connections involving this user
-      admin
-        .from("connections")
-        .select(baseSelect)
-        .or(`requester_id.eq.${userId},recipient_id.eq.${userId}`)
-        .eq("status", "accepted")
-        .not("upgrade_requested_type", "is", null),
-    ]);
-
-    if (rec.error)
-      return NextResponse.json({ error: rec.error }, { status: 400 });
-    if (snt.error)
-      return NextResponse.json({ error: snt.error }, { status: 400 });
-    if (upgrades.error)
-      return NextResponse.json({ error: upgrades.error }, { status: 400 });
-
-    return NextResponse.json(
-      { 
-        data: { 
-          received: rec.data || [], 
-          sent: snt.data || [],
-          upgradeRequests: upgrades.data || []
-        } 
+  return NextResponse.json(
+    {
+      data: {
+        received: rows.filter((r) => r.recipientId === userId && r.status === "pending").map(enrich),
+        sent: rows.filter((r) => r.requesterId === userId && r.status === "pending").map(enrich),
+        upgradeRequests: rows.filter((r) => r.status === "accepted" && r.connectionType !== "first").map(enrich),
       },
-      { status: 200 }
-    );
-  } catch (e) {
-    return NextResponse.json(
-      { error: { message: (e as Error).message } },
-      { status: 500 }
-    );
-  }
+    },
+    { status: 200 }
+  );
 }

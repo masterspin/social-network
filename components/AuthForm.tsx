@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { supabase } from "@/lib/supabase/client";
+import { signIn } from "next-auth/react";
 import { Network, CheckCircle, XCircle } from "lucide-react";
 import { Spinner } from "@/components/ui/Spinner";
 
@@ -13,14 +13,7 @@ export default function AuthForm() {
     setLoading(true);
     setError(null);
     try {
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: "google",
-        options: {
-          redirectTo: `${window.location.origin}/auth/callback`,
-          queryParams: { access_type: "offline", prompt: "consent" },
-        },
-      });
-      if (error) throw error;
+      await signIn("google", { callbackUrl: "/" });
     } catch (err) {
       setError(err instanceof Error ? err.message : "An error occurred during sign in");
       setLoading(false);

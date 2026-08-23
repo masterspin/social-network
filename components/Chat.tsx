@@ -1,8 +1,6 @@
 "use client";
 
 import { useEffect, useState, useRef, useCallback } from "react";
-import { supabase } from "@/lib/supabase/client";
-import type { RealtimeChannel } from "@supabase/supabase-js";
 
 type Message = {
   id: string;
@@ -70,7 +68,6 @@ export default function Chat({
   );
   const [lastPollAt, setLastPollAt] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const channelRef = useRef<RealtimeChannel | null>(null);
   const senderCacheRef = useRef<Record<string, Message["sender"]>>({});
 
   useEffect(() => {
@@ -219,84 +216,9 @@ export default function Chat({
   }, [fetchMessages, applyMessages]);
 
   useEffect(() => {
-    setRealtimeStatus("connecting");
-    console.log("[match_messages] setting up channel", matchId);
-    const channel = supabase
-      .channel(`match_messages:${matchId}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "INSERT",
-          schema: "public",
-          table: "match_messages",
-          filter: `match_id=eq.${matchId}`,
-        },
-        (payload) => {
-          console.log("[match_messages] change payload", payload);
-          setLastRealtimeEventAt(new Date().toISOString());
-          const row = payload?.new as
-            | {
-                id: string;
-                sender_id: string;
-                message: string;
-                created_at: string;
-              }
-            | undefined;
-          if (!row) return;
-
-          const senderFromCache = senderCacheRef.current[row.sender_id];
-          const fallbackSender =
-            row.sender_id === otherUser.id
-              ? {
-                  id: otherUser.id,
-                  username: otherUser.username,
-                  name: otherUser.name,
-                  preferred_name: otherUser.preferred_name,
-                  profile_image_url: otherUser.profile_image_url,
-                }
-              : senderCacheRef.current[currentUserId];
-
-          const senderInfo = senderFromCache ||
-            fallbackSender || {
-              id: row.sender_id,
-              username: "",
-              name: "",
-              preferred_name: null,
-              profile_image_url: null,
-            };
-
-          const message: Message = {
-            id: row.id,
-            sender_id: row.sender_id,
-            message: row.message,
-            created_at: row.created_at,
-            sender: senderInfo,
-          };
-
-          upsertMessage(message);
-        }
-      )
-      .subscribe((status) => {
-        console.log("[match_messages] realtime status", status);
-        setRealtimeStatus(String(status));
-        if (status === "CHANNEL_ERROR") {
-          console.error(
-            "[match_messages] realtime channel error",
-            channel.topic
-          );
-        }
-      });
-
-    channelRef.current = channel;
-
-    return () => {
-      if (channelRef.current) {
-        supabase.removeChannel(channelRef.current);
-        channelRef.current = null;
-      }
-      setRealtimeStatus("idle");
-    };
-  }, [matchId, upsertMessage, otherUser, currentUserId]);
+    setRealtimeStatus("polling");
+    setLastRealtimeEventAt(null);
+  }, [matchId]);
 
   useEffect(() => {
     const interval = setInterval(() => {
