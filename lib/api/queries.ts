@@ -45,10 +45,6 @@ function mapUserRow(row: Record<string, unknown>) {
   };
 }
 
-export async function signOut() {
-  return { error: null };
-}
-
 export async function getCurrentUser(): Promise<{ user: CurrentUser | null; error: null }> {
   if (typeof window !== "undefined") {
     const payload = await fetchJson<{ user: CurrentUser | null }>("/api/me");
@@ -173,30 +169,6 @@ export async function getPendingConnectionRequests(userId: string) {
   return { data, error: null };
 }
 
-export async function getSentConnectionRequests(userId: string) {
-  if (typeof window !== "undefined") {
-    const payload = await fetchJson<{ data: { sent?: unknown[] } }>(
-      `/api/inbox?userId=${encodeURIComponent(userId)}`,
-    );
-    return { data: payload.data.sent ?? [], error: null };
-  }
-  const { db, and, desc, eq, connections } = await getServerDeps();
-  const data = await db.select().from(connections).where(and(eq(connections.requesterId, userId), eq(connections.status, "pending"))).orderBy(desc(connections.createdAt));
-  return { data, error: null };
-}
-
-export async function getConnectionBetweenUsers(aId: string, bId: string) {
-  if (typeof window !== "undefined") {
-    const payload = await fetchJson<{ data: unknown | null }>(
-      `/api/connection?a=${encodeURIComponent(aId)}&b=${encodeURIComponent(bId)}`,
-    );
-    return { data: payload.data, error: null };
-  }
-  const { db, and, desc, eq, or, connections } = await getServerDeps();
-  const data = await db.select().from(connections).where(or(and(eq(connections.requesterId, aId), eq(connections.recipientId, bId)), and(eq(connections.requesterId, bId), eq(connections.recipientId, aId)))).orderBy(desc(connections.createdAt)).limit(1);
-  return { data: data[0] ?? null, error: null };
-}
-
 export async function createConnectionRequest(connection: Record<string, unknown>) {
   if (typeof window !== "undefined") {
     try {
@@ -251,10 +223,6 @@ export async function updateConnectionRequestDetails(connectionId: string, updat
   const { db, and, eq, connections } = await getServerDeps();
   const data = await db.update(connections).set(updates as never).where(and(eq(connections.id, connectionId), eq(connections.status, "pending"))).returning();
   return { data: data[0] ?? null, error: null };
-}
-
-export async function getConnectionDistance() {
-  return { data: 0, error: null };
 }
 
 export async function getNetworkData(userId: string) {
@@ -345,21 +313,6 @@ export async function getBlockedUsers(blockerId: string) {
   return { data, error: null };
 }
 
-export async function getFirstConnectionCount(userId: string) {
-  if (typeof window !== "undefined") {
-    const payload = await fetchJson<{ data: Array<{ connection_type?: string | null }> }>(
-      `/api/connections/accepted?userId=${encodeURIComponent(userId)}`,
-    );
-    return {
-      count: payload.data.filter((row) => row.connection_type === "first").length,
-      error: null,
-    };
-  }
-  const { db, and, eq, or, sql, connections } = await getServerDeps();
-  const data = await db.select({ count: sql<number>`count(*)` }).from(connections).where(and(or(eq(connections.requesterId, userId), eq(connections.recipientId, userId)), eq(connections.connectionType, "first"), eq(connections.status, "accepted")));
-  return { count: Number(data[0]?.count ?? 0), error: null };
-}
-
 export async function requestConnectionTypeUpgrade(
   connectionId: string,
   requesterId: string,
@@ -419,14 +372,4 @@ export async function rejectConnectionTypeUpgrade(_connectionId: string) {
     return { data: payload.data, error: null };
   }
   return { data: null, error: null };
-}
-export async function getConnectionTypeUpgradeRequests() { return { data: [], error: null }; }
-
-export async function getAllUsers() {
-  if (typeof window !== "undefined") {
-    const payload = await fetchJson<{ data: unknown[] }>("/api/users-all");
-    return { data: payload.data, error: null };
-  }
-  const { db, users } = await getServerDeps();
-  return { data: await db.select().from(users), error: null };
 }

@@ -95,6 +95,5 @@ describe("dashboard profile UI", () => {
 
     expect(combined).not.toContain("limit of 100 Strong connections");
     expect(combined).not.toContain("Limited to 100");
-    expect(combined).not.toContain("getFirstConnectionCount");
   });
 });
