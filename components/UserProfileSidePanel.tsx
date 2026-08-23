@@ -588,6 +588,12 @@ export default function UserProfileSidePanel({
             No path exists.
           </p>
         )}
+        {pathChecked && shortestPath && (
+          <p className="mt-3 text-xs text-gray-500 dark:text-gray-400">
+            {Math.max(shortestPath.length - 1, 0)}{" "}
+            {shortestPath.length === 2 ? "step" : "steps"} away.
+          </p>
+        )}
       </div>
     );
   }

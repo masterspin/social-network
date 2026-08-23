@@ -21,6 +21,7 @@ import { connectionNotes, connections, profiles, users } from "@/lib/db/schema";
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const userId = searchParams.get("userId");
+  const includePending = searchParams.get("includePending") === "true";
   if (!userId) {
     return NextResponse.json(
       { error: { message: "Missing userId" } },
@@ -35,7 +36,9 @@ export async function GET(request: Request) {
       .where(or(eq(connections.requesterId, userId), eq(connections.recipientId, userId)))
       .orderBy(asc(connections.createdAt));
     const accepted = myConns.filter((row) => row.status === "accepted");
-    const pending = myConns.filter((row) => row.status === "pending");
+    const pending = includePending
+      ? myConns.filter((row) => row.status === "pending")
+      : [];
     const visibleDirect = [...accepted, ...pending];
     const neighborIds = Array.from(
       new Set(

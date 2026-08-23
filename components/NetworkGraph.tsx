@@ -169,9 +169,11 @@ function orderPathNodes(pathFilter: PathFilter, currentUserId: string | null) {
   return ordered;
 }
 
-async function fetchAcceptedConnections(userId: string) {
+async function fetchAcceptedConnections(userId: string, includePending = false) {
+  const params = new URLSearchParams({ userId });
+  if (includePending) params.set("includePending", "true");
   const res = await fetch(
-    `/api/connections/accepted?userId=${encodeURIComponent(userId)}`,
+    `/api/connections/accepted?${params.toString()}`,
   );
   if (!res.ok) return [];
 
@@ -580,7 +582,7 @@ export default function NetworkGraph({
         distance: 0,
         path_type: "first",
       };
-      const rows = await fetchAcceptedConnections(user.id);
+      const rows = await fetchAcceptedConnections(user.id, true);
 
       setGraphData(mergeConnectionRows({ nodes: [viewerNode], links: [] }, viewerNode, rows));
       setExpandedUserIds([user.id]);
