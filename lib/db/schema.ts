@@ -97,6 +97,28 @@ export const socialLinks = pgTable(
   (table) => [unique().on(table.userId, table.platform)],
 );
 
+export const socialVerifications = pgTable(
+  "social_verifications",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    provider: text("provider").notNull(),
+    providerAccountId: text("provider_account_id").notNull(),
+    displayName: text("display_name"),
+    avatarUrl: text("avatar_url"),
+    profileUrl: text("profile_url"),
+    email: text("email"),
+    verifiedAt: timestamp("verified_at", { withTimezone: true }).defaultNow(),
+  },
+  (table) => [
+    unique().on(table.userId, table.provider),
+    unique().on(table.provider, table.providerAccountId),
+    index("social_verifications_user_id_idx").on(table.userId),
+  ],
+);
+
 export const connections = pgTable(
   "connections",
   {

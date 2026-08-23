@@ -42,3 +42,101 @@ export async function GET(request: Request) {
     );
   }
 }
+
+export async function POST(request: Request) {
+  const body = (await request.json()) as Record<string, unknown>;
+  const requesterId = body.requester_id as string | undefined;
+  const recipientId = body.recipient_id as string | undefined;
+  const howMet = body.how_met as string | undefined;
+  const connectionType = body.connection_type as
+    | "first"
+    | "one_point_five"
+    | undefined;
+  const status = (body.status as "pending" | "accepted" | "rejected" | undefined) ?? "pending";
+
+  if (!requesterId || !recipientId || !howMet || !connectionType) {
+    return NextResponse.json(
+      { error: { message: "Missing required connection fields" } },
+      { status: 400 }
+    );
+  }
+
+  try {
+    const [row] = await db
+      .insert(connections)
+      .values({
+        requesterId,
+        recipientId,
+        howMet,
+        connectionType,
+        status,
+      })
+      .returning();
+
+    return NextResponse.json({ data: row ?? null }, { status: 200 });
+  } catch (e) {
+    return NextResponse.json(
+      { error: { message: (e as Error).message } },
+      { status: 500 }
+    );
+  }
+}
+
+export async function PATCH(request: Request) {
+  const body = (await request.json()) as {
+    connectionId?: string;
+    updates?: {
+      how_met?: string;
+      connection_type?: "first" | "one_point_five";
+    };
+  };
+  const { connectionId, updates } = body;
+
+  if (!connectionId || !updates) {
+    return NextResponse.json(
+      { error: { message: "Missing connectionId or updates" } },
+      { status: 400 }
+    );
+  }
+
+  try {
+    const [row] = await db
+      .update(connections)
+      .set({
+        ...(updates.how_met !== undefined ? { howMet: updates.how_met } : {}),
+        ...(updates.connection_type !== undefined
+          ? { connectionType: updates.connection_type }
+          : {}),
+      })
+      .where(and(eq(connections.id, connectionId), eq(connections.status, "pending")))
+      .returning();
+
+    return NextResponse.json({ data: row ?? null }, { status: 200 });
+  } catch (e) {
+    return NextResponse.json(
+      { error: { message: (e as Error).message } },
+      { status: 500 }
+    );
+  }
+}
+
+export async function DELETE(request: Request) {
+  const connectionId = new URL(request.url).searchParams.get("connectionId");
+
+  if (!connectionId) {
+    return NextResponse.json(
+      { error: { message: "Missing connectionId" } },
+      { status: 400 }
+    );
+  }
+
+  try {
+    await db.delete(connections).where(eq(connections.id, connectionId));
+    return NextResponse.json({ data: { deleted: true } }, { status: 200 });
+  } catch (e) {
+    return NextResponse.json(
+      { error: { message: (e as Error).message } },
+      { status: 500 }
+    );
+  }
+}

@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
-import { signOut as nextAuthSignOut } from "next-auth/react";
+import { signIn, signOut as nextAuthSignOut } from "next-auth/react";
 import {
   getCurrentUser,
   getUserProfile,
@@ -40,9 +40,14 @@ import { Avatar } from "@/components/ui/Avatar";
 import { Badge, connectionTypeBadge } from "@/components/ui/Badge";
 import { Card } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
-import { Select } from "@/components/ui/Select";
 import { Modal } from "@/components/ui/Modal";
 import { Spinner } from "@/components/ui/Spinner";
+import {
+  getInitialDashboardTab,
+  getSocialLinkEntryMode,
+  getVerifiedSocialRows,
+  VERIFIABLE_SOCIAL_PROVIDERS,
+} from "@/lib/social-links";
 
 const NetworkGraph = dynamic(() => import("./NetworkGraph"), {
   ssr: false,
@@ -56,6 +61,15 @@ const NetworkGraph = dynamic(() => import("./NetworkGraph"), {
 
 type UserProfile = Database["public"]["Tables"]["users"]["Row"];
 type SocialLink = Database["public"]["Tables"]["social_links"]["Row"];
+type SocialVerification = {
+  provider: string;
+  provider_account_id: string;
+  display_name: string | null;
+  avatar_url: string | null;
+  profile_url: string | null;
+  email: string | null;
+  verified_at: string | null;
+};
 
 interface PlatformConfig {
   name: string;
@@ -127,11 +141,17 @@ const SOCIAL_PLATFORMS: Record<string, PlatformConfig> = {
 
 export default function Dashboard() {
   const [activeTab, setActiveTab] = useState<"network" | "inbox" | "profile">(
-    "network",
+    () =>
+      typeof window === "undefined"
+        ? "network"
+        : getInitialDashboardTab(window.location.search),
   );
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [connections, setConnections] = useState<unknown[]>([]);
   const [socialLinks, setSocialLinks] = useState<SocialLink[]>([]);
+  const [socialVerifications, setSocialVerifications] = useState<
+    SocialVerification[]
+  >([]);
   const [blockedUsers, setBlockedUsers] = useState<unknown[]>([]);
   const [loading, setLoading] = useState(true);
   const [isEditingProfile, setIsEditingProfile] = useState(false);
@@ -155,7 +175,6 @@ export default function Dashboard() {
   const [editForm, setEditForm] = useState({
     name: "",
     preferred_name: "",
-    gender: "",
     bio: "",
     profile_image_url: "",
   });
@@ -163,6 +182,14 @@ export default function Dashboard() {
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [inboxUnreadCount, setInboxUnreadCount] = useState(0);
   const profileMenuRef = useRef<HTMLDivElement>(null);
+  const verifiedSocialRows = useMemo(
+    () =>
+      getVerifiedSocialRows({
+        links: socialLinks,
+        verifications: socialVerifications,
+      }),
+    [socialLinks, socialVerifications],
+  );
 
   // Pre-fill social inputs when entering edit mode
   useEffect(() => {
@@ -235,7 +262,6 @@ export default function Dashboard() {
       setEditForm({
         name: typedProfile.name || "",
         preferred_name: typedProfile.preferred_name || "",
-        gender: typedProfile.gender || "",
         bio: typedProfile.bio || "",
         profile_image_url: typedProfile.profile_image_url || "",
       });
@@ -277,6 +303,18 @@ export default function Dashboard() {
 
     const { data: links } = await getUserSocialLinks(user.id);
     if (links) setSocialLinks(links as SocialLink[]);
+
+    try {
+      const verificationRes = await fetch("/api/social-verifications");
+      if (verificationRes.ok) {
+        const verificationJson = (await verificationRes.json()) as {
+          data?: SocialVerification[];
+        };
+        setSocialVerifications(verificationJson.data || []);
+      }
+    } catch {
+      setSocialVerifications([]);
+    }
 
     const { data: blocked, error: blockedError } = await getBlockedUsers(
       user.id,
@@ -355,7 +393,6 @@ export default function Dashboard() {
       setEditForm({
         name: userProfile.name,
         preferred_name: userProfile.preferred_name || "",
-        gender: userProfile.gender || "",
         bio: userProfile.bio || "",
         profile_image_url: userProfile.profile_image_url || "",
       });
@@ -366,18 +403,40 @@ export default function Dashboard() {
   const handleSaveProfile = async () => {
     if (!userProfile) return;
 
-    const { error } = await updateUserProfile(userProfile.id, {
-      name: editForm.name,
-      preferred_name: editForm.preferred_name || null,
-      gender: editForm.gender || null,
-      bio: editForm.bio || null,
-      profile_image_url: editForm.profile_image_url || null,
-    });
+    try {
+      const { data, error } = await updateUserProfile(userProfile.id, {
+        name: editForm.name,
+        preferred_name: editForm.preferred_name || null,
+        bio: editForm.bio || null,
+        profile_image_url: editForm.profile_image_url || null,
+      });
 
-    if (!error) {
+      if (error) throw error;
+      if (data) setUserProfile(data as UserProfile);
       setIsEditingProfile(false);
-      loadData();
+      await loadData();
+    } catch (error) {
+      setMessage({
+        type: "error",
+        text: (error as Error).message || "Failed to save profile",
+      });
     }
+  };
+
+  const getVerification = (platform: string) => {
+    const provider = VERIFIABLE_SOCIAL_PROVIDERS[platform];
+    if (!provider) return null;
+    return (
+      socialVerifications.find(
+        (verification) => verification.provider === provider,
+      ) || null
+    );
+  };
+
+  const handleVerifySocial = (platform: string) => {
+    const provider = VERIFIABLE_SOCIAL_PROVIDERS[platform];
+    if (!provider) return;
+    signIn(provider, { callbackUrl: "/?tab=profile" });
   };
 
   const handleAddSocialLink = async (platform: string, value: string) => {
@@ -638,7 +697,6 @@ export default function Dashboard() {
                       )}
                       <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
                         {userProfile.email}
-                        {userProfile.gender ? ` · ${userProfile.gender}` : ""}
                       </p>
                       <button
                         onClick={() => setShowConnectionsModal(true)}
@@ -673,19 +731,6 @@ export default function Dashboard() {
                         }
                         placeholder="Preferred Name (optional)"
                       />
-                      <Select
-                        label="Gender"
-                        value={editForm.gender}
-                        onChange={(e) =>
-                          setEditForm({ ...editForm, gender: e.target.value })
-                        }
-                      >
-                        <option value="">Prefer not to say</option>
-                        <option value="Male">Male</option>
-                        <option value="Female">Female</option>
-                        <option value="Non-binary">Non-binary</option>
-                        <option value="Other">Other</option>
-                      </Select>
                       <div>
                         <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
                           Bio
@@ -736,69 +781,29 @@ export default function Dashboard() {
               </div>
             </Card>
 
-            {/* Cards */}
             <div className="space-y-6">
-              {/* About Card */}
-              <Card>
-                <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-4">
-                  About
-                </h3>
-                <div className="space-y-4">
-                  <div>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mb-0.5">
-                      Email
-                    </p>
-                    <p className="text-sm text-gray-900 dark:text-gray-100">
-                      {userProfile.email}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mb-0.5">
-                      Gender
-                    </p>
-                    {!isEditingProfile ? (
-                      <p className="text-sm text-gray-900 dark:text-gray-100">
-                        {userProfile.gender || (
-                          <span className="text-gray-400 dark:text-gray-500">
-                            Not specified
-                          </span>
-                        )}
-                      </p>
-                    ) : (
-                      <Select
-                        value={editForm.gender}
-                        onChange={(e) =>
-                          setEditForm({ ...editForm, gender: e.target.value })
-                        }
-                      >
-                        <option value="">Prefer not to say</option>
-                        <option value="Male">Male</option>
-                        <option value="Female">Female</option>
-                        <option value="Non-binary">Non-binary</option>
-                        <option value="Other">Other</option>
-                      </Select>
-                    )}
-                  </div>
-                </div>
-              </Card>
-
               {/* Social Links Card */}
               <Card>
                 <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-4">
-                  Social Links
+                  Socials
                 </h3>
 
                 {!isEditingProfile ? (
                   /* View mode: only show platforms that have links */
-                  socialLinks.length === 0 ? (
+                  socialLinks.length === 0 &&
+                  verifiedSocialRows.length === 0 ? (
                     <p className="text-xs text-gray-400 dark:text-gray-500">
-                      No social links added yet.
+                      No socials added yet.
                     </p>
                   ) : (
                     <div className="space-y-2">
                       {socialLinks.map((link) => {
                         const config = SOCIAL_PLATFORMS[link.platform];
                         const Icon = config?.icon;
+                        const verification = getVerification(link.platform);
+                        const canVerify =
+                          getSocialLinkEntryMode(link.platform) ===
+                          "verified-sign-in";
                         const handle = link.url
                           .replace(/^https?:\/\//, "")
                           .replace(
@@ -808,12 +813,9 @@ export default function Dashboard() {
                           .replace(config?.prefix || "", "")
                           .replace(/^\//, "");
                         return (
-                          <a
+                          <div
                             key={link.id}
-                            href={link.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="flex items-center gap-3 px-3 py-2.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors group"
+                            className="flex items-center gap-3 px-3 py-2.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800"
                           >
                             {Icon && (
                               <Icon
@@ -823,22 +825,126 @@ export default function Dashboard() {
                             <span className="text-sm text-gray-900 dark:text-gray-100 font-medium flex-shrink-0">
                               {link.platform}
                             </span>
-                            <span className="text-xs text-gray-500 dark:text-gray-400 truncate flex-1">
+                            <a
+                              href={link.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-xs text-gray-500 dark:text-gray-400 truncate flex-1 hover:text-indigo-600 dark:hover:text-indigo-400"
+                            >
                               {handle || link.url}
+                            </a>
+                            {verification ? (
+                              <span
+                                title={
+                                  verification.display_name ||
+                                  verification.provider_account_id
+                                }
+                                className="rounded-md bg-emerald-50 px-2 py-1 text-xs font-medium text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300"
+                              >
+                                Verified
+                              </span>
+                            ) : canVerify ? (
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  handleVerifySocial(link.platform)
+                                }
+                                className="rounded-md bg-indigo-600 px-2 py-1 text-xs font-medium text-white hover:bg-indigo-500"
+                              >
+                                Verify
+                              </button>
+                            ) : null}
+                          </div>
+                        );
+                      })}
+                      {verifiedSocialRows.map((row) => {
+                        const config = SOCIAL_PLATFORMS[row.platform];
+                        const Icon = config?.icon;
+
+                        return (
+                          <div
+                            key={`verified-${row.platform}`}
+                            className="flex items-center gap-3 px-3 py-2.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800"
+                          >
+                            {Icon && (
+                              <Icon
+                                className={`text-base flex-shrink-0 ${config.color}`}
+                              />
+                            )}
+                            <span className="text-sm text-gray-900 dark:text-gray-100 font-medium flex-shrink-0">
+                              {row.platform}
                             </span>
-                          </a>
+                            {row.url ? (
+                              <a
+                                href={row.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-xs text-gray-500 dark:text-gray-400 truncate flex-1 hover:text-indigo-600 dark:hover:text-indigo-400"
+                              >
+                                {row.label}
+                              </a>
+                            ) : (
+                              <span className="text-xs text-gray-500 dark:text-gray-400 truncate flex-1">
+                                {row.label}
+                              </span>
+                            )}
+                            <span className="rounded-md bg-emerald-50 px-2 py-1 text-xs font-medium text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300">
+                              Verified
+                            </span>
+                          </div>
                         );
                       })}
                     </div>
                   )
                 ) : (
-                  /* Edit mode: show all platforms as inputs */
+                  /* Edit mode: show typed inputs or provider sign-in */
                   <div className="space-y-3">
                     {Object.entries(SOCIAL_PLATFORMS).map(([key, config]) => {
                       const Icon = config.icon;
                       const existingLink = socialLinks.find(
                         (l) => l.platform === key,
                       );
+                      const verification = getVerification(key);
+                      const isSignInOnly =
+                        getSocialLinkEntryMode(key) === "verified-sign-in";
+
+                      if (isSignInOnly) {
+                        return (
+                          <div
+                            key={key}
+                            className="flex items-center gap-3 rounded-lg border border-gray-200 bg-white px-3 py-2.5 dark:border-gray-700 dark:bg-gray-800"
+                          >
+                            <Icon
+                              className={`text-base flex-shrink-0 w-5 ${config.color}`}
+                            />
+                            <div className="min-w-0 flex-1">
+                              <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                                {config.name}
+                              </p>
+                              <p className="truncate text-xs text-gray-500 dark:text-gray-400">
+                                {verification
+                                  ? verification.display_name ||
+                                    verification.provider_account_id
+                                  : "Verify by signing in"}
+                              </p>
+                            </div>
+                            {verification ? (
+                              <span className="rounded-md bg-emerald-50 px-2 py-1 text-xs font-medium text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300">
+                                Verified
+                              </span>
+                            ) : (
+                              <Button
+                                type="button"
+                                size="sm"
+                                onClick={() => handleVerifySocial(key)}
+                              >
+                                Sign in
+                              </Button>
+                            )}
+                          </div>
+                        );
+                      }
+
                       return (
                         <div key={key} className="flex items-center gap-3">
                           <Icon

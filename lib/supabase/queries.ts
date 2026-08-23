@@ -76,12 +76,40 @@ export async function getUserProfile(userId: string) {
 }
 
 export async function createUserProfile(profile: Record<string, unknown>) {
+  if (typeof window !== "undefined") {
+    const userId = profile.id as string | undefined;
+    if (!userId) return { data: null, error: new Error("Missing user id") };
+    const payload = await fetchJson<{ data: unknown | null }>(
+      `/api/profile/${userId}`,
+      {
+        method: "PATCH",
+        body: JSON.stringify(profile),
+      },
+    );
+    return {
+      data: payload.data ? mapUserRow(payload.data as Record<string, unknown>) : null,
+      error: null,
+    };
+  }
   const { db, profiles } = await getServerDeps();
   const data = await db.insert(profiles).values(profile as never).returning();
   return { data: data[0] ?? null, error: null };
 }
 
 export async function updateUserProfile(userId: string, updates: Record<string, unknown>) {
+  if (typeof window !== "undefined") {
+    const payload = await fetchJson<{ data: unknown | null }>(
+      `/api/profile/${userId}`,
+      {
+        method: "PATCH",
+        body: JSON.stringify(updates),
+      },
+    );
+    return {
+      data: payload.data ? mapUserRow(payload.data as Record<string, unknown>) : null,
+      error: null,
+    };
+  }
   const { db, eq, profiles } = await getServerDeps();
   const data = await db.update(profiles).set(updates as never).where(eq(profiles.id, userId)).returning();
   return { data: data[0] ?? null, error: null };
@@ -126,6 +154,12 @@ export async function deleteSocialLink(linkId: string) {
 }
 
 export async function getUserConnections(userId: string) {
+  if (typeof window !== "undefined") {
+    const payload = await fetchJson<{ data: unknown[] }>(
+      `/api/connections/accepted?userId=${encodeURIComponent(userId)}`,
+    );
+    return { data: payload.data, error: null };
+  }
   const { db, desc, eq, or, connections } = await getServerDeps();
   const data = await db.select().from(connections).where(or(eq(connections.requesterId, userId), eq(connections.recipientId, userId))).orderBy(desc(connections.createdAt));
   return { data, error: null };
@@ -144,18 +178,37 @@ export async function getPendingConnectionRequests(userId: string) {
 }
 
 export async function getSentConnectionRequests(userId: string) {
+  if (typeof window !== "undefined") {
+    const payload = await fetchJson<{ data: { sent?: unknown[] } }>(
+      `/api/inbox?userId=${encodeURIComponent(userId)}`,
+    );
+    return { data: payload.data.sent ?? [], error: null };
+  }
   const { db, and, desc, eq, connections } = await getServerDeps();
   const data = await db.select().from(connections).where(and(eq(connections.requesterId, userId), eq(connections.status, "pending"))).orderBy(desc(connections.createdAt));
   return { data, error: null };
 }
 
 export async function getConnectionBetweenUsers(aId: string, bId: string) {
+  if (typeof window !== "undefined") {
+    const payload = await fetchJson<{ data: unknown | null }>(
+      `/api/connection?a=${encodeURIComponent(aId)}&b=${encodeURIComponent(bId)}`,
+    );
+    return { data: payload.data, error: null };
+  }
   const { db, and, desc, eq, or, connections } = await getServerDeps();
   const data = await db.select().from(connections).where(or(and(eq(connections.requesterId, aId), eq(connections.recipientId, bId)), and(eq(connections.requesterId, bId), eq(connections.recipientId, aId)))).orderBy(desc(connections.createdAt)).limit(1);
   return { data: data[0] ?? null, error: null };
 }
 
 export async function createConnectionRequest(connection: Record<string, unknown>) {
+  if (typeof window !== "undefined") {
+    const payload = await fetchJson<{ data: unknown | null }>("/api/connection", {
+      method: "POST",
+      body: JSON.stringify(connection),
+    });
+    return { data: payload.data, error: null };
+  }
   const { db, connections } = await getServerDeps();
   const data = await db.insert(connections).values(connection as never).returning();
   return { data: data[0] ?? null, error: null };
@@ -175,12 +228,26 @@ export async function updateConnectionStatus(connectionId: string, status: "acce
 }
 
 export async function deleteConnection(connectionId: string) {
+  if (typeof window !== "undefined") {
+    await fetchJson<{ data: unknown }>(
+      `/api/connection?connectionId=${encodeURIComponent(connectionId)}`,
+      { method: "DELETE" },
+    );
+    return { error: null };
+  }
   const { db, eq, connections } = await getServerDeps();
   await db.delete(connections).where(eq(connections.id, connectionId));
   return { error: null };
 }
 
 export async function updateConnectionRequestDetails(connectionId: string, updates: { how_met?: string; connection_type?: "first" | "one_point_five" }) {
+  if (typeof window !== "undefined") {
+    const payload = await fetchJson<{ data: unknown | null }>("/api/connection", {
+      method: "PATCH",
+      body: JSON.stringify({ connectionId, updates }),
+    });
+    return { data: payload.data, error: null };
+  }
   const { db, and, eq, connections } = await getServerDeps();
   const data = await db.update(connections).set(updates as never).where(and(eq(connections.id, connectionId), eq(connections.status, "pending"))).returning();
   return { data: data[0] ?? null, error: null };
@@ -191,6 +258,18 @@ export async function getConnectionDistance() {
 }
 
 export async function getNetworkData(userId: string) {
+  if (typeof window !== "undefined") {
+    const payload = await fetchJson<{ data: unknown[] }>(
+      `/api/connections/accepted?userId=${encodeURIComponent(userId)}`,
+    );
+    return {
+      data: {
+        nodes: [],
+        edges: payload.data,
+      },
+      error: null,
+    };
+  }
   const { db, eq, connections } = await getServerDeps();
   const current = await getUserProfile(userId);
   const accepted = await db.select().from(connections).where(eq(connections.status, "accepted"));
@@ -219,12 +298,26 @@ export async function isUserBlocked(blockerId: string, blockedId: string) {
 }
 
 export async function blockUser(blockerId: string, blockedId: string) {
+  if (typeof window !== "undefined") {
+    const payload = await fetchJson<{ data: unknown | null }>("/api/block", {
+      method: "POST",
+      body: JSON.stringify({ blockerId, blockedId }),
+    });
+    return { data: payload.data, error: null };
+  }
   const { db, blockedUsers } = await getServerDeps();
   const data = await db.insert(blockedUsers).values({ blockerId, blockedId }).returning();
   return { data: data[0] ?? null, error: null };
 }
 
 export async function unblockUser(blockerId: string, blockedId: string) {
+  if (typeof window !== "undefined") {
+    await fetchJson<{ data: unknown }>("/api/block", {
+      method: "POST",
+      body: JSON.stringify({ blockerId, blockedId, action: "unblock" }),
+    });
+    return { error: null };
+  }
   const { db, and, eq, blockedUsers } = await getServerDeps();
   await db.delete(blockedUsers).where(and(eq(blockedUsers.blockerId, blockerId), eq(blockedUsers.blockedId, blockedId)));
   return { error: null };
@@ -266,6 +359,10 @@ export async function rejectConnectionTypeUpgrade() { return { data: null, error
 export async function getConnectionTypeUpgradeRequests() { return { data: [], error: null }; }
 
 export async function getAllUsers() {
+  if (typeof window !== "undefined") {
+    const payload = await fetchJson<{ data: unknown[] }>("/api/users-all");
+    return { data: payload.data, error: null };
+  }
   const { db, users } = await getServerDeps();
   return { data: await db.select().from(users), error: null };
 }
