@@ -6,7 +6,7 @@ import {
   updateConnectionStatus,
   getCurrentUser,
 } from "@/lib/supabase/queries";
-// Side panel is now rendered at the Dashboard level; this component notifies parent to open it.
+import { Avatar } from "@/components/ui/Avatar";
 
 type OpenUserHandler = (user: {
   id: string;
@@ -17,6 +17,7 @@ type OpenUserHandler = (user: {
 
 interface Props {
   onOpenUser?: OpenUserHandler;
+  searchQuery: string;
 }
 
 type UserSearchResult = {
@@ -45,19 +46,13 @@ interface PendingRequest {
   };
 }
 
-// connection types handled in the side panel
-
-// (dev note) mock list removed now that server API search is wired
-
-export default function ConnectionManager({ onOpenUser }: Props) {
-  const [searchQuery, setSearchQuery] = useState("");
+export default function ConnectionManager({
+  onOpenUser,
+  searchQuery,
+}: Props) {
   const [searchResults, setSearchResults] = useState<UserSearchResult[]>([]);
   const [pendingRequests, setPendingRequests] = useState<PendingRequest[]>([]);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
-  // selection is tracked by parent; keep local for potential highlight if needed
-  // keep minimal local state only if needed later; currently unused
-  // const [selectedUser, setSelectedUser] = useState<UserSearchResult | null>(null);
-  // Deprecated inline send-request fields, moved to side panel
   const [loading, setLoading] = useState(false);
   const [searching, setSearching] = useState(false);
   const [message, setMessage] = useState<{
@@ -159,51 +154,68 @@ export default function ConnectionManager({ onOpenUser }: Props) {
   };
 
   return (
-    <div className="max-w-4xl mx-auto p-6 space-y-6 relative">
+    <div className="max-w-4xl mx-auto px-5 py-4 space-y-5 relative">
       {message && (
         <div
-          className={`p-4 rounded-lg ${
+          className={`rounded-md px-3 py-2 text-sm ${
             message.type === "success"
-              ? "bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-200"
-              : "bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-200"
+              ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-200"
+              : "bg-red-50 text-red-700 dark:bg-red-950/50 dark:text-red-200"
           }`}
         >
           {message.text}
         </div>
       )}
 
-      {/* Pending Requests */}
       {pendingRequests.length > 0 && (
-        <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow">
-          <h3 className="text-xl font-semibold mb-4">
-            Pending Requests ({pendingRequests.length})
+        <section>
+          <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+            Pending requests ({pendingRequests.length})
           </h3>
-          <div className="space-y-3">
+          <div className="divide-y divide-gray-100 rounded-md border border-gray-200 bg-white dark:divide-gray-800 dark:border-gray-800 dark:bg-gray-900">
             {pendingRequests.map((request) => (
               <div
                 key={request.id}
-                className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded"
+                className="flex items-center gap-3 px-3 py-3"
               >
-                <div>
-                  <p className="font-medium">
+                <Avatar
+                  size="sm"
+                  name={request.requester.preferred_name || request.requester.name}
+                  imageUrl={request.requester.profile_image_url}
+                />
+                <button
+                  type="button"
+                  onClick={() =>
+                    onOpenUser?.({
+                      id: request.requester.id,
+                      name: request.requester.name,
+                      preferred_name: request.requester.preferred_name,
+                      profile_image_url: request.requester.profile_image_url,
+                    })
+                  }
+                  className="min-w-0 flex-1 text-left"
+                >
+                  <p className="truncate text-sm font-medium text-gray-900 dark:text-gray-100">
                     {request.requester.preferred_name || request.requester.name}
                   </p>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">
-                    Connection type: {request.how_met}
+                  <p className="truncate text-xs text-gray-500 dark:text-gray-400">
+                    {request.how_met || "Connection request"}
                   </p>
-                </div>
-                <div className="flex gap-2">
+                </button>
+                <div className="flex shrink-0 gap-2">
                   <button
+                    type="button"
                     onClick={() => handleAcceptRequest(request.id)}
                     disabled={loading}
-                    className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded disabled:opacity-50"
+                    className="rounded-md bg-emerald-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-emerald-500 disabled:opacity-50"
                   >
                     Accept
                   </button>
                   <button
+                    type="button"
                     onClick={() => handleRejectRequest(request.id)}
                     disabled={loading}
-                    className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded disabled:opacity-50"
+                    className="rounded-md bg-gray-100 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-200 disabled:opacity-50 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
                   >
                     Reject
                   </button>
@@ -211,74 +223,70 @@ export default function ConnectionManager({ onOpenUser }: Props) {
               </div>
             ))}
           </div>
-        </div>
+        </section>
       )}
 
-      {/* Search Users */}
-      <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow">
-        <h3 className="text-xl font-semibold mb-4">Find People</h3>
-
-        <div className="mb-4">
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search by name..."
-            className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600"
-          />
+      {(searching || searchQuery.trim() || searchResults.length > 0) && (
+        <section>
           {searching && (
-            <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
+            <p className="py-6 text-center text-sm text-gray-500 dark:text-gray-400">
               Searching...
             </p>
           )}
-        </div>
 
-        {!searching && searchQuery.trim() && searchResults.length === 0 && (
-          <p className="text-sm text-gray-500 dark:text-gray-400 py-4 text-center">
-            No users found matching &quot;{searchQuery}&quot;
-          </p>
-        )}
-
-        {searchResults.length > 0 && (
-          <div className="space-y-2">
-            <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
-              Found {searchResults.length} result
-              {searchResults.length !== 1 ? "s" : ""}
+          {!searching && searchQuery.trim() && searchResults.length === 0 && (
+            <p className="py-6 text-center text-sm text-gray-500 dark:text-gray-400">
+              No users found matching &quot;{searchQuery}&quot;
             </p>
-            {searchResults.map((user) => (
-              <div
-                key={user.id}
-                className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600"
-                onClick={() => {
-                  onOpenUser?.({
-                    id: user.id,
-                    name: user.name,
-                    preferred_name: user.preferred_name,
-                    profile_image_url: user.profile_image_url,
-                  });
-                }}
-              >
-                <div>
-                  <p className="font-medium">
-                    {user.preferred_name || user.name}
-                  </p>
-                  {user.mutualCount !== undefined && user.mutualCount > 0 && (
-                    <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">
-                      {user.mutualCount} mutual connection
-                      {user.mutualCount !== 1 ? "s" : ""}
-                    </p>
-                  )}
-                </div>
-                <button className="px-3 py-1 bg-blue-500 hover:bg-blue-600 text-white text-sm rounded">
-                  View
-                </button>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
+          )}
 
-      {false}
+          {searchResults.length > 0 && (
+            <>
+              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                Found {searchResults.length} result
+                {searchResults.length !== 1 ? "s" : ""}
+              </p>
+              <div className="divide-y divide-gray-100 rounded-md border border-gray-200 bg-white dark:divide-gray-800 dark:border-gray-800 dark:bg-gray-900">
+                {searchResults.map((user) => (
+                  <button
+                    key={user.id}
+                    type="button"
+                    className="flex w-full items-center gap-3 px-3 py-3 text-left transition hover:bg-gray-50 dark:hover:bg-gray-800"
+                    onClick={() => {
+                      onOpenUser?.({
+                        id: user.id,
+                        name: user.name,
+                        preferred_name: user.preferred_name,
+                        profile_image_url: user.profile_image_url,
+                      });
+                    }}
+                  >
+                    <Avatar
+                      size="sm"
+                      name={user.preferred_name || user.name}
+                      imageUrl={user.profile_image_url}
+                    />
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-sm font-medium text-gray-900 dark:text-gray-100">
+                        {user.preferred_name || user.name}
+                      </span>
+                      {user.mutualCount !== undefined && user.mutualCount > 0 && (
+                        <span className="mt-0.5 block text-xs text-indigo-600 dark:text-indigo-400">
+                          {user.mutualCount} mutual connection
+                          {user.mutualCount !== 1 ? "s" : ""}
+                        </span>
+                      )}
+                    </span>
+                    <span className="shrink-0 rounded-md bg-gray-100 px-2.5 py-1 text-xs font-medium text-gray-600 dark:bg-gray-800 dark:text-gray-300">
+                      View
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+        </section>
+      )}
     </div>
   );
 }

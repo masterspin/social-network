@@ -132,6 +132,12 @@ export async function getUserConnections(userId: string) {
 }
 
 export async function getPendingConnectionRequests(userId: string) {
+  if (typeof window !== "undefined") {
+    const payload = await fetchJson<{ data: unknown[] }>(
+      `/api/connections/pending?userId=${encodeURIComponent(userId)}`,
+    );
+    return { data: payload.data, error: null };
+  }
   const { db, and, desc, eq, connections } = await getServerDeps();
   const data = await db.select().from(connections).where(and(eq(connections.recipientId, userId), eq(connections.status, "pending"))).orderBy(desc(connections.createdAt));
   return { data, error: null };
@@ -156,6 +162,13 @@ export async function createConnectionRequest(connection: Record<string, unknown
 }
 
 export async function updateConnectionStatus(connectionId: string, status: "accepted" | "rejected") {
+  if (typeof window !== "undefined") {
+    const payload = await fetchJson<{ data: unknown | null }>("/api/connections/status", {
+      method: "POST",
+      body: JSON.stringify({ connectionId, status }),
+    });
+    return { data: payload.data, error: null };
+  }
   const { db, eq, connections } = await getServerDeps();
   const data = await db.update(connections).set({ status }).where(eq(connections.id, connectionId)).returning();
   return { data: data[0] ?? null, error: null };
@@ -191,6 +204,15 @@ export async function getNetworkData(userId: string) {
 }
 
 export async function isUserBlocked(blockerId: string, blockedId: string) {
+  if (typeof window !== "undefined") {
+    const payload = await fetchJson<{ data: Array<{ blocked_id: string }> }>(
+      `/api/block?blockerId=${encodeURIComponent(blockerId)}`,
+    );
+    return {
+      isBlocked: payload.data.some((row) => row.blocked_id === blockedId),
+      error: null,
+    };
+  }
   const { db, and, eq, blockedUsers } = await getServerDeps();
   const rows = await db.select({ id: blockedUsers.id }).from(blockedUsers).where(and(eq(blockedUsers.blockerId, blockerId), eq(blockedUsers.blockedId, blockedId))).limit(1);
   return { isBlocked: rows.length > 0, error: null };
@@ -221,6 +243,15 @@ export async function getBlockedUsers(blockerId: string) {
 }
 
 export async function getFirstConnectionCount(userId: string) {
+  if (typeof window !== "undefined") {
+    const payload = await fetchJson<{ data: Array<{ connection_type?: string | null }> }>(
+      `/api/connections/accepted?userId=${encodeURIComponent(userId)}`,
+    );
+    return {
+      count: payload.data.filter((row) => row.connection_type === "first").length,
+      error: null,
+    };
+  }
   const { db, and, eq, or, sql, connections } = await getServerDeps();
   const data = await db.select({ count: sql<number>`count(*)` }).from(connections).where(and(or(eq(connections.requesterId, userId), eq(connections.recipientId, userId)), eq(connections.connectionType, "first"), eq(connections.status, "accepted")));
   return { count: Number(data[0]?.count ?? 0), error: null };

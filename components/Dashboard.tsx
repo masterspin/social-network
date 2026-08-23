@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { signOut as nextAuthSignOut } from "next-auth/react";
 import {
@@ -15,7 +16,6 @@ import {
   unblockUser,
 } from "@/lib/supabase/queries";
 import { Database } from "@/types/supabase";
-import NetworkGraph from "./NetworkGraph";
 import ConnectionManager from "./ConnectionManager";
 import UserProfileSidePanel from "./UserProfileSidePanel";
 import Inbox from "./Inbox";
@@ -43,6 +43,16 @@ import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { Modal } from "@/components/ui/Modal";
 import { Spinner } from "@/components/ui/Spinner";
+
+const NetworkGraph = dynamic(() => import("./NetworkGraph"), {
+  ssr: false,
+  loading: () => (
+    <div className="flex flex-1 items-center justify-center gap-3 bg-slate-950 text-slate-300">
+      <Spinner size="lg" className="border-slate-600 border-t-slate-300" />
+      <span className="text-sm">Loading network...</span>
+    </div>
+  ),
+});
 
 type UserProfile = Database["public"]["Tables"]["users"]["Row"];
 type SocialLink = Database["public"]["Tables"]["social_links"]["Row"];
@@ -116,9 +126,9 @@ const SOCIAL_PLATFORMS: Record<string, PlatformConfig> = {
 };
 
 export default function Dashboard() {
-  const [activeTab, setActiveTab] = useState<
-    "network" | "inbox" | "profile"
-  >("network");
+  const [activeTab, setActiveTab] = useState<"network" | "inbox" | "profile">(
+    "network",
+  );
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [connections, setConnections] = useState<unknown[]>([]);
   const [socialLinks, setSocialLinks] = useState<SocialLink[]>([]);
@@ -166,7 +176,7 @@ export default function Dashboard() {
             .replace(/^https?:\/\//, "")
             .replace(
               platformConfig.baseUrl?.replace(/^https?:\/\//, "") || "",
-              ""
+              "",
             )
             .replace(platformConfig.prefix, "");
           inputs[link.platform] = username;
@@ -199,11 +209,15 @@ export default function Dashboard() {
   // Close profile menu on outside click
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
-      if (profileMenuRef.current && !profileMenuRef.current.contains(e.target as Node)) {
+      if (
+        profileMenuRef.current &&
+        !profileMenuRef.current.contains(e.target as Node)
+      ) {
         setShowProfileMenu(false);
       }
     }
-    if (showProfileMenu) document.addEventListener("mousedown", handleClickOutside);
+    if (showProfileMenu)
+      document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [showProfileMenu]);
 
@@ -229,7 +243,7 @@ export default function Dashboard() {
     // Load accepted connections via server API (includes mutual counts); fallback to client query
     try {
       const res = await fetch(
-        `/api/connections/accepted?userId=${encodeURIComponent(user.id)}`
+        `/api/connections/accepted?userId=${encodeURIComponent(user.id)}`,
       );
       if (res.ok) {
         const j = await res.json();
@@ -245,14 +259,19 @@ export default function Dashboard() {
 
     // Inbox unread count
     try {
-      const inboxRes = await fetch(`/api/inbox?userId=${encodeURIComponent(user.id)}`);
+      const inboxRes = await fetch(
+        `/api/inbox?userId=${encodeURIComponent(user.id)}`,
+      );
       if (inboxRes.ok) {
         const inboxJson = await inboxRes.json();
         const inboxData = inboxJson?.data || {};
         const upgradeReceived = (inboxData.upgradeRequests || []).filter(
-          (c: { upgrade_requested_by: string }) => c.upgrade_requested_by !== user.id
+          (c: { upgrade_requested_by: string }) =>
+            c.upgrade_requested_by !== user.id,
         );
-        setInboxUnreadCount((inboxData.received || []).length + upgradeReceived.length);
+        setInboxUnreadCount(
+          (inboxData.received || []).length + upgradeReceived.length,
+        );
       }
     } catch {}
 
@@ -260,7 +279,7 @@ export default function Dashboard() {
     if (links) setSocialLinks(links as SocialLink[]);
 
     const { data: blocked, error: blockedError } = await getBlockedUsers(
-      user.id
+      user.id,
     );
     if (blockedError) {
       console.error("Error loading blocked users:", blockedError);
@@ -323,8 +342,7 @@ export default function Dashboard() {
     // Filter by search
     const q = connectionsSearch.trim().toLowerCase();
     if (!q) return true;
-    const display = `${u.name} ${u.preferred_name ?? ""
-      }`.toLowerCase();
+    const display = `${u.name} ${u.preferred_name ?? ""}`.toLowerCase();
     return display.includes(q);
   });
 
@@ -427,7 +445,9 @@ export default function Dashboard() {
     return (
       <div className="flex items-center justify-center min-h-screen bg-gray-50 dark:bg-gray-950 gap-3">
         <Spinner size="lg" />
-        <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Loading your network...</p>
+        <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
+          Loading your network...
+        </p>
       </div>
     );
   }
@@ -478,7 +498,11 @@ export default function Dashboard() {
 
             {/* Actions */}
             <div className="flex items-center gap-1 flex-shrink-0">
-              <Button variant="ghost" size="sm" onClick={() => setShowSearchModal(true)}>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowSearchModal(true)}
+              >
                 <Search className="w-4 h-4" />
               </Button>
               <div className="relative" ref={profileMenuRef}>
@@ -493,7 +517,9 @@ export default function Dashboard() {
                 >
                   <Avatar
                     size="xs"
-                    name={userProfile?.preferred_name || userProfile?.name || "?"}
+                    name={
+                      userProfile?.preferred_name || userProfile?.name || "?"
+                    }
                     imageUrl={userProfile?.profile_image_url}
                   />
                   <span className="hidden sm:inline text-xs font-medium text-gray-700 dark:text-gray-300">
@@ -503,7 +529,10 @@ export default function Dashboard() {
                 {showProfileMenu && (
                   <div className="absolute right-0 top-full mt-1 w-44 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl shadow-lg overflow-hidden z-50">
                     <button
-                      onClick={() => { setActiveTab("profile"); setShowProfileMenu(false); }}
+                      onClick={() => {
+                        setActiveTab("profile");
+                        setShowProfileMenu(false);
+                      }}
                       className="w-full text-left px-4 py-2.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors flex items-center gap-2"
                     >
                       <User className="w-3.5 h-3.5 text-gray-400" />
@@ -558,7 +587,10 @@ export default function Dashboard() {
         )}
 
         {activeTab === "profile" && userProfile && (
-          <div key="profile" className="animate-fade-in max-w-7xl mx-auto px-4 py-8 w-full">
+          <div
+            key="profile"
+            className="animate-fade-in max-w-7xl mx-auto px-4 py-8 w-full"
+          >
             {/* Hero Card */}
             <Card className="mb-6">
               <div className="flex flex-col md:flex-row items-start gap-6">
@@ -574,7 +606,10 @@ export default function Dashboard() {
                       <Input
                         value={editForm.profile_image_url}
                         onChange={(e) =>
-                          setEditForm({ ...editForm, profile_image_url: e.target.value })
+                          setEditForm({
+                            ...editForm,
+                            profile_image_url: e.target.value,
+                          })
                         }
                         placeholder="Image URL (optional)"
                         className="w-48 text-xs"
@@ -609,8 +644,12 @@ export default function Dashboard() {
                         onClick={() => setShowConnectionsModal(true)}
                         className="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 transition-colors hover:underline"
                       >
-                        <span className="font-semibold">{connections.length}</span>{" "}
-                        {connections.length === 1 ? "Connection" : "Connections"}
+                        <span className="font-semibold">
+                          {connections.length}
+                        </span>{" "}
+                        {connections.length === 1
+                          ? "Connection"
+                          : "Connections"}
                       </button>
                     </>
                   ) : (
@@ -618,19 +657,28 @@ export default function Dashboard() {
                       <Input
                         label="Full Name"
                         value={editForm.name}
-                        onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+                        onChange={(e) =>
+                          setEditForm({ ...editForm, name: e.target.value })
+                        }
                         placeholder="Full Name"
                       />
                       <Input
                         label="Preferred Name"
                         value={editForm.preferred_name}
-                        onChange={(e) => setEditForm({ ...editForm, preferred_name: e.target.value })}
+                        onChange={(e) =>
+                          setEditForm({
+                            ...editForm,
+                            preferred_name: e.target.value,
+                          })
+                        }
                         placeholder="Preferred Name (optional)"
                       />
                       <Select
                         label="Gender"
                         value={editForm.gender}
-                        onChange={(e) => setEditForm({ ...editForm, gender: e.target.value })}
+                        onChange={(e) =>
+                          setEditForm({ ...editForm, gender: e.target.value })
+                        }
                       >
                         <option value="">Prefer not to say</option>
                         <option value="Male">Male</option>
@@ -639,10 +687,14 @@ export default function Dashboard() {
                         <option value="Other">Other</option>
                       </Select>
                       <div>
-                        <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Bio</label>
+                        <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
+                          Bio
+                        </label>
                         <textarea
                           value={editForm.bio}
-                          onChange={(e) => setEditForm({ ...editForm, bio: e.target.value })}
+                          onChange={(e) =>
+                            setEditForm({ ...editForm, bio: e.target.value })
+                          }
                           placeholder="A short bio..."
                           rows={3}
                           className="w-full px-3 py-2.5 text-sm rounded-lg resize-none bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
@@ -655,15 +707,27 @@ export default function Dashboard() {
                 {/* Action Buttons */}
                 <div className="flex-shrink-0 flex flex-col gap-2">
                   {!isEditingProfile ? (
-                    <Button variant="secondary" size="md" onClick={handleEditProfile}>
+                    <Button
+                      variant="secondary"
+                      size="md"
+                      onClick={handleEditProfile}
+                    >
                       Edit Profile
                     </Button>
                   ) : (
                     <>
-                      <Button variant="primary" size="md" onClick={handleSaveProfile}>
+                      <Button
+                        variant="primary"
+                        size="md"
+                        onClick={handleSaveProfile}
+                      >
                         Save
                       </Button>
-                      <Button variant="secondary" size="md" onClick={handleCancelEdit}>
+                      <Button
+                        variant="secondary"
+                        size="md"
+                        onClick={handleCancelEdit}
+                      >
                         Cancel
                       </Button>
                     </>
@@ -681,19 +745,31 @@ export default function Dashboard() {
                 </h3>
                 <div className="space-y-4">
                   <div>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mb-0.5">Email</p>
-                    <p className="text-sm text-gray-900 dark:text-gray-100">{userProfile.email}</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mb-0.5">
+                      Email
+                    </p>
+                    <p className="text-sm text-gray-900 dark:text-gray-100">
+                      {userProfile.email}
+                    </p>
                   </div>
                   <div>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mb-0.5">Gender</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mb-0.5">
+                      Gender
+                    </p>
                     {!isEditingProfile ? (
                       <p className="text-sm text-gray-900 dark:text-gray-100">
-                        {userProfile.gender || <span className="text-gray-400 dark:text-gray-500">Not specified</span>}
+                        {userProfile.gender || (
+                          <span className="text-gray-400 dark:text-gray-500">
+                            Not specified
+                          </span>
+                        )}
                       </p>
                     ) : (
                       <Select
                         value={editForm.gender}
-                        onChange={(e) => setEditForm({ ...editForm, gender: e.target.value })}
+                        onChange={(e) =>
+                          setEditForm({ ...editForm, gender: e.target.value })
+                        }
                       >
                         <option value="">Prefer not to say</option>
                         <option value="Male">Male</option>
@@ -725,7 +801,10 @@ export default function Dashboard() {
                         const Icon = config?.icon;
                         const handle = link.url
                           .replace(/^https?:\/\//, "")
-                          .replace(config?.baseUrl?.replace(/^https?:\/\//, "") || "", "")
+                          .replace(
+                            config?.baseUrl?.replace(/^https?:\/\//, "") || "",
+                            "",
+                          )
                           .replace(config?.prefix || "", "")
                           .replace(/^\//, "");
                         return (
@@ -737,7 +816,9 @@ export default function Dashboard() {
                             className="flex items-center gap-3 px-3 py-2.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors group"
                           >
                             {Icon && (
-                              <Icon className={`text-base flex-shrink-0 ${config.color}`} />
+                              <Icon
+                                className={`text-base flex-shrink-0 ${config.color}`}
+                              />
                             )}
                             <span className="text-sm text-gray-900 dark:text-gray-100 font-medium flex-shrink-0">
                               {link.platform}
@@ -755,10 +836,14 @@ export default function Dashboard() {
                   <div className="space-y-3">
                     {Object.entries(SOCIAL_PLATFORMS).map(([key, config]) => {
                       const Icon = config.icon;
-                      const existingLink = socialLinks.find((l) => l.platform === key);
+                      const existingLink = socialLinks.find(
+                        (l) => l.platform === key,
+                      );
                       return (
                         <div key={key} className="flex items-center gap-3">
-                          <Icon className={`text-base flex-shrink-0 w-5 ${config.color}`} />
+                          <Icon
+                            className={`text-base flex-shrink-0 w-5 ${config.color}`}
+                          />
                           <div className="flex-1 flex items-center border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 focus-within:ring-2 focus-within:ring-indigo-500 focus-within:border-transparent overflow-hidden">
                             <span className="px-3 py-2.5 text-xs text-gray-400 dark:text-gray-500 border-r border-gray-200 dark:border-gray-700 whitespace-nowrap flex-shrink-0">
                               {config.prefix}
@@ -767,7 +852,10 @@ export default function Dashboard() {
                               type="text"
                               value={socialInputs[key] || ""}
                               onChange={(e) =>
-                                setSocialInputs({ ...socialInputs, [key]: e.target.value })
+                                setSocialInputs({
+                                  ...socialInputs,
+                                  [key]: e.target.value,
+                                })
                               }
                               onBlur={(e) => {
                                 const value = e.target.value.trim();
@@ -799,14 +887,20 @@ export default function Dashboard() {
         title="Search Users"
         maxWidth="max-w-4xl"
       >
-        <div className="p-5">
-          <ConnectionManager
-            onOpenUser={(u) => {
-              setSelectedConnectionUser(u);
-              setShowSearchModal(false);
-            }}
+        <div className="border-b border-gray-200 dark:border-gray-800 px-5 pt-4 pb-3">
+          <Input
+            value={connectionsSearch}
+            onChange={(e) => setConnectionsSearch(e.target.value)}
+            placeholder="Search by name..."
           />
         </div>
+        <ConnectionManager
+          searchQuery={connectionsSearch}
+          onOpenUser={(u) => {
+            setSelectedConnectionUser(u);
+            setShowSearchModal(false);
+          }}
+        />
       </Modal>
 
       {/* Blocked Users Modal */}
@@ -821,8 +915,12 @@ export default function Dashboard() {
               <div className="w-12 h-12 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center mb-3">
                 <User className="w-5 h-5 text-gray-400" />
               </div>
-              <p className="text-sm font-medium text-gray-900 dark:text-gray-100">No blocked users</p>
-              <p className="text-xs text-gray-500 dark:text-gray-400">You haven&apos;t blocked anyone</p>
+              <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                No blocked users
+              </p>
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                You haven&apos;t blocked anyone
+              </p>
             </div>
           ) : (
             blockedUsers.map((blocked) => {
@@ -842,7 +940,10 @@ export default function Dashboard() {
                 >
                   <div className="flex items-center gap-3">
                     <Avatar
-                      name={blockedData.blocked_user.preferred_name || blockedData.blocked_user.name}
+                      name={
+                        blockedData.blocked_user.preferred_name ||
+                        blockedData.blocked_user.name
+                      }
                       imageUrl={blockedData.blocked_user.profile_image_url}
                       size="sm"
                     />
@@ -852,16 +953,21 @@ export default function Dashboard() {
                           setSelectedConnectionUser({
                             id: blockedData.blocked_id,
                             name: blockedData.blocked_user.name,
-                            preferred_name: blockedData.blocked_user.preferred_name,
-                            profile_image_url: blockedData.blocked_user.profile_image_url,
+                            preferred_name:
+                              blockedData.blocked_user.preferred_name,
+                            profile_image_url:
+                              blockedData.blocked_user.profile_image_url,
                           });
                           setShowBlockedModal(false);
                         }}
                         className="text-sm font-medium text-gray-900 dark:text-gray-100 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors text-left"
                       >
-                        {blockedData.blocked_user.preferred_name || blockedData.blocked_user.name}
+                        {blockedData.blocked_user.preferred_name ||
+                          blockedData.blocked_user.name}
                       </button>
-                      <p className="text-xs text-red-500 dark:text-red-400">Blocked</p>
+                      <p className="text-xs text-red-500 dark:text-red-400">
+                        Blocked
+                      </p>
                     </div>
                   </div>
                   <Button
@@ -893,7 +999,10 @@ export default function Dashboard() {
           <div className="flex gap-2">
             {(
               [
-                { key: "all" as const, label: `All (${connectionUsers.length})` },
+                {
+                  key: "all" as const,
+                  label: `All (${connectionUsers.length})`,
+                },
                 {
                   key: "first" as const,
                   label: `1st (${connectionUsers.filter((u) => u.connection_type === "first").length})`,
@@ -922,7 +1031,9 @@ export default function Dashboard() {
         <div className="divide-y divide-gray-100 dark:divide-gray-800 max-h-[50vh] overflow-y-auto">
           {filteredConnectionUsers.length === 0 ? (
             <p className="text-sm text-gray-500 dark:text-gray-400 py-8 text-center">
-              {connectionsSearch.trim() ? "No matches found" : "No connections yet"}
+              {connectionsSearch.trim()
+                ? "No matches found"
+                : "No connections yet"}
             </p>
           ) : (
             filteredConnectionUsers.map((u) => {
@@ -952,7 +1063,9 @@ export default function Dashboard() {
                         {u.preferred_name || u.name}
                       </span>
                       {u.connection_type && (
-                        <Badge variant={connectionTypeBadge(u.connection_type)} />
+                        <Badge
+                          variant={connectionTypeBadge(u.connection_type)}
+                        />
                       )}
                     </div>
                     {u.how_met && (

@@ -434,7 +434,9 @@ export default function UserProfileSidePanel({
               <SkeletonText className="w-2/3" />
             </div>
           ) : !profile ? (
-            <p className="text-sm text-red-600 dark:text-red-400">Profile not available.</p>
+            <p className="text-sm text-red-600 dark:text-red-400">
+              {error || "Profile not available."}
+            </p>
           ) : (
             <>
               {/* Profile header */}
