@@ -34,6 +34,35 @@ describe("weighted shortest paths", () => {
     expect(result?.nodeIds).toEqual(["me", "strong", "target"]);
   });
 
+  it("prefers a direct weak connection over a two-hop strong route", () => {
+    const result = getWeightedShortestPath({
+      source: "me",
+      target: "target",
+      edges: [
+        { from: "me", to: "target", type: "one_point_five" },
+        { from: "me", to: "strong", type: "first" },
+        { from: "strong", to: "target", type: "first" },
+      ],
+    });
+
+    expect(result?.nodeIds).toEqual(["me", "target"]);
+    expect(result?.totalWeight).toBe(1.5);
+  });
+
+  it("does not discount indirect paths", () => {
+    const result = getWeightedShortestPath({
+      source: "me",
+      target: "target",
+      edges: [
+        { from: "me", to: "strong", type: "first" },
+        { from: "strong", to: "target", type: "first" },
+      ],
+    });
+
+    expect(result?.nodeIds).toEqual(["me", "strong", "target"]);
+    expect(result?.totalWeight).toBe(2);
+  });
+
   it("returns null when no accepted path exists", () => {
     const result = getWeightedShortestPath({
       source: "me",

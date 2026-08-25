@@ -29,6 +29,8 @@ const BASE_WEIGHT: Record<WeightedConnectionType, number> = {
   one_point_five: 3,
 };
 
+const DIRECT_TARGET_MULTIPLIER = 0.5;
+
 const TRANSITION_WEIGHT: Record<string, number> = {
   "first:one_point_five": 0.5,
   "one_point_five:first": 1.5,
@@ -41,11 +43,14 @@ function stateKey(nodeId: string, previousType: WeightedConnectionType | null) {
 function edgeWeight(
   previousType: WeightedConnectionType | null,
   nextType: WeightedConnectionType,
+  isDirectTarget: boolean,
 ) {
   const transition =
     previousType === null ? 0 : TRANSITION_WEIGHT[`${previousType}:${nextType}`] ?? 0;
+  const baseWeight =
+    BASE_WEIGHT[nextType] * (isDirectTarget ? DIRECT_TARGET_MULTIPLIER : 1);
 
-  return BASE_WEIGHT[nextType] + transition;
+  return baseWeight + transition;
 }
 
 function dequeueBest(queue: QueueEntry[]) {
@@ -96,8 +101,10 @@ export function getWeightedShortestPath({
     for (const edge of adjacency.get(current.nodeId) ?? []) {
       if (current.path.includes(edge.to)) continue;
 
+      const isDirectTarget = current.nodeId === source && edge.to === target;
       const nextWeight =
-        current.weight + edgeWeight(current.previousType, edge.type);
+        current.weight +
+        edgeWeight(current.previousType, edge.type, isDirectTarget);
       const nextKey = stateKey(edge.to, edge.type);
       const knownWeight = bestWeight.get(nextKey);
 
