@@ -379,6 +379,8 @@ export default function UserProfileSidePanel({
       if (!res.ok) throw new Error(payload.error?.message || "Failed to save");
       setPrivateNote(payload.data || null);
       setNoteEditMode(false);
+      await refresh();
+      onChanged?.();
     } catch (e) {
       setError((e as Error).message);
     } finally {
