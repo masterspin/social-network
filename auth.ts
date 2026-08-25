@@ -116,6 +116,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     verificationTokensTable: verificationTokens,
   }),
   providers,
+  pages: {
+    error: "/auth/error",
+  },
   session: { strategy: "database" },
   callbacks: {
     async signIn({ user, account, profile }) {
