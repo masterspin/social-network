@@ -212,7 +212,13 @@ export default function Dashboard() {
   const [showSearchModal, setShowSearchModal] = useState(false);
   const [showBlockedModal, setShowBlockedModal] = useState(false);
   const [profileSection, setProfileSection] = useState<"about" | "socials">(
-    "about",
+    () => {
+      if (typeof window === "undefined") return "about";
+      return new URLSearchParams(window.location.search).get("section") ===
+        "socials"
+        ? "socials"
+        : "about";
+    },
   );
   const [connectionsSearch, setConnectionsSearch] = useState("");
   const [connectionTypeFilter, setConnectionTypeFilter] = useState<
@@ -270,6 +276,12 @@ export default function Dashboard() {
       params.set("tab", activeTab);
     }
 
+    if (activeTab === "profile" && profileSection === "socials") {
+      params.set("section", "socials");
+    } else {
+      params.delete("section");
+    }
+
     if (selectedConnectionUser) {
       params.set("profile", selectedConnectionUser.id);
     } else {
@@ -281,12 +293,13 @@ export default function Dashboard() {
     if (nextUrl !== `${window.location.pathname}${window.location.search}`) {
       window.history.replaceState(null, "", nextUrl);
     }
-  }, [activeTab, selectedConnectionUser]);
+  }, [activeTab, profileSection, selectedConnectionUser]);
 
   useEffect(() => {
     const onPopState = () => {
       const params = new URLSearchParams(window.location.search);
       setActiveTab(getInitialDashboardTab(window.location.search));
+      setProfileSection(params.get("section") === "socials" ? "socials" : "about");
       const profileId = params.get("profile");
       setSelectedConnectionUser(profileId ? selectedUserFromId(profileId) : null);
     };
@@ -522,7 +535,7 @@ export default function Dashboard() {
   const handleVerifySocial = (platform: string) => {
     const provider = VERIFIABLE_SOCIAL_PROVIDERS[platform];
     if (!provider) return;
-    signIn(provider, { callbackUrl: "/?tab=profile" });
+    signIn(provider, { callbackUrl: "/?tab=profile&section=socials" });
   };
 
   const handleUnlinkVerifiedSocial = async (platform: string) => {
