@@ -5,13 +5,7 @@ import {
   createConnectionRequest,
   updateConnectionStatus,
   deleteConnection,
-  updateConnectionRequestDetails,
   isUserBlocked,
-  requestConnectionTypeUpgrade,
-  cancelConnectionTypeUpgradeRequest,
-  downgradeConnectionType,
-  acceptConnectionTypeUpgrade,
-  rejectConnectionTypeUpgrade,
   removeConnection,
 } from "@/lib/api/queries";
 import type {
@@ -70,6 +64,7 @@ type PrivateConnectionNote = {
   user_id: string;
   description: string | null;
   year: string | null;
+  connection_type: "first" | "one_point_five" | null;
 };
 type ShortestPathUser = {
   id: string;
@@ -218,8 +213,7 @@ export default function UserProfileSidePanel({
   const [noteEditMode, setNoteEditMode] = useState(false);
   const [connectionType, setConnectionType] = useState<
     "first" | "one_point_five"
-  >("first");
-  const [amendMode, setAmendMode] = useState(false);
+  >("one_point_five");
   const [actionsOpen, setActionsOpen] = useState(false);
   const [sidebarSection, setSidebarSection] = useState<
     "connection" | "socials"
@@ -354,6 +348,7 @@ export default function UserProfileSidePanel({
     setPrivateNote(payload.data);
     setDescription(payload.data?.description || "");
     setYear(payload.data?.year || "");
+    setConnectionType(payload.data?.connection_type || "one_point_five");
     setNoteEditMode(false);
   }
 
@@ -374,6 +369,7 @@ export default function UserProfileSidePanel({
           userId: currentUserId,
           description,
           year,
+          connection_type: connectionType,
         }),
       });
       const payload = (await res.json()) as {
@@ -393,6 +389,7 @@ export default function UserProfileSidePanel({
   function cancelNoteEdit() {
     setDescription(privateNote?.description || "");
     setYear(privateNote?.year || "");
+    setConnectionType(privateNote?.connection_type || "one_point_five");
     setError(null);
     setNoteEditMode(false);
   }
@@ -417,33 +414,6 @@ export default function UserProfileSidePanel({
         </button>
         {actionsOpen && (
           <div className="absolute right-0 top-9 z-50 min-w-44 overflow-hidden rounded-lg border border-gray-200 bg-white py-1 text-sm shadow-lg dark:border-gray-700 dark:bg-gray-900">
-            {connection?.status === "accepted" &&
-              !connection.upgrade_requested_type &&
-              (connection.connection_type === "first" ? (
-                <button
-                  type="button"
-                  onClick={() => {
-                    closeActions();
-                    void handleDowngradeType();
-                  }}
-                  disabled={changingType}
-                  className="block w-full px-3 py-2 text-left text-gray-700 hover:bg-gray-50 disabled:opacity-50 dark:text-gray-200 dark:hover:bg-gray-800"
-                >
-                  Downgrade to Weak
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => {
-                    closeActions();
-                    void handleRequestUpgrade();
-                  }}
-                  disabled={changingType}
-                  className="block w-full px-3 py-2 text-left text-gray-700 hover:bg-gray-50 disabled:opacity-50 dark:text-gray-200 dark:hover:bg-gray-800"
-                >
-                  Request Strong
-                </button>
-              ))}
             {connection?.status === "accepted" && (
               <button
                 type="button"
@@ -501,6 +471,9 @@ export default function UserProfileSidePanel({
             </div>
             {!noteEditMode && (
               <div className="mt-1 space-y-0.5 text-sm">
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  {connectionType === "first" ? "Strong" : "Weak"}
+                </p>
                 {noteDescription && (
                   <p className="truncate text-gray-900 dark:text-gray-100">
                     {noteDescription}
@@ -529,6 +502,18 @@ export default function UserProfileSidePanel({
 
         {noteEditMode && (
           <div className="mt-3 space-y-2">
+            <Select
+              label="Connection Type"
+              value={connectionType}
+              onChange={(e) =>
+                setConnectionType(e.target.value as "first" | "one_point_five")
+              }
+            >
+              <option value="first">Strong (family, friends)</option>
+              <option value="one_point_five">
+                Weak (acquaintance, coworker, schoolmate)
+              </option>
+            </Select>
             <Input
               label="Description"
               value={description}
@@ -608,7 +593,6 @@ export default function UserProfileSidePanel({
       requester_id: currentUserId,
       recipient_id: userId,
       how_met: "Private note",
-      connection_type: connectionType,
       status: "pending",
     });
     if (e) {
@@ -621,7 +605,7 @@ export default function UserProfileSidePanel({
     if (connectionId) await saveConnectionNote(connectionId);
     setDescription("");
     setYear("");
-    setConnectionType("first");
+    setConnectionType("one_point_five");
     await refresh();
     onChanged?.();
   }
@@ -659,52 +643,6 @@ export default function UserProfileSidePanel({
     }
     await refresh();
     onChanged?.();
-  }
-
-  async function amendPending(id: string) {
-    setError(null);
-    const { error: e } = await updateConnectionRequestDetails(id, {
-      connection_type: connectionType,
-    });
-    if (e) {
-      setError((e as Error).message);
-      return;
-    }
-    setAmendMode(false);
-    await refresh();
-    onChanged?.();
-  }
-
-  async function counterPending(id: string) {
-    setError(null);
-    try {
-      const res = await fetch("/api/connections/counter", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          connectionId: id,
-          currentUserId,
-          how_met: "Private note",
-          connection_type: connectionType,
-        }),
-      });
-      const payload = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        throw new Error(payload?.error?.message || "Failed to amend request");
-      }
-      setAmendMode(false);
-      await refresh();
-      onChanged?.();
-    } catch (e) {
-      setError((e as Error).message);
-    }
-  }
-
-  function beginAmendPending() {
-    setConnectionType(
-      (connection?.connection_type || "first") as "first" | "one_point_five",
-    );
-    setAmendMode(true);
   }
 
   async function handleBlock() {
@@ -761,96 +699,6 @@ export default function UserProfileSidePanel({
     }
   }
 
-  async function handleDowngradeType() {
-    if (!connection) return;
-    if (!confirm("Downgrade this connection to Weak?")) return;
-    setChangingType(true);
-    setError(null);
-    try {
-      const { error: e } = await downgradeConnectionType(connection.id);
-      if (e) throw e;
-      await refresh();
-      onChanged?.();
-    } catch (e) {
-      setError((e as Error).message);
-    } finally {
-      setChangingType(false);
-    }
-  }
-
-  async function handleRequestUpgrade() {
-    if (!connection) return;
-    if (!confirm("Request to upgrade this connection to Strong?")) return;
-    setChangingType(true);
-    setError(null);
-    try {
-      const { error: e } = await requestConnectionTypeUpgrade(
-        connection.id,
-        currentUserId,
-      );
-      if (e) {
-        setError((e as Error).message);
-        return;
-      }
-      await refresh();
-      onChanged?.();
-    } catch (e) {
-      setError((e as Error).message);
-    } finally {
-      setChangingType(false);
-    }
-  }
-
-  async function handleAcceptUpgrade() {
-    if (!connection) return;
-    setChangingType(true);
-    setError(null);
-    try {
-      const { error: e } = await acceptConnectionTypeUpgrade(connection.id);
-      if (e) throw e;
-      await refresh();
-      onChanged?.();
-    } catch (e) {
-      setError((e as Error).message);
-    } finally {
-      setChangingType(false);
-    }
-  }
-
-  async function handleRejectUpgrade() {
-    if (!connection) return;
-    setChangingType(true);
-    setError(null);
-    try {
-      const { error: e } = await rejectConnectionTypeUpgrade(connection.id);
-      if (e) throw e;
-      await refresh();
-      onChanged?.();
-    } catch (e) {
-      setError((e as Error).message);
-    } finally {
-      setChangingType(false);
-    }
-  }
-
-  async function handleCancelUpgradeRequest() {
-    if (!connection) return;
-    setChangingType(true);
-    setError(null);
-    try {
-      const { error: e } = await cancelConnectionTypeUpgradeRequest(
-        connection.id,
-      );
-      if (e) throw e;
-      await refresh();
-      onChanged?.();
-    } catch (e) {
-      setError((e as Error).message);
-    } finally {
-      setChangingType(false);
-    }
-  }
-
   async function handleRemoveConnection() {
     if (!connection) return;
     if (!confirm("Remove this connection? This cannot be undone.")) return;
@@ -870,10 +718,6 @@ export default function UserProfileSidePanel({
 
   const isMe = currentUserId === userId;
   const requesterIsMe = connection && connection.requester_id === currentUserId;
-  const pendingConnectionLabel =
-    connection?.connection_type === "one_point_five"
-      ? "Pending weak connection"
-      : "Pending strong connection";
   const socialRows = useMemo(
     () =>
       getVerifiedSocialRows({
@@ -1075,27 +919,11 @@ export default function UserProfileSidePanel({
 
                   {/* Connection status */}
                   {!isMe && !isBlocked && (
-                    <Card>
-                      {!connection || connection.status === "rejected" ? (
-                        <div className="space-y-3">
-                          <Select
-                            label="Connection Type"
-                            value={connectionType}
-                            onChange={(e) =>
-                              setConnectionType(
-                                e.target.value as "first" | "one_point_five",
-                              )
-                            }
-                          >
-                            <option value="first">
-                              Strong (family, friends)
-                            </option>
-                            <option value="one_point_five">
-                              Weak (acquaintance, coworker, schoolmate)
-                            </option>
-                          </Select>
-                          <Input
-                            label="Description"
+	                    <Card>
+	                      {!connection || connection.status === "rejected" ? (
+	                        <div className="space-y-3">
+	                          <Input
+	                            label="Description"
                             value={description}
                             onChange={(e) => setDescription(e.target.value)}
                             placeholder="How you met and relationship"
@@ -1114,242 +942,64 @@ export default function UserProfileSidePanel({
                           >
                             Send Request
                           </Button>
-                        </div>
-                      ) : connection.status === "accepted" ? (
-                        <div className="space-y-3">
-                          <div className="flex items-center gap-2">
-                            <Badge
-                              variant={
-                                connection.connection_type === "one_point_five"
-                                  ? "onePointFive"
-                                  : "first"
-                              }
-                            >
-                              {connection.connection_type === "one_point_five"
-                                ? "Weak connection"
-                                : "Strong connection"}
-                            </Badge>
-                          </div>
-
-                          {/* Upgrade request status */}
-                          {connection.upgrade_requested_type && (
-                            <div className="p-3 rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/10">
-                              {connection.upgrade_requested_by ===
-                              currentUserId ? (
-                                <div className="space-y-2">
-                                  <Badge variant="pending">
-                                    Pending upgrade to strong connection
-                                  </Badge>
-                                  <Button
-                                    size="sm"
-                                    variant="secondary"
-                                    className="w-full"
-                                    onClick={handleCancelUpgradeRequest}
-                                    disabled={changingType}
-                                  >
-                                    Cancel Request
-                                  </Button>
-                                </div>
-                              ) : (
-                                <div className="space-y-2">
-                                  <Badge variant="pending">
-                                    Pending upgrade to strong connection
-                                  </Badge>
-                                  <p className="text-xs font-medium text-amber-800 dark:text-amber-200">
-                                    Upgrade request received
-                                  </p>
-                                  <p className="text-xs text-amber-700 dark:text-amber-300">
-                                    Wants to upgrade to Strong
-                                  </p>
-                                  <div className="flex gap-2">
-                                    <Button
-                                      size="sm"
-                                      variant="primary"
-                                      className="flex-1"
-                                      onClick={handleAcceptUpgrade}
-                                      disabled={changingType}
-                                    >
-                                      Accept
-                                    </Button>
-                                    <Button
-                                      size="sm"
-                                      variant="destructive"
-                                      className="flex-1"
-                                      onClick={handleRejectUpgrade}
-                                      disabled={changingType}
-                                    >
-                                      Decline
-                                    </Button>
-                                  </div>
-                                </div>
-                              )}
-                            </div>
-                          )}
-
-                          {renderPrivateNote()}
-                        </div>
-                      ) : connection.status === "pending" ? (
-                        <div className="space-y-3">
-                          {requesterIsMe ? (
-                            <>
-                              <div className="flex items-center gap-2 text-sm">
-                                <Badge variant="pending">
-                                  {pendingConnectionLabel}
-                                </Badge>
-                                <span className="text-gray-500 text-xs">
-                                  — awaiting response
-                                </span>
-                              </div>
-
-                              {amendMode ? (
-                                <div className="space-y-3">
-                                  <Select
-                                    label="Connection Type"
-                                    value={connectionType}
-                                    onChange={(e) =>
-                                      setConnectionType(
-                                        e.target.value as
-                                          | "first"
-                                          | "one_point_five",
-                                      )
-                                    }
-                                  >
-                                    <option value="first">
-                                      Strong (family, friends)
-                                    </option>
-                                    <option value="one_point_five">
-                                      Weak (acquaintance, coworker, schoolmate)
-                                    </option>
-                                  </Select>
-                                  <div className="flex gap-2">
-                                    <Button
-                                      size="sm"
-                                      variant="primary"
-                                      className="flex-1"
-                                      onClick={() =>
-                                        amendPending(connection.id)
-                                      }
-                                    >
-                                      Save changes
-                                    </Button>
-                                    <Button
-                                      size="sm"
-                                      variant="secondary"
-                                      onClick={() => {
-                                        setAmendMode(false);
-                                        setError(null);
-                                      }}
-                                    >
-                                      Cancel
-                                    </Button>
-                                  </div>
-                                </div>
-                              ) : (
-                                <div className="flex gap-2">
-                                  <Button
-                                    size="sm"
-                                    variant="secondary"
-                                    className="flex-1"
-                                    onClick={() => cancel(connection.id)}
-                                  >
-                                    Cancel request
-                                  </Button>
-                                  <Button
-                                    size="sm"
-                                    variant="ghost"
-                                    className="flex-1"
-                                    onClick={beginAmendPending}
-                                  >
-                                    Change type
-                                  </Button>
-                                </div>
-                              )}
-                            </>
-                          ) : (
-                            <>
-                              <div className="flex items-center gap-2">
-                                <Badge variant="pending">
-                                  {pendingConnectionLabel}
-                                </Badge>
-                              </div>
+	                        </div>
+	                      ) : connection.status === "accepted" ? (
+	                        <div className="space-y-3">
+	                          {renderPrivateNote()}
+	                        </div>
+	                      ) : connection.status === "pending" ? (
+	                        <div className="space-y-3">
+	                          {requesterIsMe ? (
+	                            <>
+	                              <div className="flex items-center gap-2 text-sm">
+	                                <Badge variant="pending">
+	                                  Pending
+	                                </Badge>
+	                                <span className="text-gray-500 text-xs">
+	                                  — awaiting response
+	                                </span>
+	                              </div>
+	                              <Button
+	                                size="sm"
+	                                variant="secondary"
+	                                className="w-full"
+	                                onClick={() => cancel(connection.id)}
+	                              >
+	                                Cancel request
+	                              </Button>
+	                            </>
+	                          ) : (
+	                            <>
+	                              <div className="flex items-center gap-2">
+	                                <Badge variant="pending">
+	                                  Pending
+	                                </Badge>
+	                              </div>
                               <p className="text-sm text-gray-700 dark:text-gray-300">
                                 {connection.requester?.preferred_name ||
                                   connection.requester?.name}{" "}
                                 sent you a request
                               </p>
-                              {amendMode ? (
-                                <div className="space-y-3">
-                                  <Select
-                                    label="Connection Type"
-                                    value={connectionType}
-                                    onChange={(e) =>
-                                      setConnectionType(
-                                        e.target.value as
-                                          | "first"
-                                          | "one_point_five",
-                                      )
-                                    }
-                                  >
-                                    <option value="first">
-                                      Strong (family, friends)
-                                    </option>
-                                    <option value="one_point_five">
-                                      Weak (acquaintance, coworker, schoolmate)
-                                    </option>
-                                  </Select>
-                                  <div className="flex gap-2">
-                                    <Button
-                                      size="sm"
-                                      variant="primary"
-                                      className="flex-1"
-                                      onClick={() =>
-                                        counterPending(connection.id)
-                                      }
-                                    >
-                                      Send amendment
-                                    </Button>
-                                    <Button
-                                      size="sm"
-                                      variant="secondary"
-                                      onClick={() => {
-                                        setAmendMode(false);
-                                        setError(null);
-                                      }}
-                                    >
-                                      Cancel
-                                    </Button>
-                                  </div>
-                                </div>
-                              ) : (
-                                <div className="flex gap-2">
-                                  <Button
-                                    size="sm"
-                                    variant="primary"
-                                    className="flex-1"
-                                    onClick={() => accept(connection.id)}
-                                  >
-                                    Accept
-                                  </Button>
-                                  <Button
-                                    size="sm"
-                                    variant="destructive"
-                                    className="flex-1"
-                                    onClick={() => reject(connection.id)}
-                                  >
-                                    Reject
-                                  </Button>
-                                  <Button
-                                    size="sm"
-                                    variant="ghost"
-                                    className="flex-1"
-                                    onClick={beginAmendPending}
-                                  >
-                                    Amend
-                                  </Button>
-                                </div>
-                              )}
-                            </>
-                          )}
+	                              <div className="flex gap-2">
+	                                <Button
+	                                  size="sm"
+	                                  variant="primary"
+	                                  className="flex-1"
+	                                  onClick={() => accept(connection.id)}
+	                                >
+	                                  Accept
+	                                </Button>
+	                                <Button
+	                                  size="sm"
+	                                  variant="destructive"
+	                                  className="flex-1"
+	                                  onClick={() => reject(connection.id)}
+	                                >
+	                                  Reject
+	                                </Button>
+	                              </div>
+	                            </>
+	                          )}
                         </div>
                       ) : (
                         <p className="text-sm text-gray-500">

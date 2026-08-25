@@ -10,6 +10,7 @@ function mapNote(row: typeof connectionNotes.$inferSelect) {
     user_id: row.userId,
     description: row.description,
     year: row.year,
+    connection_type: row.connectionType ?? "one_point_five",
     created_at: row.createdAt,
     updated_at: row.updatedAt,
   };
@@ -49,6 +50,7 @@ export async function POST(request: Request) {
     user_id?: string;
     description?: string | null;
     year?: string | null;
+    connection_type?: "first" | "one_point_five" | null;
   };
   const connectionId = body.connectionId ?? body.connection_id;
   const userId = body.userId ?? body.user_id;
@@ -65,6 +67,7 @@ export async function POST(request: Request) {
     userId,
     description: body.description?.trim() || null,
     year: body.year?.trim() || null,
+    connectionType: body.connection_type ?? "one_point_five",
     updatedAt: new Date(),
   };
 
@@ -76,6 +79,7 @@ export async function POST(request: Request) {
       set: {
         description: note.description,
         year: note.year,
+        connectionType: note.connectionType,
         updatedAt: note.updatedAt,
       },
     })

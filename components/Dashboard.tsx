@@ -372,13 +372,7 @@ export default function Dashboard() {
       if (inboxRes.ok) {
         const inboxJson = await inboxRes.json();
         const inboxData = inboxJson?.data || {};
-        const upgradeReceived = (inboxData.upgradeRequests || []).filter(
-          (c: { upgrade_requested_by: string }) =>
-            c.upgrade_requested_by !== user.id,
-        );
-        setInboxUnreadCount(
-          (inboxData.received || []).length + upgradeReceived.length,
-        );
+        setInboxUnreadCount((inboxData.received || []).length);
       }
     } catch {}
 
@@ -452,7 +446,8 @@ export default function Dashboard() {
           profile_image_url: (other.profile_image_url as string) ?? null,
           how_met: (conn.how_met as string) ?? "",
           connection_type:
-            (conn.connection_type as "first" | "one_point_five") || "first",
+            (conn.connection_type as "first" | "one_point_five") ||
+            "one_point_five",
         },
       ];
     } catch {

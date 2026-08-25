@@ -86,7 +86,10 @@ export async function GET(request: Request) {
         id: c.id,
         how_met: note?.description || "",
         status: c.status,
-        connection_type: c.connectionType,
+        connection_type:
+          c.status === "pending"
+            ? "pending"
+            : note?.connectionType || "one_point_five",
         other_user: other,
         mutualCount: mutual,
       };

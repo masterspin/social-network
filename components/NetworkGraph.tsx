@@ -214,11 +214,13 @@ function mergeConnectionRows(
     const other = row.other_user;
     const nextDistance = (sourceNode.distance ?? 0) + 1;
     const connectionType =
-      row.status === "pending" ? "pending" : row.connection_type || "first";
+      row.status === "pending"
+        ? "pending"
+        : row.connection_type || "one_point_five";
     const pathType =
       sourceNode.distance === 0
         ? (connectionType as NodeData["path_type"])
-        : sourceNode.path_type || "first";
+        : sourceNode.path_type || "one_point_five";
     const existing = nodes.get(other.id);
 
     if (!existing || nextDistance < (existing.distance ?? Infinity)) {
@@ -485,7 +487,7 @@ export default function NetworkGraph({
           const pathType =
             incomingLink?.connection_type === "one_point_five"
               ? "one_point_five"
-              : "first";
+            : "one_point_five";
 
           nodes.set(node.id, {
             id: node.id,
@@ -506,7 +508,7 @@ export default function NetworkGraph({
             source: link.source,
             target: link.target,
             how_met: "",
-            connection_type: link.connection_type || "first",
+            connection_type: link.connection_type || "one_point_five",
           });
         });
 

@@ -49,7 +49,7 @@ describe("user profile side panel socials", () => {
     expect(source).toContain("MoreHorizontal");
     expect(source).toContain('aria-label="Connection actions"');
     expect(source).toContain("actionsOpen");
-    expect(source).toContain("Downgrade to Weak");
+    expect(source).toContain("Remove");
     expect(source).toContain("Block User");
     expect(source).not.toContain("Manage Connection Type");
     expect(source).not.toContain('className="flex-1"\\n                                  onClick={handleRemoveConnection}');
@@ -58,8 +58,6 @@ describe("user profile side panel socials", () => {
   it("confirms menu actions before changing connection state", () => {
     const source = readFileSync("components/UserProfileSidePanel.tsx", "utf8");
 
-    expect(source).toContain('confirm("Downgrade this connection to Weak?")');
-    expect(source).toContain('confirm("Request to upgrade this connection to Strong?")');
     expect(source).toContain('confirm("Remove this connection? This cannot be undone.")');
     expect(source).toContain("Block this user?");
   });

@@ -1,7 +1,13 @@
 import { eq, inArray } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { blockedUsers, connections, profiles, users } from "@/lib/db/schema";
+import {
+  blockedUsers,
+  connectionNotes,
+  connections,
+  profiles,
+  users,
+} from "@/lib/db/schema";
 import {
   getWeightedShortestPath,
   type WeightedConnectionType,
@@ -24,29 +30,44 @@ export async function GET(request: Request) {
   }
 
   try {
-    const [connectionRows, blockRows] = await Promise.all([
+    const [connectionRows, blockRows, noteRows] = await Promise.all([
       db
         .select()
         .from(connections)
         .where(eq(connections.status, "accepted")),
       db.select().from(blockedUsers),
+      db.select().from(connectionNotes),
     ]);
     const blockedPairs = new Set(
       blockRows.map((row) => pairKey(row.blockerId, row.blockedId)),
     );
 
+    const typeByConnectionAndUser = new Map(
+      noteRows.map((note) => [
+        `${note.connectionId}:${note.userId}`,
+        note.connectionType || "one_point_five",
+      ]),
+    );
     const edges = connectionRows
       .filter((row) => {
         return (
-          row.connectionType &&
           !blockedPairs.has(pairKey(row.requesterId, row.recipientId))
         );
       })
       .flatMap((row) => {
-        const type = row.connectionType as WeightedConnectionType;
         return [
-          { from: row.requesterId, to: row.recipientId, type },
-          { from: row.recipientId, to: row.requesterId, type },
+          {
+            from: row.requesterId,
+            to: row.recipientId,
+            type: (typeByConnectionAndUser.get(`${row.id}:${row.requesterId}`) ||
+              "one_point_five") as WeightedConnectionType,
+          },
+          {
+            from: row.recipientId,
+            to: row.requesterId,
+            type: (typeByConnectionAndUser.get(`${row.id}:${row.recipientId}`) ||
+              "one_point_five") as WeightedConnectionType,
+          },
         ];
       });
 
@@ -64,7 +85,10 @@ export async function GET(request: Request) {
       return {
         source: from,
         target: to,
-        connection_type: connection?.connectionType ?? "first",
+        connection_type: connection
+          ? typeByConnectionAndUser.get(`${connection.id}:${from}`) ||
+            "one_point_five"
+          : "one_point_five",
       };
     });
 

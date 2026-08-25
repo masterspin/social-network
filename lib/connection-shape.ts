@@ -9,10 +9,8 @@ type ConnectionLike = {
   status?: string | null;
   connectionType?: string | null;
   connection_type?: string | null;
-  upgradeRequestedType?: string | null;
-  upgrade_requested_type?: string | null;
-  upgradeRequestedBy?: string | null;
-  upgrade_requested_by?: string | null;
+  myConnectionType?: string | null;
+  my_connection_type?: string | null;
   createdAt?: Date | string | null;
   created_at?: Date | string | null;
   updatedAt?: Date | string | null;
@@ -30,10 +28,8 @@ export function toClientConnectionRow<T extends ConnectionLike>(row: T) {
     recipient_id: row.recipient_id ?? row.recipientId ?? "",
     how_met: row.how_met ?? row.howMet ?? null,
     connection_type: row.connection_type ?? row.connectionType ?? null,
-    upgrade_requested_type:
-      row.upgrade_requested_type ?? row.upgradeRequestedType ?? null,
-    upgrade_requested_by:
-      row.upgrade_requested_by ?? row.upgradeRequestedBy ?? null,
+    my_connection_type:
+      row.my_connection_type ?? row.myConnectionType ?? row.connection_type ?? row.connectionType ?? null,
     created_at: serializeDate(row.created_at ?? row.createdAt),
     updated_at: serializeDate(row.updated_at ?? row.updatedAt),
   };

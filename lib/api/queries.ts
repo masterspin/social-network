@@ -212,19 +212,6 @@ export async function deleteConnection(connectionId: string) {
   return { error: null };
 }
 
-export async function updateConnectionRequestDetails(connectionId: string, updates: { how_met?: string; connection_type?: "first" | "one_point_five" }) {
-  if (typeof window !== "undefined") {
-    const payload = await fetchJson<{ data: unknown | null }>("/api/connection", {
-      method: "PATCH",
-      body: JSON.stringify({ connectionId, updates }),
-    });
-    return { data: payload.data, error: null };
-  }
-  const { db, and, eq, connections } = await getServerDeps();
-  const data = await db.update(connections).set(updates as never).where(and(eq(connections.id, connectionId), eq(connections.status, "pending"))).returning();
-  return { data: data[0] ?? null, error: null };
-}
-
 export async function getNetworkData(userId: string) {
   if (typeof window !== "undefined") {
     const payload = await fetchJson<{ data: unknown[] }>(
@@ -313,63 +300,6 @@ export async function getBlockedUsers(blockerId: string) {
   return { data, error: null };
 }
 
-export async function requestConnectionTypeUpgrade(
-  connectionId: string,
-  requesterId: string,
-) {
-  if (typeof window !== "undefined") {
-    const payload = await fetchJson<{ data: unknown | null }>(
-      "/api/connections/upgrade/request",
-      {
-        method: "POST",
-        body: JSON.stringify({ connectionId, requesterId }),
-      },
-    );
-    return { data: payload.data, error: null };
-  }
-  return { data: null, error: null };
-}
-export async function cancelConnectionTypeUpgradeRequest(_connectionId: string) {
-  if (typeof window !== "undefined") {
-    const payload = await fetchJson<{ data: unknown | null }>(
-      `/api/connections/upgrade/request?connectionId=${encodeURIComponent(_connectionId)}`,
-      { method: "DELETE" },
-    );
-    return { data: payload.data, error: null };
-  }
-  return { data: null, error: null };
-}
-export async function downgradeConnectionType(connectionId: string) {
-  return updateConnectionRequestDetails(connectionId, {
-    connection_type: "one_point_five",
-  });
-}
 export async function removeConnection(connectionId: string) {
   return deleteConnection(connectionId);
-}
-export async function acceptConnectionTypeUpgrade(_connectionId: string) {
-  if (typeof window !== "undefined") {
-    const payload = await fetchJson<{ data: unknown | null }>(
-      "/api/connections/upgrade/request",
-      {
-        method: "PATCH",
-        body: JSON.stringify({ connectionId: _connectionId, action: "accept" }),
-      },
-    );
-    return { data: payload.data, error: null };
-  }
-  return { data: null, error: null };
-}
-export async function rejectConnectionTypeUpgrade(_connectionId: string) {
-  if (typeof window !== "undefined") {
-    const payload = await fetchJson<{ data: unknown | null }>(
-      "/api/connections/upgrade/request",
-      {
-        method: "PATCH",
-        body: JSON.stringify({ connectionId: _connectionId, action: "reject" }),
-      },
-    );
-    return { data: payload.data, error: null };
-  }
-  return { data: null, error: null };
 }

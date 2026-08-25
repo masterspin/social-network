@@ -1,7 +1,7 @@
 import { eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { connections } from "@/lib/db/schema";
+import { connectionNotes, connections } from "@/lib/db/schema";
 
 export async function POST(request: Request) {
   const body = await request.json();
@@ -17,6 +17,24 @@ export async function POST(request: Request) {
     .set({ status })
     .where(eq(connections.id, connectionId))
     .returning();
+
+  if (row && status === "accepted") {
+    await db
+      .insert(connectionNotes)
+      .values([
+        {
+          connectionId: row.id,
+          userId: row.requesterId,
+          connectionType: "one_point_five",
+        },
+        {
+          connectionId: row.id,
+          userId: row.recipientId,
+          connectionType: "one_point_five",
+        },
+      ])
+      .onConflictDoNothing();
+  }
 
   return NextResponse.json({ data: row ?? null }, { status: 200 });
 }

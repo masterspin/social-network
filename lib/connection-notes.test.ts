@@ -18,6 +18,19 @@ describe("private connection notes", () => {
     expect(route).toContain("onConflictDoUpdate");
   });
 
+  it("stores connection type privately with notes", () => {
+    const schema = readFileSync("lib/db/schema.ts", "utf8");
+    const migration = readFileSync(
+      "drizzle/0009_private_directional_connection_types.sql",
+      "utf8",
+    );
+    const route = readFileSync("app/api/connection-notes/route.ts", "utf8");
+
+    expect(schema).toContain('connectionType: connectionType("connection_type")');
+    expect(migration).toContain('"connection_type"');
+    expect(route).toContain("connection_type");
+  });
+
   it("sidebar saves description and year as private notes instead of amendments", () => {
     const sidebar = readFileSync("components/UserProfileSidePanel.tsx", "utf8");
 

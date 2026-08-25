@@ -82,16 +82,14 @@ describe("dashboard profile UI", () => {
     expect(combined).toContain("Weak (acquaintance, coworker, schoolmate)");
     expect(sidebar).not.toContain(">Not connected<");
     expect(combined).not.toContain("Connection Description");
+    expect(sidebar).not.toContain("Change type");
+    expect(inbox).not.toContain("Amend");
   });
 
   it("does not enforce or describe a Strong connection cap", () => {
     const sidebar = readFileSync("components/UserProfileSidePanel.tsx", "utf8");
     const inbox = readFileSync("components/Inbox.tsx", "utf8");
-    const upgradeRoute = readFileSync(
-      "app/api/connections/upgrade/request/route.ts",
-      "utf8",
-    );
-    const combined = `${sidebar}\n${inbox}\n${upgradeRoute}`;
+    const combined = `${sidebar}\n${inbox}`;
 
     expect(combined).not.toContain("limit of 100 Strong connections");
     expect(combined).not.toContain("Limited to 100");

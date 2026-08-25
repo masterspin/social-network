@@ -35,7 +35,6 @@ export async function GET(request: Request) {
       data: {
         received: rows.filter((r) => r.recipientId === userId && r.status === "pending").map(enrich),
         sent: rows.filter((r) => r.requesterId === userId && r.status === "pending").map(enrich),
-        upgradeRequests: rows.filter((r) => r.status === "accepted" && r.upgradeRequestedType).map(enrich),
       },
     },
     { status: 200 }

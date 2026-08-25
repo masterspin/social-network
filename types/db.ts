@@ -24,8 +24,7 @@ export type ConnectionRow = {
   how_met: string;
   status: string | null;
   connection_type: string | null;
-  upgrade_requested_type: string | null;
-  upgrade_requested_by: string | null;
+  my_connection_type?: string | null;
   created_at: string | null;
   updated_at: string | null;
 };
